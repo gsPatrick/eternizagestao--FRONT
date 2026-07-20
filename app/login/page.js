@@ -17,6 +17,14 @@ import { setSession } from "@/lib/api/session";
 import { getOnboarding } from "@/lib/api/resources/tenant";
 import { getClientSubdomain } from "@/lib/tenant-subdomain";
 
+// Sufixo p/ o fluxo de reset: carrega a ORIGEM (admin/família) e a cidade.
+// `?t=<slug>` só no modo path (getClientSubdomain lê cookie do subdomínio OU
+// `?t=`); no subdomínio o cookie já resolve, então sai só `?origin=`.
+function resetSuffix(origin) {
+  const slug = getClientSubdomain();
+  return slug ? `?t=${slug}&origin=${origin}` : `?origin=${origin}`;
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const [remember, setRemember] = useState(true);
@@ -107,7 +115,7 @@ export default function LoginPage() {
                 {error && <Alert tone="danger">{error}</Alert>}
                 <div className={styles.formRow}>
                   <Checkbox label="Manter conectado" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
-                  <button type="button" className={styles.link} onClick={() => router.push("/esqueci-senha")}>
+                  <button type="button" className={styles.link} onClick={() => router.push(`/esqueci-senha${resetSuffix("admin")}`)}>
                     Esqueci minha senha
                   </button>
                 </div>

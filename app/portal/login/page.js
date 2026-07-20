@@ -16,6 +16,7 @@ import { api, ApiError } from "@/lib/api/client";
 import { setSession } from "@/lib/api/session";
 import { getPublicTenants } from "@/lib/api/resources/public";
 import { normalizeApiTenant, resolveTenant } from "@/lib/tenants";
+import { getClientSubdomain } from "@/lib/tenant-subdomain";
 
 export default function PortalLoginPage() {
   const router = useRouter();
@@ -124,7 +125,7 @@ export default function PortalLoginPage() {
                 {error && <Alert tone="danger">{error}</Alert>}
                 <div className={styles.formRow}>
                   <Checkbox label="Manter conectado" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
-                  <button type="button" className={styles.link} onClick={() => router.push(`/esqueci-senha${tParamSuffix()}`)}>
+                  <button type="button" className={styles.link} onClick={() => router.push(`/esqueci-senha${resetSuffix()}`)}>
                     Esqueci minha senha
                   </button>
                 </div>
@@ -144,13 +145,12 @@ export default function PortalLoginPage() {
   );
 }
 
-// Sufixo `?t=<slug>` p/ links que saem desta tela (ex.: esqueci-senha) — só no
-// modo path (quando a URL atual tem ?t=). No subdomínio o cookie carrega o
-// tenant e o sufixo é dispensável. SSR-safe.
-function tParamSuffix() {
-  if (typeof window === "undefined") return "";
-  const t = new URLSearchParams(window.location.search).get("t");
-  return t ? `?t=${t}` : "";
+// Sufixo p/ o fluxo de reset da FAMÍLIA: carrega a ORIGEM (portal) e a cidade.
+// `?t=<slug>` só no modo path (getClientSubdomain lê cookie do subdomínio OU
+// `?t=`); no subdomínio o cookie já resolve, então sai só `?origin=portal`.
+function resetSuffix() {
+  const slug = getClientSubdomain();
+  return slug ? `?t=${slug}&origin=portal` : `?origin=portal`;
 }
 
 // Lê o subdomínio da cidade do cookie setado pelo middleware (produção).

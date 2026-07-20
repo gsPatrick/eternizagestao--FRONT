@@ -17,13 +17,17 @@ export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  // Preserva a cidade (`?t=`) ao longo do fluxo quando veio no modo path (ex.:
-  // a partir do portal da família). Sem `?t=` (subdomínio/admin) → sufixo vazio.
-  const [tSlug] = useState(() => {
-    if (typeof window === "undefined") return "";
-    return new URLSearchParams(window.location.search).get("t") || "";
+  // O fluxo de reset é SEMPRE separado por CIDADE (`t`) e por ORIGEM (`origin`:
+  // admin da cidade vs família). Lemos ambos da URL e propagamos adiante.
+  // `?t=` só existe no modo path; no subdomínio o cookie carrega a cidade.
+  const [reset] = useState(() => {
+    if (typeof window === "undefined") return { t: "", origin: "admin" };
+    const p = new URLSearchParams(window.location.search);
+    return { t: p.get("t") || "", origin: p.get("origin") || "admin" };
   });
-  const tParam = tSlug ? `?t=${tSlug}` : "";
+  // Volta pro login da ORIGEM certa (portal → família; senão → admin da cidade).
+  const loginPath = reset.origin === "portal" ? "/portal/login" : "/login";
+  const backToLogin = `${loginPath}${reset.t ? `?t=${reset.t}` : ""}`;
 
   function handleSubmit(event) {
     event.preventDefault();
@@ -34,8 +38,8 @@ export default function ForgotPasswordPage() {
     setError("");
     setLoading(true);
     setTimeout(() => {
-      const t = tSlug ? `&t=${tSlug}` : "";
-      router.push(`/verificacao?email=${encodeURIComponent(email)}${t}`);
+      const t = reset.t ? `&t=${reset.t}` : "";
+      router.push(`/verificacao?email=${encodeURIComponent(email)}${t}&origin=${reset.origin}`);
     }, 900);
   }
 
@@ -49,7 +53,7 @@ export default function ForgotPasswordPage() {
       <section className={styles.panel}>
         <div className={styles.panelInner}>
           <div className={styles.formView}>
-            <button type="button" className={styles.back} onClick={() => router.push(`/login${tParam}`)}>
+            <button type="button" className={styles.back} onClick={() => router.push(backToLogin)}>
               <svg viewBox="0 0 16 16" fill="none">
                 <path d="M10 3.5L5.5 8 10 12.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
               </svg>

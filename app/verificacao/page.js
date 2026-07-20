@@ -25,9 +25,15 @@ function VerificationFlow() {
   const router = useRouter();
   const params = useSearchParams();
   const email = params.get("email") || "";
-  // Preserva a cidade (`?t=`) ao voltar/avançar quando o fluxo veio no modo
-  // path (portal da família). Sem `?t=` (subdomínio/admin) → sufixo vazio.
-  const tParam = params.get("t") ? `?t=${params.get("t")}` : "";
+  // Fluxo SEMPRE separado por CIDADE (`t`) e por ORIGEM (`origin`: admin vs
+  // família). `?t=` só existe no modo path; no subdomínio o cookie carrega a
+  // cidade. Default de origem ausente = admin (caminho neutro).
+  const t = params.get("t") || "";
+  const origin = params.get("origin") || "admin";
+  const tParam = t ? `?t=${t}` : "";
+  // "Voltar" preserva cidade + origem; "Ir para o login" volta pra origem certa.
+  const backToForgot = `/esqueci-senha${t ? `?t=${t}&origin=${origin}` : `?origin=${origin}`}`;
+  const backToLogin = `${origin === "portal" ? "/portal/login" : "/login"}${tParam}`;
 
   const [step, setStep] = useState("code");
   const [code, setCode] = useState("");
@@ -74,7 +80,7 @@ function VerificationFlow() {
     <div className={styles.formView}>
       {step === "code" && (
         <>
-          <button type="button" className={styles.back} onClick={() => router.push(`/esqueci-senha${tParam}`)}>
+          <button type="button" className={styles.back} onClick={() => router.push(backToForgot)}>
             <svg viewBox="0 0 16 16" fill="none">
               <path d="M10 3.5L5.5 8 10 12.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
@@ -185,7 +191,7 @@ function VerificationFlow() {
             Todas as sessões anteriores foram encerradas por segurança.
           </Alert>
 
-          <Button size="lg" full onClick={() => router.push(`/login${tParam}`)}>
+          <Button size="lg" full onClick={() => router.push(backToLogin)}>
             Ir para o login
           </Button>
         </>
