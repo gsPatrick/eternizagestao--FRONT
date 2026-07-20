@@ -86,7 +86,9 @@ export default function PortalLoginPage() {
     <TenantTheme forcedTenantId={forcedTenant} showSwitcher={!forcedTenant}>
       <main className={styles.screen}>
         <section className={`${styles.visual} ${styles.visualShrunk}`}>
-          <AuthVisual />
+          <AuthVisual
+            footerLabel={resolveTenant(tenants, forcedTenant)?.name || "Portal da Família"}
+          />
         </section>
 
         <section className={`${styles.panel} ${styles.panelExpanded}`}>

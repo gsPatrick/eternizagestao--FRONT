@@ -6,6 +6,9 @@ export default function AuthVisual({
   title = "Cada memória merece um lugar eterno.",
   subtitle = "Sepulturas, concessões, sepultamentos e cobranças — em uma única plataforma, clara para quem administra e respeitosa para quem visita.",
   intro = true,
+  // Rótulo do rodapé: nome da cidade/tenant (dinâmico). Sem tenant resolvido,
+  // cai num rótulo neutro da plataforma (nunca uma cidade fixa).
+  footerLabel = "Plataforma de Cemitérios",
 }) {
   return (
     <div className={`${styles.visual} ${intro ? styles.withIntro : ""}`}>
@@ -20,7 +23,7 @@ export default function AuthVisual({
         <p className={styles.subtitle}>{subtitle}</p>
       </div>
       <footer className={styles.footer}>
-        <span>Cemitério Municipal · São Paulo</span>
+        <span>{footerLabel}</span>
         <span>© 2026 Eterniza Gestão</span>
       </footer>
     </div>
