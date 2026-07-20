@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import styles from "./page.module.css";
@@ -56,6 +56,10 @@ export default function GravesListPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
+  // filtros avançados (busca ampliada — pedido do cliente)
+  const [advOpen, setAdvOpen] = useState(false);
+  const [adv, setAdv] = useState({ code: "", owner: "" });
+  const [debouncedAdv, setDebouncedAdv] = useState({ code: "", owner: "" });
   const [blockFilter, setBlockFilter] = useState("");
   const [page, setPage] = useState(1);
   const [modalOpen, setModalOpen] = useState(false);
@@ -84,6 +88,15 @@ export default function GravesListPage() {
   const [gForm, setGForm] = useState(emptyGrave);
   const setG = (k, v) => setGForm((f) => ({ ...f, [k]: v }));
 
+  // debounce dos filtros avançados de texto
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setDebouncedAdv({ code: adv.code.trim(), owner: adv.owner.trim() });
+      setPage(1);
+    }, 350);
+    return () => clearTimeout(t);
+  }, [adv.code, adv.owner]);
+
   // ---- dados da API ----
   const listParams = useMemo(
     () => ({
@@ -93,8 +106,10 @@ export default function GravesListPage() {
       unitType: typeFilter ? labelToUnitType(typeFilter) : undefined,
       blockId: blockFilter || undefined,
       statusSlug: statusFilter ? frontStatusToApiSlug(statusFilter) : undefined,
+      code: debouncedAdv.code || undefined,
+      owner: debouncedAdv.owner || undefined,
     }),
-    [page, search, typeFilter, blockFilter, statusFilter]
+    [page, search, typeFilter, blockFilter, statusFilter, debouncedAdv]
   );
 
   const { data, loading, error, refetch } = useResource(
@@ -274,8 +289,35 @@ export default function GravesListPage() {
               <option key={b.id} value={b.id}>Quadra {b.name || b.code}</option>
             ))}
           </Select>
+          <Button variant="ghost" onClick={() => setAdvOpen((v) => !v)}>
+            {advOpen ? "Menos filtros" : "Mais filtros"}
+          </Button>
         </div>
       </div>
+
+      {advOpen && (
+        <div className={styles.advFilters}>
+          <FormField label="Código do jazigo / gaveta / matrícula">
+            <Input
+              placeholder="Ex.: A-R1-L2-004"
+              value={adv.code}
+              onChange={(e) => setAdv((a) => ({ ...a, code: e.target.value }))}
+            />
+          </FormField>
+          <FormField label="Proprietário (nome ou CPF)">
+            <Input
+              placeholder="Nome ou CPF do concessionário"
+              value={adv.owner}
+              onChange={(e) => setAdv((a) => ({ ...a, owner: e.target.value }))}
+            />
+          </FormField>
+          {(adv.code || adv.owner) && (
+            <Button variant="ghost" onClick={() => setAdv({ code: "", owner: "" })}>
+              Limpar
+            </Button>
+          )}
+        </div>
+      )}
 
       {error ? (
         <ErrorState onRetry={refetch} />
