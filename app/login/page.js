@@ -15,6 +15,7 @@ import { normalizeEmail } from "@/lib/masks";
 import { api, ApiError } from "@/lib/api/client";
 import { setSession } from "@/lib/api/session";
 import { getOnboarding } from "@/lib/api/resources/tenant";
+import { getClientSubdomain } from "@/lib/tenant-subdomain";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -24,18 +25,21 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
 
-  // Login ADMINISTRATIVO único: super_admin (dono do sistema) e admin de
-  // cada cidade entram por aqui. Sem header de tenant — o e-mail resolve o
-  // usuário na API e o token carrega o tenantId dele. Redireciona por papel.
+  // Login ADMINISTRATIVO: super_admin (dono do sistema) e admin de cada cidade
+  // entram por aqui. Em `cidade.dominio/login` (subdomínio de cidade, via cookie
+  // do middleware ou `?t=` no dev) o login é ESCOPADO àquela cidade — passamos o
+  // subdomínio como tenant. No apex (sem subdomínio) segue o login GLOBAL, sem
+  // tenant. Redireciona por papel.
   async function submitLogin(event) {
     event.preventDefault();
     setError(null);
     setLoading(true);
     try {
+      const sub = getClientSubdomain();
       const result = await api.post(
         "/sessions",
         { email, password },
-        { auth: false }
+        sub ? { tenant: sub, auth: false } : { auth: false }
       );
       setSession(result);
       if (result?.user?.role === "super_admin") {
