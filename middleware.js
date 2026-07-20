@@ -3,28 +3,34 @@ import { NextResponse } from "next/server";
 /**
  * Middleware de SUBDOMÍNIO → tenant (Host → cidade).
  *
- * Em produção cada cidade tem seu subdomínio (guarulhos.eterniza.com.br). Este
- * middleware lê o Host, extrai o subdomínio e o EXPÕE para a app resolver a
- * cidade automaticamente (telas de login/públicas/portal) via:
+ * A cidade é sempre o PRIMEIRO rótulo do Host (guarulhos.<qualquer-domínio>).
+ * A regra é do SUBDOMÍNIO — o domínio raiz é IGNORADO de propósito, então o
+ * mesmo código funciona para eternizagestao.com.br, um domínio próprio da
+ * cidade, ou qualquer apex futuro, sem tocar aqui. O middleware lê o Host,
+ * extrai o subdomínio e o EXPÕE para a app resolver a cidade via:
  *   - header de request `x-tenant-subdomain` (lido por server components/rotas)
  *   - cookie `eterniza_tenant` (lido no cliente por login/TenantTheme)
  *
  * Contexto PLATAFORMA (super_admin) — NÃO seta tenant — quando:
  *   - o path começa com `/admin`, OU
- *   - o subdomínio é `admin`/`www`/vazio (apex `eterniza.com.br`).
+ *   - o Host é o apex (sem subdomínio) ou o rótulo é reservado (admin/www/…).
  *
  * DEV (localhost / IP) é NO-OP: não há subdomínio, então nada é setado e a app
  * continua resolvendo a cidade pelo `?t=` do fluxo atual (não quebra o dev).
- *
- * DNS wildcard (*.eterniza.com.br) + TLS é infraestrutura, fora do código.
  */
 
-const BASE_DOMAIN = process.env.NEXT_PUBLIC_BASE_DOMAIN || "eterniza.com.br";
 const TENANT_COOKIE = "eterniza_tenant";
 const TENANT_HEADER = "x-tenant-subdomain";
 
 // Labels que NÃO são cidade — caem no contexto plataforma.
 const RESERVED = new Set(["www", "admin", "app", "api", "portal"]);
+
+// Rótulos de 2º nível (ccTLDs com SLD): com.br, co.uk, gov.br, etc. Servem só
+// para saber quantos rótulos formam o domínio "raiz" (apex) e assim distinguir
+// o apex de um host com subdomínio — SEM fixar qual é o domínio.
+const SECOND_LEVEL = new Set([
+  "com", "co", "org", "net", "gov", "edu", "mil", "gob", "ac", "or", "ne", "in",
+]);
 
 // Host é dev/local? (localhost, *.localhost, 127.0.0.1, IPs) → sem subdomínio.
 function isLocalHost(hostname) {
@@ -36,20 +42,28 @@ function isLocalHost(hostname) {
   );
 }
 
+// Nº de rótulos do domínio apex: 2 normalmente (dominio.com), 3 quando há SLD
+// tipo com.br/co.uk (dominio.com.br).
+function apexLabelCount(labels) {
+  if (labels.length >= 3 && SECOND_LEVEL.has(labels[labels.length - 2])) return 3;
+  return 2;
+}
+
 /**
- * Extrai o subdomínio de cidade do Host, ou null quando não há (dev, apex,
- * www/admin, domínio desconhecido). Só considera hosts sob o BASE_DOMAIN.
+ * Extrai o subdomínio de cidade do Host — agnóstico ao domínio raiz. É o
+ * primeiro rótulo quando o Host tem MAIS rótulos que o apex; caso contrário
+ * (apex puro, dev, IP) retorna null.
+ *   guarulhos.eternizagestao.com.br → "guarulhos"
+ *   eternizagestao.com.br           → null (apex → plataforma)
+ *   guarulhos.qualquerdominio.com   → "guarulhos"
  */
 function extractSubdomain(host) {
   if (!host) return null;
   const hostname = host.split(":")[0].toLowerCase().trim(); // remove porta
   if (isLocalHost(hostname)) return null; // DEV → no-op
-  const suffix = `.${BASE_DOMAIN}`;
-  // apex (eterniza.com.br) ou domínio fora da base → sem tenant.
-  if (hostname === BASE_DOMAIN || !hostname.endsWith(suffix)) return null;
-  // primeira label antes do domínio base: "guarulhos.eterniza.com.br" → "guarulhos"
-  const label = hostname.slice(0, -suffix.length).split(".")[0];
-  return label || null;
+  const labels = hostname.split(".").filter(Boolean);
+  if (labels.length <= apexLabelCount(labels)) return null; // apex puro
+  return labels[0] || null; // 1º rótulo = subdomínio da cidade
 }
 
 export function middleware(request) {

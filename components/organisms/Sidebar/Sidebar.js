@@ -81,7 +81,7 @@ export default function Sidebar({ collapsed, onToggle, onNavigate }) {
           <span className={styles.tenantDot} />
           <span className={styles.label}>
             <span className={styles.tenantName}>Prefeitura Demo</span>
-            <span className={styles.tenantSub}>demo.eterniza.com</span>
+            <span className={styles.tenantSub}>demo.eternizagestao.com.br</span>
           </span>
         </div>
       </div>
