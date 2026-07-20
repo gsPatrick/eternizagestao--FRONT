@@ -19,15 +19,19 @@ export default function TenantLanding({ tenant }) {
   const home = `/${tenant.id}`;
   const consultaHref = `/consulta-publica?t=${tenant.id}`;
   const portalHref = `/portal/login?t=${tenant.id}`;
+  // Admin da cidade: no modo por PATH (sem subdomínio) o tenant não vem por
+  // cookie, então precisa ir no `?t=` — senão o /login perde a cidade e vira
+  // login global. No subdomínio, o cookie já resolve e o `?t=` é inofensivo.
+  const adminHref = `/login?t=${tenant.id}`;
   const navLinks = [
     { label: "Consulta pública", href: consultaHref },
-    { label: "Acesso administrativo", href: "/login" },
+    { label: "Acesso administrativo", href: adminHref },
   ];
   const footerNav = [
     { label: "Início", href: `${home}#top` },
     { label: "Consulta pública", href: consultaHref },
     { label: "Portal da Família", href: portalHref },
-    { label: "Acesso administrativo", href: "/login" },
+    { label: "Acesso administrativo", href: adminHref },
   ];
 
   return (

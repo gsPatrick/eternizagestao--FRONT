@@ -1,17 +1,16 @@
 import { headers } from "next/headers";
-import { redirect } from "next/navigation";
 import TenantLanding from "@/components/templates/TenantLanding/TenantLanding";
+import PlatformLanding from "@/components/templates/PlatformLanding/PlatformLanding";
 import { TENANTS, normalizeApiTenant } from "@/lib/tenants";
 import { getPublicTenants } from "@/lib/api/resources/public";
 
 /**
- * Raiz `/` — sem conteúdo próprio. Resolve pelo SUBDOMÍNIO (via middleware):
+ * Raiz `/` — resolve pelo SUBDOMÍNIO (via middleware):
  *   - COM subdomínio de cidade → landing pública DAQUELA cidade (TenantLanding).
- *   - SEM subdomínio (apex/plataforma) → redireciona para /plataforma.
+ *   - SEM subdomínio (apex/dev) → RENDERIZA a landing da plataforma DIRETO
+ *     (sem redirect — evita o hop /plataforma que poderia confundir cache/navegador).
  *
- * Em DEV (localhost) não há header de subdomínio → cai no redirect para
- * /plataforma; as cidades continuam acessíveis por /[cidade].
- *
+ * /plataforma segue existindo como URL canônica da mesma landing.
  * Server component (usa headers()) — não pode ter "use client".
  */
 
@@ -46,12 +45,13 @@ function matchBySubdomain(list, sub) {
 export default async function HomePage() {
   const sub = headers().get("x-tenant-subdomain");
 
-  // Sem subdomínio (apex/dev) → contexto plataforma.
-  if (!sub) redirect("/plataforma");
+  // Sem subdomínio (apex/dev) → landing da plataforma, renderizada DIRETO.
+  if (!sub) return <PlatformLanding />;
 
   const list = await loadTenants();
   const tenant = matchBySubdomain(list, sub);
-  if (!tenant) redirect("/plataforma");
+  // Subdomínio desconhecido → também mostra a plataforma (nunca cai em login).
+  if (!tenant) return <PlatformLanding />;
 
   return <TenantLanding tenant={tenant} />;
 }
