@@ -4,7 +4,7 @@
  * Tópico FINANCEIRO — integração Asaas por cidade (getIntegrations/saveFinanceiro).
  * API Key (campo secreto: mostra "•••• configurado" quando já houver) + seletor
  * de ambiente (Sandbox/Produção). O GET nunca devolve a key em claro — só o
- * status mascarado. "Testar conexão" fica desabilitado (Fase 2). RBAC: só admin.
+ * status mascarado. "Testar conexão" valida a chave via /financeiro/test. RBAC: só admin.
  */
 import { useEffect, useMemo, useState } from "react";
 import Input from "@/components/atoms/Input/Input";
