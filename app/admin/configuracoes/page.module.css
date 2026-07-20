@@ -2,7 +2,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-6);
-  max-width: 920px;
+  max-width: 620px;
   animation: viewIn 0.5s var(--ease-out) both;
 }
 
@@ -34,35 +34,32 @@
   margin-top: var(--space-1);
 }
 
-/* ---------- grade de cards ---------- */
+/* ---------- coluna de cards ---------- */
 .grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  display: flex;
+  flex-direction: column;
   gap: var(--space-5);
-  align-items: start;
 }
 
 .card {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
   background: var(--color-surface);
   border: 1px solid var(--color-mist);
   border-radius: var(--radius-lg);
-  padding: var(--space-5);
   box-shadow: var(--shadow-xs);
+  overflow: hidden;
   min-width: 0;
 }
 
-/* a seção Conta ocupa a largura toda da grade */
-.cardWide {
-  grid-column: 1 / -1;
-}
-
+/* cabeçalho do card com faixa sutil pra separar do corpo */
 .cardHead {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--color-mist-soft);
+  background: var(--color-canvas, transparent);
 }
 
 .cardTitle {
@@ -82,11 +79,13 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
+  padding: var(--space-5);
 }
 
 .formFooter {
   display: flex;
   justify-content: flex-end;
+  padding-top: var(--space-1);
 }
 
 .formFooter > * {
@@ -98,6 +97,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-4);
+  padding: var(--space-5);
   min-width: 0;
 }
 
@@ -136,17 +136,15 @@
   text-transform: uppercase;
 }
 
-.divider {
-  height: 1px;
-  background: var(--color-mist-soft);
-}
-
 .accountFooter {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-4);
   flex-wrap: wrap;
+  padding: var(--space-4) var(--space-5);
+  border-top: 1px solid var(--color-mist-soft);
+  background: var(--color-canvas, transparent);
 }
 
 .accountFooter > :global(button) {
@@ -157,19 +155,31 @@
   font-size: var(--text-caption);
   color: var(--color-slate);
   line-height: 1.5;
-  flex: 1 1 220px;
+  flex: 1 1 200px;
+}
+
+/* ---------- skeleton ---------- */
+.skeletonCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-mist);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-xs);
 }
 
 /* ---------- responsivo ---------- */
 @media (max-width: 720px) {
-  .grid {
-    grid-template-columns: 1fr;
-  }
   .accountFooter {
     flex-direction: column;
     align-items: stretch;
   }
   .accountFooter > * {
+    width: 100%;
+  }
+  .formFooter > :global(button) {
     width: 100%;
   }
 }

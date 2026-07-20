@@ -15,10 +15,13 @@ import { getPublicTenants } from "@/lib/api/resources/public";
  * Server component (usa headers()) — não pode ter "use client".
  */
 
+// Sempre dinâmica: depende do subdomínio (header) e da lista viva de cidades.
+export const dynamic = "force-dynamic";
+
 // Fonte da verdade: GET /public/tenants; fallback estático quando a API falha.
 async function loadTenants() {
   try {
-    const apiTenants = await getPublicTenants();
+    const apiTenants = await getPublicTenants({ cache: "no-store" });
     if (Array.isArray(apiTenants) && apiTenants.length) {
       return apiTenants.map(normalizeApiTenant);
     }

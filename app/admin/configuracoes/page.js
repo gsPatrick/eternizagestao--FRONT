@@ -162,13 +162,14 @@ export default function SettingsPage() {
 
       {loading ? (
         <div className={styles.grid}>
-          <section className={styles.card}>
+          <section className={styles.skeletonCard}>
             <Skeleton variant="line" width="40%" />
             <Skeleton variant="block" height={44} />
             <Skeleton variant="block" height={44} />
           </section>
-          <section className={styles.card}>
+          <section className={styles.skeletonCard}>
             <Skeleton variant="line" width="40%" />
+            <Skeleton variant="block" height={44} />
             <Skeleton variant="block" height={44} />
             <Skeleton variant="block" height={44} />
           </section>

@@ -13,6 +13,9 @@ import { getPublicTenants } from "@/lib/api/resources/public";
 // Slugs dinâmicos: a lista de cidades vive na API, não no build. Geramos zero
 // rotas estáticas e deixamos o Next resolver cada slug sob demanda.
 export const dynamicParams = true;
+// Sempre resolve a lista de cidades ao vivo — uma cidade recém-criada precisa
+// abrir na hora (sem o cache de fetch padrão do Next servindo lista velha).
+export const dynamic = "force-dynamic";
 export function generateStaticParams() {
   return [];
 }
@@ -21,7 +24,7 @@ export function generateStaticParams() {
 // estático (nunca dá white-screen). Slug inexistente → notFound().
 async function loadTenants() {
   try {
-    const apiTenants = await getPublicTenants();
+    const apiTenants = await getPublicTenants({ cache: "no-store" });
     if (Array.isArray(apiTenants) && apiTenants.length) {
       return apiTenants.map(normalizeApiTenant);
     }
