@@ -9,7 +9,7 @@
 const API_ORIGIN =
   process.env.NEXT_PUBLIC_API_ORIGIN ||
   (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/api\/v\d+\/?$/, "") ||
-  "http://localhost:3333";
+  "https://eternizagestao-eternizagestao--api.0yjn0n.easypanel.host";
 
 const nextConfig = {
   reactStrictMode: true,
