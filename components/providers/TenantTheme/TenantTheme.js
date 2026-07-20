@@ -67,11 +67,16 @@ export default function TenantTheme({
 
   useEffect(() => {
     if (forcedTenantId || tenantProp) return; // URL/prop manda; ignora seletor
-    // PRECEDÊNCIA do tenant: cookie eterniza_tenant (subdomínio em produção,
-    // setado pelo middleware) → localStorage (seletor de demo/dev) → default.
-    // Em dev o cookie não existe (middleware é no-op) → cai no seletor.
+    // PRECEDÊNCIA do tenant: cookie eterniza_tenant (subdomínio, setado pelo
+    // middleware) → `?t=` da URL (modo path, ex.: /login?t=lauro-de-freitas) →
+    // localStorage (seletor de demo/dev) → default. Assim a marca da cidade
+    // aparece nos DOIS modos (subdomínio e path).
     const fromCookie = readTenantCookie();
-    const saved = fromCookie || localStorage.getItem(STORAGE_KEY);
+    const fromQuery =
+      typeof window !== "undefined"
+        ? new URLSearchParams(window.location.search).get("t")
+        : null;
+    const saved = fromCookie || fromQuery || localStorage.getItem(STORAGE_KEY);
     if (saved) setTenantId(saved);
   }, [forcedTenantId, tenantProp]);
 
