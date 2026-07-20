@@ -16,6 +16,11 @@ export default function PortalHomePage() {
   const tenant = useTenant();
   const sub = (tenant?.subdomain || "").split(".")[0];
 
+  // Link p/ a consulta pública preservando a cidade: no subdomínio o cookie
+  // resolve o `sub` (via TenantTheme) e o `?t=` é inofensivo; no modo path é o
+  // que carrega o tenant. Evita o slug de demonstração ("demo").
+  const consultaHref = sub && sub !== "demo" ? `/consulta-publica?t=${sub}` : "/consulta-publica";
+
   const me = useResource(({ signal }) => getMe({ signal, tenant: sub }), [sub]);
   const gravesRes = useResource(({ signal }) => getGraves({ signal, tenant: sub }), [sub]);
   const billingsRes = useResource(({ signal }) => getBillings({ signal, tenant: sub }), [sub]);
@@ -157,7 +162,7 @@ export default function PortalHomePage() {
                 {pending.length} em aberto
               </span>
             </Link>
-            <Link href="/consulta-publica" className={styles.shortcut}>
+            <Link href={consultaHref} className={styles.shortcut}>
               <span className={styles.shortcutIcon}>
                 <svg viewBox="0 0 24 24" fill="none">
                   <path d="M12 21s7-6.4 7-11a7 7 0 1 0-14 0c0 4.6 7 11 7 11Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />

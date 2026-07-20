@@ -25,6 +25,9 @@ function VerificationFlow() {
   const router = useRouter();
   const params = useSearchParams();
   const email = params.get("email") || "";
+  // Preserva a cidade (`?t=`) ao voltar/avançar quando o fluxo veio no modo
+  // path (portal da família). Sem `?t=` (subdomínio/admin) → sufixo vazio.
+  const tParam = params.get("t") ? `?t=${params.get("t")}` : "";
 
   const [step, setStep] = useState("code");
   const [code, setCode] = useState("");
@@ -71,7 +74,7 @@ function VerificationFlow() {
     <div className={styles.formView}>
       {step === "code" && (
         <>
-          <button type="button" className={styles.back} onClick={() => router.push("/esqueci-senha")}>
+          <button type="button" className={styles.back} onClick={() => router.push(`/esqueci-senha${tParam}`)}>
             <svg viewBox="0 0 16 16" fill="none">
               <path d="M10 3.5L5.5 8 10 12.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
@@ -182,7 +185,7 @@ function VerificationFlow() {
             Todas as sessões anteriores foram encerradas por segurança.
           </Alert>
 
-          <Button size="lg" full onClick={() => router.push("/login")}>
+          <Button size="lg" full onClick={() => router.push(`/login${tParam}`)}>
             Ir para o login
           </Button>
         </>

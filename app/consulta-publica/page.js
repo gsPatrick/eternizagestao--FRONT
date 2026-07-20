@@ -7,11 +7,11 @@ import styles from "./page.module.css";
 
 import PublicNav from "@/components/organisms/PublicNav/PublicNav";
 import MapExplorer, { GRAVES, routeTo } from "@/components/organisms/MapExplorer/MapExplorer";
-import TenantTheme from "@/components/providers/TenantTheme/TenantTheme";
+import TenantTheme, { useTenant } from "@/components/providers/TenantTheme/TenantTheme";
 import Skeleton from "@/components/atoms/Skeleton/Skeleton";
 import ErrorState from "@/components/molecules/ErrorState/ErrorState";
 import EmptyState from "@/components/molecules/EmptyState/EmptyState";
-import { TENANTS } from "@/lib/tenants";
+import { getClientSubdomain } from "@/lib/tenant-subdomain";
 import { usePublicSearch, formatDate, yearOf } from "@/src/features/public-search";
 import { usePublicGraveRoute } from "@/src/features/public-map";
 
@@ -50,6 +50,13 @@ const SITUACOES = [
 
 const EMPTY_FILTERS = { quadra: "", lote: "", jazigo: "", situacao: "" };
 
+// Nome da cidade para o kicker: quando há tenant, vem do TenantTheme (lista da
+// API → nome real da cidade); sem tenant, cai no rótulo institucional genérico.
+function CityName({ hasTenant }) {
+  const tenant = useTenant();
+  return <>{hasTenant ? tenant.name : "Cemitério Municipal"}</>;
+}
+
 function SearchContent() {
   const params = useSearchParams();
   const [query, setQuery] = useState(params.get("q") || "");
@@ -68,11 +75,16 @@ function SearchContent() {
   const [selected, setSelected] = useState(null);
   const mapRef = useRef(null);
 
-  // tenant vindo da URL (?t=guarulhos) — no dev faz as vezes do subdomínio.
-  const tenant = TENANTS.find((t) => t.id === params.get("t") && t.id !== "eterniza") || null;
-  const tenantSlug = tenant ? tenant.id : params.get("t");
-  const home = tenant ? `/${tenant.id}` : "/";
-  const portalHref = tenant ? `/portal/login?t=${tenant.id}` : "/portal/login";
+  // Resolução de tenant robusta nos DOIS modos:
+  //   - subdomínio (guarulhos.dominio): cookie eterniza_tenant → getClientSubdomain()
+  //   - path/?t= (dominio/consulta-publica?t=lauro-de-freitas): ?t= da URL
+  // NUNCA depende da lista estática TENANTS — cidades reais vêm da API.
+  const qt = params.get("t"); // modo path
+  const tenantSlug = getClientSubdomain(); // cookie(subdomínio) OU ?t= → tenant p/ API
+  const hasTenant = Boolean(tenantSlug);
+  const tParam = qt ? `?t=${qt}` : ""; // sufixo p/ links no modo path
+  const home = qt ? `/${qt}` : "/"; // path → /cidade ; subdomínio → /
+  const portalHref = `/portal/login${tParam}`;
   const navLinks = [];
 
   const { results, loading, error, refetch, status } = usePublicSearch(
@@ -132,7 +144,7 @@ function SearchContent() {
         {/* ---------- cabeçalho de busca ---------- */}
         <section className={styles.searchHero}>
           <div className={styles.inner}>
-            <span className={styles.kicker}>Consulta pública · {tenant ? tenant.name : "Cemitério Municipal"}</span>
+            <span className={styles.kicker}>Consulta pública · <CityName hasTenant={hasTenant} /></span>
             <h1 className={styles.title}>Encontre quem você procura.</h1>
             <p className={styles.subtitle}>
               Busque pelo nome do sepultado ou do responsável, número do jazigo,
@@ -390,9 +402,10 @@ function SearchContent() {
     </>
   );
 
-  // quando há tenant, aplica a cor/marca dele; senão, navy institucional.
-  return tenant ? (
-    <TenantTheme forcedTenantId={tenant.id} showSwitcher={false}>
+  // quando há tenant (cookie do subdomínio OU ?t=), aplica a cor/marca dele
+  // resolvida pela API; senão, navy institucional.
+  return hasTenant ? (
+    <TenantTheme forcedTenantId={tenantSlug} showSwitcher={false}>
       {content}
     </TenantTheme>
   ) : (

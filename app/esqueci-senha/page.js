@@ -17,6 +17,13 @@ export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  // Preserva a cidade (`?t=`) ao longo do fluxo quando veio no modo path (ex.:
+  // a partir do portal da família). Sem `?t=` (subdomínio/admin) → sufixo vazio.
+  const [tSlug] = useState(() => {
+    if (typeof window === "undefined") return "";
+    return new URLSearchParams(window.location.search).get("t") || "";
+  });
+  const tParam = tSlug ? `?t=${tSlug}` : "";
 
   function handleSubmit(event) {
     event.preventDefault();
@@ -27,7 +34,8 @@ export default function ForgotPasswordPage() {
     setError("");
     setLoading(true);
     setTimeout(() => {
-      router.push(`/verificacao?email=${encodeURIComponent(email)}`);
+      const t = tSlug ? `&t=${tSlug}` : "";
+      router.push(`/verificacao?email=${encodeURIComponent(email)}${t}`);
     }, 900);
   }
 
@@ -41,7 +49,7 @@ export default function ForgotPasswordPage() {
       <section className={styles.panel}>
         <div className={styles.panelInner}>
           <div className={styles.formView}>
-            <button type="button" className={styles.back} onClick={() => router.push("/login")}>
+            <button type="button" className={styles.back} onClick={() => router.push(`/login${tParam}`)}>
               <svg viewBox="0 0 16 16" fill="none">
                 <path d="M10 3.5L5.5 8 10 12.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
