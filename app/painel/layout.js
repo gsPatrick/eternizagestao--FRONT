@@ -1,5 +1,5 @@
 import PanelShell from "@/components/organisms/PanelShell/PanelShell";
-import TenantTheme from "@/components/providers/TenantTheme/TenantTheme";
+import PanelTheme from "./PanelTheme";
 import OnboardingGuard from "./OnboardingGuard";
 
 export const metadata = {
@@ -8,10 +8,10 @@ export const metadata = {
 
 export default function PanelLayout({ children }) {
   return (
-    <TenantTheme>
+    <PanelTheme>
       {/* Rede de segurança: admin `pendente` já logado → onboarding (uma vez). */}
       <OnboardingGuard />
       <PanelShell>{children}</PanelShell>
-    </TenantTheme>
+    </PanelTheme>
   );
 }

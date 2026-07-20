@@ -9,6 +9,15 @@
   font-weight: 600;
   letter-spacing: -0.005em;
   line-height: 1;
+  /* nunca quebra em 2 linhas (ex.: "Em atraso") — mantém o pill numa linha só */
+  white-space: nowrap;
+  flex: none;
+  width: max-content;
+  max-width: 100%;
+}
+
+.dot {
+  flex: none;
 }
 
 .dot {
