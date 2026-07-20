@@ -7,10 +7,15 @@ import styles from "./Sidebar.module.css";
 import BrandMark from "@/components/atoms/BrandMark/BrandMark";
 import NavIcon from "@/components/atoms/NavIcon/NavIcon";
 import { NAV_GROUPS, isActive } from "@/lib/panel-nav";
+import { useTenant } from "@/components/providers/TenantTheme/TenantTheme";
 
 export default function Sidebar({ collapsed, onToggle, onNavigate }) {
   const pathname = usePathname();
   const [tip, setTip] = useState(null);
+  // Cidade do usuário logado (resolvida pelo PanelTheme via /sessions/me).
+  const tenant = useTenant();
+  const cityName = tenant?.name || "Sua cidade";
+  const cityDomain = tenant?.subdomain || "";
 
   function showTip(label, event) {
     if (!collapsed) return;
@@ -75,13 +80,13 @@ export default function Sidebar({ collapsed, onToggle, onNavigate }) {
       <div className={styles.footer}>
         <div
           className={`${styles.item} ${styles.tenant}`}
-          onMouseEnter={(e) => showTip("Prefeitura Demo", e)}
+          onMouseEnter={(e) => showTip(cityName, e)}
           onMouseLeave={hideTip}
         >
           <span className={styles.tenantDot} />
           <span className={styles.label}>
-            <span className={styles.tenantName}>Prefeitura Demo</span>
-            <span className={styles.tenantSub}>demo.eternizagestao.com.br</span>
+            <span className={styles.tenantName}>{cityName}</span>
+            {cityDomain && <span className={styles.tenantSub}>{cityDomain}</span>}
           </span>
         </div>
       </div>

@@ -83,17 +83,16 @@
   background: var(--color-navy-ghost);
 }
 
-/* ghost = ações de DISPENSAR (Cancelar/Fechar/Voltar) → VERMELHO por padrão
-   (padrão universal de sistemas). Nunca a cor da cidade — ações de destaque
-   usam primary/secondary. */
+/* ghost = menor ênfase (Cancelar/Fechar/dispensar) → cor NEUTRA (cinza do
+   sistema). Nunca a cor da cidade — ações de destaque usam primary/secondary. */
 .ghost {
   background: transparent;
-  color: var(--color-danger);
+  color: var(--color-slate);
 }
 
 .ghost:hover:not(:disabled) {
-  background: var(--color-danger-soft);
-  color: var(--color-danger);
+  background: rgba(90, 107, 128, 0.1);
+  color: var(--color-ink);
 }
 
 .danger {

@@ -57,6 +57,11 @@ export default function LoginPage() {
         sub ? { tenant: sub, auth: false } : { auth: false }
       );
       setSession(result);
+      // 1º acesso com senha temporária → força a definição de uma nova senha.
+      if (result?.user?.mustChangePassword) {
+        router.push("/trocar-senha");
+        return;
+      }
       if (result?.user?.role === "super_admin") {
         router.push("/admin");
         return;
