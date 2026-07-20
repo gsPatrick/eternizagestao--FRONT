@@ -1,0 +1,385 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  animation: viewIn 0.5s var(--ease-out) both;
+}
+
+@keyframes viewIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ---------- cabeçalho ---------- */
+.top {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.eyebrow {
+  display: block;
+  font-size: var(--text-caption);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-navy);
+  margin-bottom: var(--space-1);
+}
+
+.title {
+  font-size: var(--text-heading);
+  color: var(--color-ink);
+  line-height: 1.05;
+}
+
+.subtitle {
+  color: var(--color-slate);
+  font-size: var(--text-body);
+  margin-top: var(--space-1);
+}
+
+.actions {
+  display: flex;
+  gap: var(--space-3);
+}
+
+/* ---------- stats ---------- */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-4);
+}
+
+/* ---------- painel/tabela ---------- */
+.panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-mist);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-xs);
+}
+
+.loading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.searchBox {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 1 1 auto;
+  max-width: 360px;
+  height: 40px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-mist);
+  border-radius: var(--radius-md);
+  background: var(--color-canvas);
+  color: var(--color-slate);
+  transition: border-color 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out);
+}
+
+.searchBox:focus-within {
+  border-color: var(--color-navy);
+  box-shadow: 0 0 0 3px var(--color-navy-soft);
+  background: var(--color-surface);
+}
+
+.searchBox svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+
+.searchBox input {
+  flex: 1 1 auto;
+  border: none;
+  background: transparent;
+  outline: none;
+  font: inherit;
+  font-size: var(--text-body);
+  color: var(--color-ink);
+}
+
+.count {
+  font-size: var(--text-caption);
+  color: var(--color-slate);
+  white-space: nowrap;
+}
+
+/* ---------- célula de cidade ---------- */
+.cityCell {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.cityDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex: none;
+  box-shadow: 0 0 0 3px rgba(3, 46, 89, 0.06);
+}
+
+.cityInfo {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+  min-width: 0;
+}
+
+.cityName {
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.citySub {
+  font-size: var(--text-caption);
+  color: var(--color-slate);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.domain {
+  font-size: var(--text-body);
+  color: var(--color-slate);
+}
+
+/* ---------- ações por linha (tabela) ---------- */
+.rowActions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  justify-content: flex-end;
+}
+
+.rowLink {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-size: var(--text-body);
+  font-weight: 500;
+  color: var(--color-navy);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.15s var(--ease-out);
+}
+
+.rowLink:hover {
+  opacity: 0.7;
+}
+
+.rowLink:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.rowDanger {
+  color: var(--color-danger);
+}
+
+/* ============================================================
+ * Cartões (mobile nativo) — escondidos no desktop
+ * ==========================================================*/
+.tableWrap {
+  display: block;
+}
+
+.cardList {
+  display: none;
+  flex-direction: column;
+  gap: var(--space-3);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--color-mist);
+  border-radius: var(--radius-lg);
+  background: var(--color-canvas);
+}
+
+.cardHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.cardBadges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.cardActions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.cardActions > * {
+  flex: 1 1 0;
+  min-height: 44px;
+}
+
+/* ---------- formulário do modal ---------- */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.modeSwitch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+
+.modeBtn {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+  padding: var(--space-3) var(--space-4);
+  border: 1.5px solid var(--color-mist);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  cursor: pointer;
+  transition: border-color 0.2s var(--ease-out), background 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out);
+}
+
+.modeBtn:hover {
+  border-color: var(--color-navy-bright);
+}
+
+.modeActive {
+  border-color: var(--color-navy);
+  background: var(--color-navy-ghost);
+  box-shadow: 0 0 0 3px var(--color-navy-soft);
+}
+
+.modeTitle {
+  font-weight: 600;
+  color: var(--color-ink);
+  font-size: var(--text-body);
+}
+
+.modeDesc {
+  font-size: var(--text-caption);
+  color: var(--color-slate);
+  line-height: 1.45;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.sectionLabel {
+  font-size: var(--text-caption);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-slate);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+.spanTwo {
+  grid-column: 1 / -1;
+}
+
+.inviteHint {
+  font-size: var(--text-caption);
+  color: var(--color-slate);
+  line-height: 1.5;
+}
+
+/* ---------- campo de cor ---------- */
+.colorField {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.colorSwatch {
+  width: 40px;
+  height: 40px;
+  flex: none;
+  padding: 0;
+  border: 1px solid var(--color-mist);
+  border-radius: var(--radius-md);
+  background: none;
+  cursor: pointer;
+}
+
+.colorSwatch::-webkit-color-swatch-wrapper {
+  padding: 3px;
+}
+
+.colorSwatch::-webkit-color-swatch {
+  border: none;
+  border-radius: 6px;
+}
+
+/* ============================================================
+ * Responsivo
+ * ==========================================================*/
+/* mobile nativo: tabela vira cartões abaixo de 640px */
+@media (max-width: 640px) {
+  .tableWrap {
+    display: none;
+  }
+  .cardList {
+    display: flex;
+  }
+  .top {
+    align-items: stretch;
+  }
+  .actions {
+    width: 100%;
+  }
+  .actions > * {
+    width: 100%;
+  }
+  .panel {
+    padding: var(--space-4);
+  }
+}
+
+@media (max-width: 720px) {
+  .stats {
+    grid-template-columns: 1fr;
+  }
+  .grid,
+  .modeSwitch {
+    grid-template-columns: 1fr;
+  }
+  .rowActions {
+    gap: var(--space-3);
+  }
+}

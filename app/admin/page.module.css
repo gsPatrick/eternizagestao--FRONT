@@ -53,7 +53,7 @@
   gap: var(--space-4);
 }
 
-/* ---------- painel/tabela ---------- */
+/* ---------- painel ---------- */
 .panel {
   background: var(--color-surface);
   border: 1px solid var(--color-mist);
@@ -68,62 +68,67 @@
   gap: var(--space-3);
 }
 
-.toolbar {
+.panelHead {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-4);
-  margin-bottom: var(--space-4);
+  margin-bottom: var(--space-3);
 }
 
-.searchBox {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  flex: 1 1 auto;
-  max-width: 360px;
-  height: 40px;
-  padding: 0 var(--space-3);
-  border: 1px solid var(--color-mist);
-  border-radius: var(--radius-md);
-  background: var(--color-canvas);
-  color: var(--color-slate);
-  transition: border-color 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out);
-}
-
-.searchBox:focus-within {
-  border-color: var(--color-navy);
-  box-shadow: 0 0 0 3px var(--color-navy-soft);
-  background: var(--color-surface);
-}
-
-.searchBox svg {
-  width: 16px;
-  height: 16px;
-  flex: none;
-}
-
-.searchBox input {
-  flex: 1 1 auto;
-  border: none;
-  background: transparent;
-  outline: none;
-  font: inherit;
-  font-size: var(--text-body);
+.panelTitle {
+  font-size: var(--text-heading-sm);
+  font-weight: 600;
   color: var(--color-ink);
 }
 
-.count {
-  font-size: var(--text-caption);
-  color: var(--color-slate);
-  white-space: nowrap;
+.panelLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--text-body);
+  font-weight: 500;
+  color: var(--color-navy);
+  transition: opacity 0.15s var(--ease-out);
 }
 
-/* ---------- célula de cidade ---------- */
-.cityCell {
+.panelLink:hover {
+  opacity: 0.7;
+}
+
+.panelLinkIcon {
+  display: inline-flex;
+}
+
+.panelLinkIcon svg {
+  width: 15px;
+  height: 15px;
+}
+
+/* ---------- lista de cidades recentes ---------- */
+.list {
+  display: flex;
+  flex-direction: column;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.list > li + li {
+  border-top: 1px solid var(--color-mist-soft);
+}
+
+.row {
   display: flex;
   align-items: center;
   gap: var(--space-3);
+  padding: var(--space-3) var(--space-2);
+  border-radius: var(--radius-md);
+  transition: background 0.15s var(--ease-out);
+}
+
+.row:hover {
+  background: var(--color-navy-ghost);
 }
 
 .cityDot {
@@ -138,172 +143,71 @@
   display: flex;
   flex-direction: column;
   line-height: 1.25;
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
 .cityName {
   font-weight: 600;
   color: var(--color-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .citySub {
   font-size: var(--text-caption);
   color: var(--color-slate);
-}
-
-.domain {
-  font-size: var(--text-body);
-  color: var(--color-slate);
-}
-
-/* ---------- ações por linha ---------- */
-.rowActions {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-4);
-  justify-content: flex-end;
-}
-
-.rowLink {
-  background: none;
-  border: none;
-  padding: 0;
-  font: inherit;
-  font-size: var(--text-body);
-  font-weight: 500;
-  color: var(--color-navy);
-  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
-  transition: opacity 0.15s var(--ease-out);
 }
 
-.rowLink:hover {
-  opacity: 0.7;
-}
-
-.rowLink:disabled {
-  opacity: 0.4;
-  cursor: default;
-}
-
-.rowDanger {
-  color: var(--color-danger);
-}
-
-/* ---------- formulário do modal ---------- */
-.form {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-5);
-}
-
-.modeSwitch {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-3);
-}
-
-.modeBtn {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  text-align: left;
-  padding: var(--space-3) var(--space-4);
-  border: 1.5px solid var(--color-mist);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
-  cursor: pointer;
-  transition: border-color 0.2s var(--ease-out), background 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out);
-}
-
-.modeBtn:hover {
-  border-color: var(--color-navy-bright);
-}
-
-.modeActive {
-  border-color: var(--color-navy);
-  background: var(--color-navy-ghost);
-  box-shadow: 0 0 0 3px var(--color-navy-soft);
-}
-
-.modeTitle {
-  font-weight: 600;
-  color: var(--color-ink);
-  font-size: var(--text-body);
-}
-
-.modeDesc {
-  font-size: var(--text-caption);
-  color: var(--color-slate);
-  line-height: 1.45;
-}
-
-.section {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-
-.sectionLabel {
-  font-size: var(--text-caption);
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--color-slate);
-}
-
-.grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-4);
-}
-
-.spanTwo {
-  grid-column: 1 / -1;
-}
-
-.inviteHint {
-  font-size: var(--text-caption);
-  color: var(--color-slate);
-  line-height: 1.5;
-}
-
-/* ---------- campo de cor ---------- */
-.colorField {
+.rowBadges {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-}
-
-.colorSwatch {
-  width: 40px;
-  height: 40px;
   flex: none;
-  padding: 0;
-  border: 1px solid var(--color-mist);
-  border-radius: var(--radius-md);
-  background: none;
-  cursor: pointer;
 }
 
-.colorSwatch::-webkit-color-swatch-wrapper {
-  padding: 3px;
+.rowChevron {
+  display: inline-flex;
+  color: var(--color-mist);
+  flex: none;
 }
 
-.colorSwatch::-webkit-color-swatch {
-  border: none;
-  border-radius: 6px;
+.rowChevron svg {
+  width: 16px;
+  height: 16px;
 }
 
-/* ---------- responsivo ---------- */
+/* ============================================================
+ * Responsivo — KPIs empilham, badges quebram no mobile
+ * ==========================================================*/
 @media (max-width: 720px) {
   .stats {
     grid-template-columns: 1fr;
   }
-  .grid,
-  .modeSwitch {
-    grid-template-columns: 1fr;
+  .top {
+    align-items: stretch;
   }
-  .rowActions {
-    gap: var(--space-3);
+  .actions {
+    width: 100%;
+  }
+  .actions > * {
+    width: 100%;
+  }
+  .panel {
+    padding: var(--space-4);
+  }
+}
+
+@media (max-width: 560px) {
+  .rowBadges {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  .rowChevron {
+    display: none;
   }
 }
