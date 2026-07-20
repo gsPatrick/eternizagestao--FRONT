@@ -33,6 +33,11 @@
   position: absolute;
   inset: 0;
   background-color: #0b1626;
+  /* Placeholder borrado (LQIP ~1KB): aparece INSTANTÂNEO, então a foto real
+     entra por cima com fade — a animação nunca fica num quadro vazio. */
+  background-image: url("/media/hero-blur.jpg");
+  background-size: cover;
+  background-position: center;
   /* Intro: o painel abre a partir de um ponto central no load. */
   animation: introPanel 2.2s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
@@ -64,6 +69,13 @@
   height: 100%;
   object-fit: cover;
   object-position: center;
+  /* entra por cima do placeholder borrado quando termina de carregar */
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+
+.imageLoaded {
+  opacity: 1;
 }
 
 /* Véu navy para legibilidade do texto branco sobre a foto clara. */

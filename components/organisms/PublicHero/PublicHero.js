@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import styles from "./PublicHero.module.css";
@@ -29,6 +29,15 @@ export default function PublicHero({ variant = "public", tenantSlug = null }) {
   const [query, setQuery] = useState("");
   const [typed, setTyped] = useState("");
   const [focused, setFocused] = useState(false);
+  // fade-in da foto do hero: o placeholder borrado (LQIP no CSS) aparece na hora;
+  // a foto real entra com transição quando termina de carregar.
+  const [imgLoaded, setImgLoaded] = useState(false);
+  const heroImgRef = useRef(null);
+
+  // Se a imagem já veio do cache (onLoad não dispara), marca como carregada.
+  useEffect(() => {
+    if (heroImgRef.current?.complete) setImgLoaded(true);
+  }, []);
 
   // autocomplete: nomes e códigos de jazigo da base pública (API real)
   const suggestions = usePublicSuggestions(query, { tenant: tenantSlug });
@@ -91,7 +100,19 @@ export default function PublicHero({ variant = "public", tenantSlug = null }) {
       <div className={styles.imageBg}>
         <div className={`${styles.frame} ${expanded ? styles.expanded : ""}`}>
           <div className={styles.canvas}>
-            <img src="/media/hero.jpg" alt="" className={styles.image} aria-hidden="true" />
+            <picture>
+              <source srcSet="/media/hero.webp" type="image/webp" />
+              <img
+                ref={heroImgRef}
+                src="/media/hero.jpg"
+                alt=""
+                className={`${styles.image} ${imgLoaded ? styles.imageLoaded : ""}`}
+                aria-hidden="true"
+                fetchPriority="high"
+                decoding="async"
+                onLoad={() => setImgLoaded(true)}
+              />
+            </picture>
             <div className={styles.scrim} />
           </div>
         </div>

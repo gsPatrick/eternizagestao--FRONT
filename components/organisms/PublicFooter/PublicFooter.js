@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import BrandMark from "@/components/atoms/BrandMark/BrandMark";
 import styles from "./PublicFooter.module.css";
@@ -28,6 +29,12 @@ function ArrowIcon() {
 export default function PublicFooter({ variant = "sales", nav, heading, cityName }) {
   const isPublic = variant === "public";
   const navItems = nav || SALES_NAV;
+  // fade-in da foto revelada no rodapé (mesmo esquema do hero: LQIP + fade)
+  const [bgLoaded, setBgLoaded] = useState(false);
+  const bgImgRef = useRef(null);
+  useEffect(() => {
+    if (bgImgRef.current?.complete) setBgLoaded(true);
+  }, []);
   const title = heading || (isPublic
     ? "Feito com respeito por quem você ama."
     : "Construído para cuidar da memória das cidades brasileiras.");
@@ -104,7 +111,18 @@ export default function PublicFooter({ variant = "sales", nav, heading, cityName
       <div className={styles.bgWrap} aria-hidden="true">
         <div className={styles.bgInner}>
           <div className={styles.bgGradient} />
-          <img src="/media/hero.jpg" alt="" className={styles.bgImage} />
+          <picture>
+            <source srcSet="/media/hero.webp" type="image/webp" />
+            <img
+              ref={bgImgRef}
+              src="/media/hero.jpg"
+              alt=""
+              className={`${styles.bgImage} ${bgLoaded ? styles.bgImageLoaded : ""}`}
+              loading="lazy"
+              decoding="async"
+              onLoad={() => setBgLoaded(true)}
+            />
+          </picture>
           <div className={styles.bgBar}>
             <span>© 2026 Eterniza Gestão — plataforma de gestão de cemitérios</span>
             <span className={styles.credit}>

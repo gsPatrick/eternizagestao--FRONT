@@ -231,6 +231,8 @@
   position: relative;
   width: 100%;
   height: 400px;
+  /* placeholder borrado enquanto a foto (lazy) carrega — nunca fica vazio */
+  background: #0b1626 url("/media/hero-blur.jpg") center 30% / cover no-repeat;
 }
 
 .bgImage {
@@ -238,6 +240,12 @@
   height: 100%;
   object-fit: cover;
   object-position: center 30%;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+
+.bgImage.bgImageLoaded {
+  opacity: 1;
 }
 
 /* véu leve: costura o navy do footer na foto sem esconder a imagem */
