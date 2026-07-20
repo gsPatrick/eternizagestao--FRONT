@@ -20,7 +20,7 @@ import ErrorState from "@/components/molecules/ErrorState/ErrorState";
 import EmptyState from "@/components/molecules/EmptyState/EmptyState";
 import { maskCpf } from "@/lib/masks";
 import { useResource, useMutation } from "@/lib/api/useResource";
-import { listDeceased, getLocationCounts, createDeceased } from "@/lib/api/resources/deceased";
+import { listDeceased, getLocationCounts, createDeceased, uploadDeathCertificate } from "@/lib/api/resources/deceased";
 
 const LOCATION_META = {
   sepultado: { label: "Sepultado", tone: "navy" },
@@ -36,6 +36,7 @@ const PER_PAGE = 30;
 const EMPTY_FORM = {
   fullName: "", cpf: "", rg: "", gender: "", birthplace: "", motherName: "",
   fatherName: "", birthDate: "", deathDate: "", deathTime: "", causeOfDeath: "",
+  attendingPhysician: "",
   deathCertificateNumber: "", deathCertificateRegistry: "",
 };
 
@@ -67,6 +68,7 @@ export default function DeceasedListPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
+  const [certFile, setCertFile] = useState(null); // PDF da certidão de óbito
   const [formError, setFormError] = useState("");
 
   // debounce da busca (evita disparar um fetch a cada tecla)
@@ -150,13 +152,23 @@ export default function DeceasedListPage() {
       deathDate: form.deathDate || undefined,
       deathTime: form.deathTime || undefined,
       causeOfDeath: form.causeOfDeath || undefined,
+      attendingPhysician: form.attendingPhysician || undefined,
       deathCertificateNumber: form.deathCertificateNumber || undefined,
       deathCertificateRegistry: form.deathCertificateRegistry || undefined,
     };
     try {
-      await submitCreate(body);
+      const created = await submitCreate(body);
+      // anexa a declaração/certidão de óbito (PDF) escolhida, se houver
+      if (certFile && created?.id) {
+        try {
+          await uploadDeathCertificate(created.id, certFile);
+        } catch (_) {
+          /* não bloqueia o cadastro — o anexo pode ser reenviado no detalhe */
+        }
+      }
       setModalOpen(false);
       setForm(EMPTY_FORM);
+      setCertFile(null);
       refetch();
     } catch (e) {
       setFormError(e.message || "Não foi possível registrar o sepultado.");
@@ -208,7 +220,20 @@ export default function DeceasedListPage() {
       label: "",
       align: "right",
       render: (row) => (
-        <Link href={`/painel/sepultados/${row.id}`} className={styles.detailLink}>Detalhes</Link>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 12 }}>
+          <Link
+            href={`/painel/sepultados/${row.id}`}
+            title="Documentos (autorização de sepultamento, certidão de óbito)"
+            aria-label="Documentos"
+            style={{ display: "inline-flex", color: "var(--color-navy, #032e59)" }}
+          >
+            <svg viewBox="0 0 16 16" fill="none" width="17" height="17" aria-hidden="true">
+              <path d="M4 1.5h5L13 5.5V14a.5.5 0 0 1-.5.5h-8A.5.5 0 0 1 4 14V1.5Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+              <path d="M9 1.5V5h4M6.5 8.5h3M6.5 11h3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+            </svg>
+          </Link>
+          <Link href={`/painel/sepultados/${row.id}`} className={styles.detailLink}>Detalhes</Link>
+        </span>
       ),
     },
   ];
@@ -390,11 +415,25 @@ export default function DeceasedListPage() {
             <FormField label="Causa do óbito">
               <Input placeholder="Conforme certidão" value={form.causeOfDeath} onChange={set("causeOfDeath")} />
             </FormField>
+            <FormField label="Médico responsável" hint="Nome do médico do atestado de óbito">
+              <Input placeholder="Dr(a). Nome do médico" value={form.attendingPhysician} onChange={set("attendingPhysician")} />
+            </FormField>
             <FormField label="Nº da certidão de óbito">
               <Input placeholder="Livro, folha, termo" value={form.deathCertificateNumber} onChange={set("deathCertificateNumber")} />
             </FormField>
             <FormField label="Cartório de registro">
               <Input placeholder="Nome do cartório" value={form.deathCertificateRegistry} onChange={set("deathCertificateRegistry")} />
+            </FormField>
+            <FormField
+              label="Declaração / Certidão de óbito (PDF)"
+              className={styles.spanTwo}
+              hint={certFile ? `Selecionado: ${certFile.name}` : "Anexe o PDF da declaração ou certidão de óbito (até 15 MB)"}
+            >
+              <input
+                type="file"
+                accept="application/pdf,image/*"
+                onChange={(e) => setCertFile(e.target.files?.[0] || null)}
+              />
             </FormField>
           </div>
 

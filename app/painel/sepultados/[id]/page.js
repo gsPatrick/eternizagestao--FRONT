@@ -22,6 +22,23 @@ import ErrorState from "@/components/molecules/ErrorState/ErrorState";
 import { maskCpf } from "@/lib/masks";
 import { useResource, useMutation } from "@/lib/api/useResource";
 import { getDeceased, updateDeceased, uploadDeceasedPhoto } from "@/lib/api/resources/deceased";
+import { listDocuments, fileHref, fetchDocumentPdf } from "@/lib/api/resources/documents";
+
+// Ícone de documento reutilizado nos botões de download (padrão do sistema).
+function DocIcon() {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" width="14" height="14" aria-hidden="true" style={{ flexShrink: 0 }}>
+      <path d="M4 1.5h5L13 5.5V14a.5.5 0 0 1-.5.5h-8A.5.5 0 0 1 4 14V1.5Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+      <path d="M9 1.5V5h4M6.5 8.5h3M6.5 11h3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+const DOC_TYPE_LABEL = {
+  autorizacao_sepultamento: "Autorização de Sepultamento",
+  certidao_perpetuidade: "Certidão de Perpetuidade",
+  autorizacao_exumacao: "Autorização de Exumação",
+};
 import {
   listAttachments,
   uploadAttachment,
@@ -128,6 +145,27 @@ export default function DeceasedDetailPage() {
   const photoInputRef = useRef(null);
 
   // anexos reais do sepultado (attachableType = deceased) — fetch/loading/erro
+  // documentos oficiais deste sepultado (autorização de sepultamento etc.)
+  const { data: docsData } = useResource(
+    ({ signal }) => listDocuments({ deceasedId: id, perPage: 50 }, { signal }),
+    [id]
+  );
+  const officialDocs = useMemo(() => docsData?.data ?? [], [docsData]);
+
+  async function downloadDoc(doc) {
+    // pdfUrl assinado quando existir; senão gera/baixa via endpoint autenticado.
+    if (doc.pdfUrl) {
+      window.open(fileHref(doc.pdfUrl), "_blank", "noopener");
+      return;
+    }
+    try {
+      const url = await fetchDocumentPdf(doc.id);
+      window.open(url, "_blank", "noopener");
+    } catch (_) {
+      /* silencioso — o botão pode ser tentado de novo */
+    }
+  }
+
   const {
     data: attachmentsData,
     loading: attachmentsLoading,
@@ -433,13 +471,57 @@ export default function DeceasedDetailPage() {
           {/* óbito e certidão */}
           <article className={styles.card}>
             <header className={styles.cardHead}>
+              <h2 className={styles.cardTitle}>Documentos oficiais</h2>
+            </header>
+            {officialDocs.length ? (
+              <ul className={styles.docList}>
+                {officialDocs.map((doc) => (
+                  <li key={doc.id} className={styles.docRow}>
+                    <span className={styles.docInfo}>
+                      <DocIcon />
+                      <span>
+                        <strong>{DOC_TYPE_LABEL[doc.documentType] || doc.documentType}</strong>
+                        <span className={styles.docMeta}>
+                          {doc.formattedNumber ? `nº ${doc.formattedNumber}` : ""}
+                        </span>
+                      </span>
+                    </span>
+                    <button type="button" className={styles.docLink} onClick={() => downloadDoc(doc)}>
+                      <DocIcon /> Baixar
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className={styles.small} style={{ color: "var(--color-slate)" }}>
+                A autorização de sepultamento é gerada automaticamente ao registrar o
+                sepultamento e aparece aqui para download.
+              </p>
+            )}
+          </article>
+
+          <article className={styles.card}>
+            <header className={styles.cardHead}>
               <h2 className={styles.cardTitle}>Óbito</h2>
             </header>
             <dl className={styles.detailList}>
               <div className={styles.detailRow}><dt>Falecimento</dt><dd>{death}{deathTime ? ` · ${deathTime}` : ""}</dd></div>
               <div className={styles.detailRow}><dt>Causa</dt><dd>{person.causeOfDeath || "—"}</dd></div>
+              <div className={styles.detailRow}><dt>Médico</dt><dd>{person.attendingPhysician || "—"}</dd></div>
               <div className={styles.detailRow}><dt>Certidão</dt><dd>{person.deathCertificateNumber || "—"}</dd></div>
               <div className={styles.detailRow}><dt>Cartório</dt><dd className={styles.small}>{person.deathCertificateRegistry || "—"}</dd></div>
+              <div className={styles.detailRow}>
+                <dt>Declaração de óbito</dt>
+                <dd>
+                  {person.deathCertificateFileUrl ? (
+                    <a href={fileHref(person.deathCertificateFileUrl)} target="_blank" rel="noreferrer" className={styles.docLink}>
+                      <DocIcon /> Baixar PDF
+                    </a>
+                  ) : (
+                    "—"
+                  )}
+                </dd>
+              </div>
             </dl>
           </article>
         </div>

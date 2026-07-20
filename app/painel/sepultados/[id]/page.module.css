@@ -305,6 +305,65 @@
   font-size: 12px;
 }
 
+/* ---------- documentos oficiais ---------- */
+.docList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 8px);
+}
+
+.docRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3, 12px);
+  padding: 8px 0;
+  border-bottom: 1px solid var(--color-border, #e6eaef);
+}
+
+.docRow:last-child {
+  border-bottom: none;
+}
+
+.docInfo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-ink, #1f2a37);
+  font-size: 13px;
+}
+
+.docInfo strong {
+  display: block;
+  font-weight: 600;
+}
+
+.docMeta {
+  display: block;
+  font-size: 11px;
+  color: var(--color-slate, #64748b);
+}
+
+.docLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-navy, #032e59);
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.docLink:hover {
+  text-decoration: underline;
+}
+
 /* ---------- modal ---------- */
 .form {
   display: flex;
