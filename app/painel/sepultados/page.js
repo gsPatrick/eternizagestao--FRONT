@@ -21,6 +21,7 @@ import EmptyState from "@/components/molecules/EmptyState/EmptyState";
 import { maskCpf } from "@/lib/masks";
 import { useResource, useMutation } from "@/lib/api/useResource";
 import { listDeceased, getLocationCounts, createDeceased, uploadDeathCertificate } from "@/lib/api/resources/deceased";
+import { createBurial, listFreeGraves, adaptFreeGrave } from "@/lib/api/resources/burials";
 
 const LOCATION_META = {
   sepultado: { label: "Sepultado", tone: "navy" },
@@ -70,6 +71,18 @@ export default function DeceasedListPage() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [certFile, setCertFile] = useState(null); // PDF da certidão de óbito
   const [formError, setFormError] = useState("");
+  // sepultamento vinculado no MESMO cadastro (Leo: cadastrar sepultado já registra
+  // o sepultamento). Opcional — sem jazigo/data, cria só o sepultado.
+  const [linkBurial, setLinkBurial] = useState(false);
+  const [burialForm, setBurialForm] = useState({ graveId: "", date: "", time: "" });
+  const { data: freeGravesData } = useResource(
+    ({ signal }) => (modalOpen ? listFreeGraves({ perPage: 500 }, { signal }) : Promise.resolve({ data: [] })),
+    [modalOpen]
+  );
+  const freeGraves = useMemo(
+    () => (freeGravesData?.data ?? []).map(adaptFreeGrave),
+    [freeGravesData]
+  );
 
   // debounce da busca (evita disparar um fetch a cada tecla)
   useEffect(() => {
@@ -157,6 +170,11 @@ export default function DeceasedListPage() {
       deathCertificateRegistry: form.deathCertificateRegistry || undefined,
     };
     try {
+      // validação do sepultamento vinculado (quando marcado)
+      if (linkBurial && (!burialForm.graveId || !burialForm.date)) {
+        setFormError("Para registrar o sepultamento junto, informe o jazigo e a data.");
+        return;
+      }
       const created = await submitCreate(body);
       // anexa a declaração/certidão de óbito (PDF) escolhida, se houver
       if (certFile && created?.id) {
@@ -166,9 +184,33 @@ export default function DeceasedListPage() {
           /* não bloqueia o cadastro — o anexo pode ser reenviado no detalhe */
         }
       }
+      // registra o SEPULTAMENTO no mesmo fluxo (dispara a auto-autorização)
+      if (linkBurial && created?.id && burialForm.graveId && burialForm.date) {
+        try {
+          await createBurial({
+            deceasedId: created.id,
+            graveId: burialForm.graveId,
+            burialDate: burialForm.date,
+            burialTime: burialForm.time || undefined,
+          });
+        } catch (e) {
+          // sepultado criado, mas o sepultamento falhou → avisa e não perde o cadastro
+          setFormError(
+            `Sepultado cadastrado, mas o sepultamento falhou: ${e.message || "tente registrar pelo menu Sepultamentos"}.`
+          );
+          setForm(EMPTY_FORM);
+          setCertFile(null);
+          setLinkBurial(false);
+          setBurialForm({ graveId: "", date: "", time: "" });
+          refetch();
+          return;
+        }
+      }
       setModalOpen(false);
       setForm(EMPTY_FORM);
       setCertFile(null);
+      setLinkBurial(false);
+      setBurialForm({ graveId: "", date: "", time: "" });
       refetch();
     } catch (e) {
       setFormError(e.message || "Não foi possível registrar o sepultado.");
@@ -437,12 +479,50 @@ export default function DeceasedListPage() {
             </FormField>
           </div>
 
+          <div className={styles.linkBurialBox}>
+            <label className={styles.linkBurialToggle}>
+              <input
+                type="checkbox"
+                checked={linkBurial}
+                onChange={(e) => setLinkBurial(e.target.checked)}
+              />
+              <span>
+                <strong>Registrar sepultamento junto</strong> — vincula o sepultado a
+                um jazigo e gera a Autorização de Sepultamento agora
+              </span>
+            </label>
+            {linkBurial && (
+              <div className={styles.formGrid}>
+                <FormField label="Jazigo (livre)" required>
+                  <Select
+                    value={burialForm.graveId}
+                    onChange={(e) => setBurialForm((b) => ({ ...b, graveId: e.target.value }))}
+                  >
+                    <option value="" disabled>Selecione a unidade…</option>
+                    {freeGraves.map((g) => (
+                      <option key={g.id} value={g.id}>
+                        {g.code}{g.available != null ? ` · ${g.available} vaga(s)` : ""}
+                      </option>
+                    ))}
+                  </Select>
+                </FormField>
+                <FormField label="Data do sepultamento" required>
+                  <Input type="date" value={burialForm.date} onChange={(e) => setBurialForm((b) => ({ ...b, date: e.target.value }))} />
+                </FormField>
+                <FormField label="Hora">
+                  <Input type="time" value={burialForm.time} onChange={(e) => setBurialForm((b) => ({ ...b, time: e.target.value }))} />
+                </FormField>
+              </div>
+            )}
+          </div>
+
           {formError && <Alert tone="danger">{formError}</Alert>}
-          <Alert tone="info">
-            O sepultado é registrado no <strong>cadastro civil</strong>. O vínculo à
-            sepultura e a <strong>Autorização de Sepultamento</strong> são emitidos no
-            fluxo de sepultamento.
-          </Alert>
+          {!linkBurial && (
+            <Alert tone="info">
+              O sepultado é registrado no <strong>cadastro civil</strong>. Marque acima
+              para já registrar o <strong>sepultamento</strong> e emitir a Autorização.
+            </Alert>
+          )}
         </form>
       </Modal>
       <ExportModal
