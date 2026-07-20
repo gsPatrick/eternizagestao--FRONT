@@ -136,6 +136,29 @@
   width: 170px;
 }
 
+/* ---------- filtros avançados ---------- */
+.advFilters {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr) auto;
+  gap: var(--space-3, 12px);
+  align-items: end;
+  padding: var(--space-3, 12px);
+  margin-bottom: var(--space-3, 12px);
+  border: 1px solid var(--color-border, #e6eaef);
+  border-radius: var(--radius-md, 10px);
+  background: var(--color-mist-soft, #f6f8fa);
+}
+
+.clearAdv {
+  white-space: nowrap;
+}
+
+@media (max-width: 720px) {
+  .advFilters {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
 /* ---------- células ---------- */
 .personCell {
   display: inline-flex;

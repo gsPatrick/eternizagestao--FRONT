@@ -65,6 +65,11 @@ export default function DeceasedListPage() {
   const [blockFilter, setBlockFilter] = useState("");
   const [deathFrom, setDeathFrom] = useState("");
   const [deathTo, setDeathTo] = useState("");
+  // filtros avançados (busca ampliada — pedido do cliente)
+  const [adv, setAdv] = useState({ cpf: "", motherName: "", graveCode: "" });
+  const [debouncedAdv, setDebouncedAdv] = useState({ cpf: "", motherName: "", graveCode: "" });
+  const [advOpen, setAdvOpen] = useState(false);
+  const setAdvField = (k) => (e) => setAdv((a) => ({ ...a, [k]: e.target.value }));
   const [page, setPage] = useState(1);
   const [modalOpen, setModalOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
@@ -90,21 +95,37 @@ export default function DeceasedListPage() {
     return () => clearTimeout(t);
   }, [search]);
 
+  // debounce dos filtros avançados de texto
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setDebouncedAdv({
+        cpf: adv.cpf.trim(),
+        motherName: adv.motherName.trim(),
+        graveCode: adv.graveCode.trim(),
+      });
+      setPage(1);
+    }, 350);
+    return () => clearTimeout(t);
+  }, [adv.cpf, adv.motherName, adv.graveCode]);
+
   const listParams = useMemo(
     () => ({
       page,
       perPage: PER_PAGE,
       search: debouncedSearch || undefined,
       currentLocationType: locationFilter || undefined,
+      cpf: debouncedAdv.cpf || undefined,
+      motherName: debouncedAdv.motherName || undefined,
+      graveCode: debouncedAdv.graveCode || undefined,
       deathFrom: deathFrom || undefined,
       deathTo: deathTo || undefined,
     }),
-    [page, debouncedSearch, locationFilter, deathFrom, deathTo]
+    [page, debouncedSearch, locationFilter, debouncedAdv, deathFrom, deathTo]
   );
 
   const { data, loading, error, refetch } = useResource(
     ({ signal }) => listDeceased(listParams, { signal }),
-    [page, debouncedSearch, locationFilter, deathFrom, deathTo]
+    [listParams]
   );
   const rawRows = data?.data ?? [];
   const meta = data?.meta;
@@ -344,8 +365,34 @@ export default function DeceasedListPage() {
           </Select>
           <Input type="date" value={deathFrom} onChange={(e) => { setDeathFrom(e.target.value); setPage(1); }} title="Falecimento — de" />
           <Input type="date" value={deathTo} onChange={(e) => { setDeathTo(e.target.value); setPage(1); }} title="Falecimento — até" />
+          <Button variant="ghost" onClick={() => setAdvOpen((v) => !v)}>
+            {advOpen ? "Menos filtros" : "Mais filtros"}
+          </Button>
         </div>
       </div>
+
+      {advOpen && (
+        <div className={styles.advFilters}>
+          <FormField label="CPF">
+            <Input placeholder="000.000.000-00" value={adv.cpf} onChange={setAdvField("cpf")} />
+          </FormField>
+          <FormField label="Nome da mãe">
+            <Input placeholder="Nome da mãe" value={adv.motherName} onChange={setAdvField("motherName")} />
+          </FormField>
+          <FormField label="Jazigo / Gaveta / Matrícula">
+            <Input placeholder="Código do jazigo (ex.: M2/12B)" value={adv.graveCode} onChange={setAdvField("graveCode")} />
+          </FormField>
+          {(adv.cpf || adv.motherName || adv.graveCode) && (
+            <Button
+              variant="ghost"
+              onClick={() => setAdv({ cpf: "", motherName: "", graveCode: "" })}
+              className={styles.clearAdv}
+            >
+              Limpar
+            </Button>
+          )}
+        </div>
+      )}
 
       {loading ? (
         <div className={styles.desktopTable}>
