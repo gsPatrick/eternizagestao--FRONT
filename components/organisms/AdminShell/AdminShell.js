@@ -35,11 +35,11 @@ const ICONS = {
       <path d="M7 8.5v0M7 11v0M7 13.5v0M12.5 11v0M12.5 13.5v0" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
     </svg>
   ),
-  // pessoa
-  account: (
+  // engrenagem
+  settings: (
     <svg viewBox="0 0 20 20" fill="none">
-      <circle cx="10" cy="6.5" r="3" stroke="currentColor" strokeWidth="1.5" />
-      <path d="M4 16.5c.8-3 3.2-4.5 6-4.5s5.2 1.5 6 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <circle cx="10" cy="10" r="2.5" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M10 2.5v2M10 15.5v2M17.5 10h-2M4.5 10h-2M15.3 4.7l-1.4 1.4M6.1 13.9l-1.4 1.4M15.3 15.3l-1.4-1.4M6.1 6.1 4.7 4.7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
     </svg>
   ),
 };

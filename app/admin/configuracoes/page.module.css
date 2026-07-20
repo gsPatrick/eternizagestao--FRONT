@@ -2,7 +2,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-6);
-  max-width: 560px;
+  max-width: 920px;
   animation: viewIn 0.5s var(--ease-out) both;
 }
 
@@ -34,15 +34,66 @@
   margin-top: var(--space-1);
 }
 
-/* ---------- card de identidade ---------- */
+/* ---------- grade de cards ---------- */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-5);
+  align-items: start;
+}
+
 .card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
   background: var(--color-surface);
   border: 1px solid var(--color-mist);
   border-radius: var(--radius-lg);
   padding: var(--space-5);
   box-shadow: var(--shadow-xs);
+  min-width: 0;
 }
 
+/* a seção Conta ocupa a largura toda da grade */
+.cardWide {
+  grid-column: 1 / -1;
+}
+
+.cardHead {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cardTitle {
+  font-size: var(--text-body-lg);
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.cardHint {
+  font-size: var(--text-caption);
+  color: var(--color-slate);
+  line-height: 1.5;
+}
+
+/* ---------- formulários ---------- */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.formFooter {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.formFooter > * {
+  min-height: 44px;
+}
+
+/* ---------- conta / identidade ---------- */
 .identity {
   display: flex;
   align-items: center;
@@ -87,16 +138,19 @@
 
 .divider {
   height: 1px;
-  margin: var(--space-5) 0;
   background: var(--color-mist-soft);
 }
 
-.footer {
+.accountFooter {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-4);
   flex-wrap: wrap;
+}
+
+.accountFooter > :global(button) {
+  min-height: 44px;
 }
 
 .footerHint {
@@ -107,12 +161,15 @@
 }
 
 /* ---------- responsivo ---------- */
-@media (max-width: 560px) {
-  .footer {
+@media (max-width: 720px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+  .accountFooter {
     flex-direction: column;
     align-items: stretch;
   }
-  .footer > * {
+  .accountFooter > * {
     width: 100%;
   }
 }
