@@ -22,10 +22,8 @@ export default function TenantLanding({ tenant }) {
   // por PATH (sem subdomínio) o tenant vai no `?t=`; no subdomínio o cookie já
   // resolve e o `?t=` é inofensivo.
   const loginHref = `/login?t=${tenant.id}`;
-  const navLinks = [
-    { label: "Consulta pública", href: consultaHref },
-    { label: "Entrar", href: loginHref },
-  ];
+  // "Entrar" fica SÓ no CTA do PublicNav (evita o botão duplicado no header).
+  const navLinks = [{ label: "Consulta pública", href: consultaHref }];
   const footerNav = [
     { label: "Início", href: `${home}#top` },
     { label: "Consulta pública", href: consultaHref },

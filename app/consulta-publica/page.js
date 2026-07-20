@@ -84,7 +84,8 @@ function SearchContent() {
   const hasTenant = Boolean(tenantSlug);
   const tParam = qt ? `?t=${qt}` : ""; // sufixo p/ links no modo path
   const home = qt ? `/${qt}` : "/"; // path → /cidade ; subdomínio → /
-  const portalHref = `/portal/login${tParam}`;
+  // Login ÚNICO da cidade (admin + Portal da Família no mesmo /login).
+  const loginHref = `/login${tParam}`;
   const navLinks = [];
 
   const { results, loading, error, refetch, status } = usePublicSearch(
@@ -131,7 +132,7 @@ function SearchContent() {
 
   const content = (
     <>
-      <PublicNav solid home={home} links={navLinks} cta={{ label: "Portal da Família", href: portalHref }} />
+      <PublicNav solid home={home} links={navLinks} cta={{ label: "Entrar", href: loginHref }} />
 
       <main className={styles.page}>
         {/* ---------- cabeçalho de busca ---------- */}

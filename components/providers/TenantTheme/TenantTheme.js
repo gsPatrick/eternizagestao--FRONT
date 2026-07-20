@@ -7,6 +7,7 @@ import {
   getTenant,
   normalizeApiTenant,
   resolveTenant,
+  themeVarsFor,
 } from "@/lib/tenants";
 import { getPublicTenants } from "@/lib/api/resources/public";
 import styles from "./TenantTheme.module.css";
@@ -110,14 +111,7 @@ export default function TenantTheme({
     tenantProp || resolveTenant(list, activeId) || getTenant(activeId);
   const canSwitch = showSwitcher && !forcedTenantId && !tenantProp;
 
-  const themeVars = {
-    "--color-navy": tenant.accent,
-    "--color-navy-rgb": tenant.accentRgb,
-    "--color-navy-bright": tenant.accentBright,
-    "--color-navy-deep": tenant.accentDeep,
-    "--color-navy-soft": `rgba(${tenant.accentRgb}, 0.10)`,
-    "--color-navy-ghost": `rgba(${tenant.accentRgb}, 0.05)`,
-  };
+  const themeVars = themeVarsFor(tenant);
 
   // Aplica as variáveis da marca também no <html> (:root) — assim elas alcançam
   // os PORTAIS (modais/toasts renderizados em document.body, FORA do div do
