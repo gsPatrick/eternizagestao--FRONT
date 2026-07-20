@@ -20,6 +20,52 @@ import { getUser } from "@/lib/api/session";
 import { changeMyPassword } from "@/lib/api/resources/me";
 import { getOnboarding } from "@/lib/api/resources/tenant";
 
+// Força da senha 0..4 (comprimento + variedade de caracteres).
+const STRENGTH = [
+  { label: "", color: "transparent" },
+  { label: "Muito fraca", color: "#b03535" },
+  { label: "Fraca", color: "#c9721f" },
+  { label: "Boa", color: "#b8961f" },
+  { label: "Forte", color: "#1a7f5c" },
+];
+function scorePassword(pw) {
+  if (!pw) return 0;
+  let s = 0;
+  if (pw.length >= 6) s += 1;
+  if (pw.length >= 10) s += 1;
+  if (/[a-z]/.test(pw) && /[A-Z]/.test(pw)) s += 1;
+  if (/\d/.test(pw) && /[^A-Za-z0-9]/.test(pw)) s += 1;
+  return Math.min(4, s);
+}
+
+function StrengthMeter({ value }) {
+  const score = scorePassword(value);
+  const meta = STRENGTH[score];
+  return (
+    <div style={{ marginTop: 8 }}>
+      <div style={{ display: "flex", gap: 4 }}>
+        {[1, 2, 3, 4].map((i) => (
+          <span
+            key={i}
+            style={{
+              flex: 1,
+              height: 5,
+              borderRadius: 3,
+              background: i <= score ? meta.color : "var(--color-mist, #dde3eb)",
+              transition: "background 0.25s ease",
+            }}
+          />
+        ))}
+      </div>
+      {value && (
+        <span style={{ display: "block", marginTop: 6, fontSize: 12, color: meta.color, fontWeight: 600 }}>
+          Senha {meta.label.toLowerCase()}
+        </span>
+      )}
+    </div>
+  );
+}
+
 export default function TrocarSenhaPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -94,6 +140,7 @@ export default function TrocarSenhaPage() {
                     onChange={(e) => setSenha(e.target.value)}
                     required
                   />
+                  <StrengthMeter value={senha} />
                 </FormField>
                 <FormField label="Confirmar nova senha" htmlFor="confirma-senha" required>
                   <Input
