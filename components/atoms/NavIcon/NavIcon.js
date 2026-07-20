@@ -130,4 +130,61 @@ const ICONS = {
       <path d="M15.4 12.4v2M14.4 13.4h2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
     </svg>
   ),
+  // Proprietários — pessoa com chave (dona do jazigo)
+  owners: (
+    <svg viewBox="0 0 20 20" fill="none">
+      <circle cx="8.5" cy="6.5" r="2.8" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M3.5 16.5c.7-2.7 2.6-4.2 5-4.2 1.1 0 2.1.3 3 .9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <circle cx="14.2" cy="12.8" r="1.9" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M15.6 14.2l2 2M16.6 15.2l.9-.9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  ),
+  // Responsáveis — pessoa com check (responde pelo jazigo)
+  responsibles: (
+    <svg viewBox="0 0 20 20" fill="none">
+      <circle cx="8.5" cy="6.5" r="2.8" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M3.5 16.5c.7-2.7 2.6-4.2 5-4.2 1.1 0 2.1.3 3 .9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M12.6 13.6l1.6 1.6 2.8-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  ),
+  // Gavetas — módulo de nichos/gavetas empilhadas
+  drawers: (
+    <svg viewBox="0 0 20 20" fill="none">
+      <rect x="3.5" y="3.5" width="13" height="13" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M3.5 8h13M3.5 12.5h13" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M9 5.8h2M9 10.3h2M9 14.8h2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  ),
+  // Cartórios — prédio institucional com colunas
+  cartorios: (
+    <svg viewBox="0 0 20 20" fill="none">
+      <path d="M3.5 7.5L10 3.5l6.5 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M5 8v6M8.3 8v6M11.7 8v6M15 8v6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      <path d="M3.5 16.5h13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  ),
+  // Funerárias — veículo/serviço funerário
+  funerarias: (
+    <svg viewBox="0 0 20 20" fill="none">
+      <path d="M3 12.5V7a1 1 0 011-1h7l3 3h2a1 1 0 011 1v2.5" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+      <path d="M3 12.5h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <circle cx="6.5" cy="14.5" r="1.7" stroke="currentColor" strokeWidth="1.4" />
+      <circle cx="13.5" cy="14.5" r="1.7" stroke="currentColor" strokeWidth="1.4" />
+    </svg>
+  ),
+  // Instituições — prédio com janelas
+  institutions: (
+    <svg viewBox="0 0 20 20" fill="none">
+      <rect x="5" y="3.5" width="10" height="13" rx="1" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M8 6.5h1.5M11 6.5h1.5M8 9.5h1.5M11 9.5h1.5M8 12.5h1.5M11 12.5h1.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+      <path d="M3.5 16.5h13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  ),
+  // Configurações — engrenagem
+  settings: (
+    <svg viewBox="0 0 20 20" fill="none">
+      <circle cx="10" cy="10" r="2.4" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M10 3.5v2M10 14.5v2M3.5 10h2M14.5 10h2M5.4 5.4l1.4 1.4M13.2 13.2l1.4 1.4M14.6 5.4l-1.4 1.4M6.8 13.2l-1.4 1.4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  ),
 };
