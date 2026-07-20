@@ -202,16 +202,20 @@ export function DashboardView({ data }) {
           </p>
         </div>
         <div className={styles.actions}>
-          <Button variant="secondary">Gerar cobranças</Button>
-          <Button
-            iconLeft={
-              <svg viewBox="0 0 16 16" fill="none">
-                <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
-              </svg>
-            }
-          >
-            Registrar sepultamento
-          </Button>
+          <Link href="/painel/cobrancas">
+            <Button variant="secondary">Gerar cobranças</Button>
+          </Link>
+          <Link href="/painel/sepultamentos?novo=1">
+            <Button
+              iconLeft={
+                <svg viewBox="0 0 16 16" fill="none">
+                  <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+                </svg>
+              }
+            >
+              Registrar sepultamento
+            </Button>
+          </Link>
         </div>
       </header>
 

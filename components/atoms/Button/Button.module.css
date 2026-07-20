@@ -83,13 +83,16 @@
   background: var(--color-navy-ghost);
 }
 
+/* ghost = menor ênfase (Fechar/Cancelar/dispensar) → cor NEUTRA do sistema,
+   nunca a cor da cidade. Ações com destaque usam primary/secondary. */
 .ghost {
   background: transparent;
-  color: var(--color-navy);
+  color: var(--color-slate);
 }
 
 .ghost:hover:not(:disabled) {
-  background: var(--color-navy-soft);
+  background: rgba(90, 107, 128, 0.1);
+  color: var(--color-ink);
 }
 
 .danger {

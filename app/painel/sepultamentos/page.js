@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import styles from "./page.module.css";
 
@@ -91,6 +91,11 @@ export default function BurialsListPage() {
   const [dateTo, setDateTo] = useState("");
   const [page, setPage] = useState(1);
   const [modalOpen, setModalOpen] = useState(false);
+  // atalho do painel (Registrar sepultamento) → abre o modal via ?novo=1
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (new URLSearchParams(window.location.search).get("novo") === "1") setModalOpen(true);
+  }, []);
   const [exportOpen, setExportOpen] = useState(false);
   const [detail, setDetail] = useState(null); // sepultamento aberto
   const [reissued, setReissued] = useState({}); // id → true (2ª via)

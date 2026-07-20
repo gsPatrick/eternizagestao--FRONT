@@ -101,6 +101,18 @@ export default function TenantTheme({
     "--color-navy-ghost": `rgba(${tenant.accentRgb}, 0.05)`,
   };
 
+  // Aplica as variáveis da marca também no <html> (:root) — assim elas alcançam
+  // os PORTAIS (modais/toasts renderizados em document.body, FORA do div do
+  // tema). Sem isto, os botões dentro de modais caem no navy padrão do sistema.
+  useEffect(() => {
+    if (typeof document === "undefined") return undefined;
+    const root = document.documentElement;
+    const entries = Object.entries(themeVars);
+    entries.forEach(([k, v]) => root.style.setProperty(k, v));
+    return () => entries.forEach(([k]) => root.style.removeProperty(k));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tenant.accent, tenant.accentRgb, tenant.accentBright, tenant.accentDeep]);
+
   return (
     <TenantContext.Provider value={tenant}>
       <div className={styles.root} style={themeVars}>
