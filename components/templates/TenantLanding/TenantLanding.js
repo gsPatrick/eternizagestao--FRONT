@@ -18,25 +18,23 @@ import PublicFooter from "@/components/organisms/PublicFooter/PublicFooter";
 export default function TenantLanding({ tenant }) {
   const home = `/${tenant.id}`;
   const consultaHref = `/consulta-publica?t=${tenant.id}`;
-  const portalHref = `/portal/login?t=${tenant.id}`;
-  // Admin da cidade: no modo por PATH (sem subdomínio) o tenant não vem por
-  // cookie, então precisa ir no `?t=` — senão o /login perde a cidade e vira
-  // login global. No subdomínio, o cookie já resolve e o `?t=` é inofensivo.
-  const adminHref = `/login?t=${tenant.id}`;
+  // Login ÚNICO da cidade (admin + Portal da Família no mesmo /login). No modo
+  // por PATH (sem subdomínio) o tenant vai no `?t=`; no subdomínio o cookie já
+  // resolve e o `?t=` é inofensivo.
+  const loginHref = `/login?t=${tenant.id}`;
   const navLinks = [
     { label: "Consulta pública", href: consultaHref },
-    { label: "Acesso administrativo", href: adminHref },
+    { label: "Entrar", href: loginHref },
   ];
   const footerNav = [
     { label: "Início", href: `${home}#top` },
     { label: "Consulta pública", href: consultaHref },
-    { label: "Portal da Família", href: portalHref },
-    { label: "Acesso administrativo", href: adminHref },
+    { label: "Entrar", href: loginHref },
   ];
 
   return (
     <TenantTheme forcedTenantId={tenant.id} showSwitcher={false}>
-      <PublicNav home={home} links={navLinks} cta={{ label: "Portal da Família", href: portalHref }} />
+      <PublicNav home={home} links={navLinks} cta={{ label: "Entrar", href: loginHref }} />
       <main>
         <PublicHero variant="public" tenantSlug={tenant.id} />
         <PublicStatement

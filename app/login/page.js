@@ -33,17 +33,24 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
 
-  // Login ADMINISTRATIVO: super_admin (dono do sistema) e admin de cada cidade
-  // entram por aqui. Em `cidade.dominio/login` (subdomínio de cidade, via cookie
-  // do middleware ou `?t=` no dev) o login é ESCOPADO àquela cidade — passamos o
-  // subdomínio como tenant. No apex (sem subdomínio) segue o login GLOBAL, sem
-  // tenant. Redireciona por papel.
+  // Login ÚNICO POR CIDADE: o mesmo formulário atende ADMIN da cidade
+  // (super_admin/admin) E o PORTAL DA FAMÍLIA — sem telas separadas. Tenta primeiro
+  // a conta administrativa (POST /sessions); se as credenciais não forem de admin
+  // e houver cidade resolvida, cai para o login da família (POST /portal/sessions).
+  // Roteia por tipo de conta. No apex (sem cidade) só existe login administrativo.
   async function submitLogin(event) {
     event.preventDefault();
     setError(null);
     setLoading(true);
+    const sub = getClientSubdomain();
+    // Persiste a cidade num cookie legível no cliente (mesmo formato do
+    // middleware de subdomínio). Assim, ao navegar para o PORTAL DA FAMÍLIA (que
+    // resolve o tenant por esse cookie / X-Tenant-Subdomain), a cidade não se
+    // perde — inclusive no dev, onde não há subdomínio.
+    if (sub && typeof document !== "undefined") {
+      document.cookie = `eterniza_tenant=${encodeURIComponent(sub)}; path=/; SameSite=Lax`;
+    }
     try {
-      const sub = getClientSubdomain();
       const result = await api.post(
         "/sessions",
         { email, password },
@@ -55,8 +62,7 @@ export default function LoginPage() {
         return;
       }
       // Admin da cidade: no PRIMEIRO acesso (tenant `pendente`) leva ao
-      // onboarding; senão vai direto pro painel. O status não vem no login,
-      // então consultamos com o token recém-salvo. Falha/403 → painel.
+      // onboarding; senão vai direto pro painel.
       try {
         const onboarding = await getOnboarding();
         if (onboarding?.onboardingStatus === "pendente") {
@@ -67,9 +73,28 @@ export default function LoginPage() {
         // sem acesso ao onboarding (papel não-admin) ou erro → segue pro painel
       }
       router.push("/painel");
-    } catch (err) {
+      return;
+    } catch (adminErr) {
+      // Não é admin desta cidade → tenta a conta do PORTAL DA FAMÍLIA (mesma
+      // cidade). Só faz sentido com cidade resolvida (o portal exige tenant).
+      if (sub) {
+        try {
+          const fam = await api.post(
+            "/portal/sessions",
+            { email, password },
+            { tenant: sub, auth: false }
+          );
+          setSession(fam);
+          router.push("/portal/inicio");
+          return;
+        } catch {
+          /* cai no erro genérico abaixo */
+        }
+      }
       const message =
-        err instanceof ApiError ? err.message : "Não foi possível entrar. Tente novamente.";
+        adminErr instanceof ApiError
+          ? adminErr.message
+          : "Não foi possível entrar. Verifique o e-mail e a senha.";
       setError(message);
       setLoading(false);
     }
@@ -87,7 +112,10 @@ export default function LoginPage() {
             <div className={styles.formView} key="login">
               <div className={styles.formHead}>
                 <h2 className={styles.formTitle}>Entrar</h2>
-                <p className={styles.formSub}>Acesse o painel administrativo para continuar.</p>
+                <p className={styles.formSub}>
+                  Acesse a plataforma da sua cidade — administração ou Portal da Família,
+                  com o mesmo login.
+                </p>
               </div>
               <form className={styles.form} onSubmit={submitLogin}>
                 <FormField label="E-mail" htmlFor="login-email" required>
