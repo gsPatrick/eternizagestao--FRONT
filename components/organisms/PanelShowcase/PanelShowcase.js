@@ -157,7 +157,7 @@ export default function PanelShowcase() {
                   aria-hidden="true"
                 >
                   {ready && (
-                    <TenantTheme tenant={tenant} showSwitcher={false}>
+                    <TenantTheme tenant={tenant} showSwitcher={false} previewOnly>
                       <PathnameContext.Provider value="/painel">
                         <PanelShell>
                           <DashboardView data={demoData} />

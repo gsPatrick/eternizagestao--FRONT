@@ -7,6 +7,18 @@
   user-select: none;
 }
 
+/* variante clicável (logo → landing): sem sublinhado, herda a cor da marca */
+.link {
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.link:hover {
+  opacity: 0.75;
+}
+
 .symbol {
   display: inline-flex;
   flex: 0 0 auto;

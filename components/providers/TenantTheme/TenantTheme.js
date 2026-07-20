@@ -57,6 +57,10 @@ export default function TenantTheme({
   showSwitcher = true,
   forcedTenantId = null,
   tenant: tenantProp = null,
+  // previewOnly: o tema vale SÓ para este subtree (ex.: preview do showcase na
+  // landing da plataforma). NÃO escreve em :root nem no cache — assim o apex/
+  // landing raiz permanece SEMPRE no navy, sem ser tingido pela demonstração.
+  previewOnly = false,
 }) {
   // tenantProp: chamador já resolveu o tenant (ex.: PanelShowcase) → não busca.
   // forcedTenantId: quando o tenant vem da URL (/guarulhos) e não do seletor.
@@ -122,6 +126,9 @@ export default function TenantTheme({
   // (só quando é uma cidade real — nunca sobrescreve com o navy padrão).
   useEffect(() => {
     if (typeof document === "undefined") return undefined;
+    // previewOnly: NÃO propaga para :root nem grava cache — o tema fica contido
+    // no <div> deste subtree (via scopeVars abaixo). Protege o apex/landing.
+    if (previewOnly) return undefined;
     const root = document.documentElement;
     const entries = Object.entries(themeVars);
     entries.forEach(([k, v]) => root.style.setProperty(k, v));
@@ -132,14 +139,14 @@ export default function TenantTheme({
     }
     return () => entries.forEach(([k]) => root.style.removeProperty(k));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tenant.accent, tenant.accentRgb, tenant.accentBright, tenant.accentDeep, tenant.id]);
+  }, [tenant.accent, tenant.accentRgb, tenant.accentBright, tenant.accentDeep, tenant.id, previewOnly]);
 
-  // Escopo por <div> (variáveis inline) SÓ quando o tenant é resolvido de forma
-  // determinística e igual no SSR e no cliente: showcase (tenantProp) ou URL
-  // (forcedTenantId). No caso normal (resolvido por cookie/API só no cliente) as
-  // vars inline no SSR seriam navy e "sombreariam" o subtree → flash; então
-  // deixamos herdar do :root, que o script anti-flash já pintou na cor certa.
-  const scopeVars = forcedTenantId || tenantProp;
+  // Escopo por <div> (variáveis inline) quando o tenant é resolvido de forma
+  // determinística e igual no SSR e no cliente: showcase (tenantProp), URL
+  // (forcedTenantId) ou preview isolado. No caso normal (resolvido por cookie/API
+  // só no cliente) as vars inline no SSR seriam navy e "sombreariam" o subtree →
+  // flash; então deixamos herdar do :root, que o script anti-flash já pintou.
+  const scopeVars = forcedTenantId || tenantProp || previewOnly;
 
   return (
     <TenantContext.Provider value={tenant}>

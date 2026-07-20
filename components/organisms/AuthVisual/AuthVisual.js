@@ -15,7 +15,8 @@ export default function AuthVisual({
       <div className={styles.rings} aria-hidden="true" />
       <div className={styles.glow} aria-hidden="true" />
       <header className={styles.header}>
-        <BrandMark tone="light" />
+        {/* logo → landing do domínio/subdomínio atual (cidade ou plataforma) */}
+        <BrandMark tone="light" href="/" />
       </header>
       <div className={styles.content}>
         <p className={styles.eyebrow}>{eyebrow}</p>
