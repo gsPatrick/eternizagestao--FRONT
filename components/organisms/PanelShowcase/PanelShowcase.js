@@ -1,14 +1,15 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { PathnameContext } from "next/dist/shared/lib/hooks-client-context.shared-runtime";
 import styles from "./PanelShowcase.module.css";
 
 import PanelShell from "@/components/organisms/PanelShell/PanelShell";
-import DashboardPage from "@/app/painel/page";
+import { DashboardView } from "@/app/painel/DashboardView";
 import TenantTheme from "@/components/providers/TenantTheme/TenantTheme";
 import { TENANTS, normalizeApiTenant } from "@/lib/tenants";
 import { getPublicTenants } from "@/lib/api/resources/public";
+import { makeDashboardDemo } from "@/lib/mock/dashboard-demo";
 
 /**
  * Quarta seção — carrossel white label. O MESMO painel real (PanelShell +
@@ -41,6 +42,10 @@ export default function PanelShowcase() {
   const [swapping, setSwapping] = useState(false);
   const [paused, setPaused] = useState(false);
   const [showcase, setShowcase] = useState(FALLBACK_SHOWCASE); // cidades: API → fallback
+
+  // Painel da vitrine: 100% MOCKADO (sem API). Gerado no cliente pra manter a
+  // agenda em "hoje" e a atividade recente com tempos relativos corretos.
+  const demoData = useMemo(() => makeDashboardDemo(), []);
 
   useEffect(() => {
     setReady(true);
@@ -155,7 +160,7 @@ export default function PanelShowcase() {
                     <TenantTheme tenant={tenant} showSwitcher={false}>
                       <PathnameContext.Provider value="/painel">
                         <PanelShell>
-                          <DashboardPage />
+                          <DashboardView data={demoData} />
                         </PanelShell>
                       </PathnameContext.Provider>
                     </TenantTheme>
