@@ -233,12 +233,21 @@
 
 .cardActions {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-2);
 }
 
 .cardActions > * {
-  flex: 1 1 0;
+  flex: 1 1 45%;
+  min-width: 130px;
   min-height: 44px;
+}
+
+/* ---------- corpo do modal de confirmação (apagar) ---------- */
+.confirmBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
 }
 
 /* ---------- formulário do modal ---------- */

@@ -20,6 +20,8 @@ import { normalizeEmail, maskPhone } from "@/lib/masks";
 import {
   listTenants,
   createTenant,
+  updateTenant,
+  removeTenant,
   activateTenant,
   deactivateTenant,
   resendTenantInvite,
@@ -76,7 +78,19 @@ export default function CitiesConsolePage() {
   const [notice, setNotice] = useState(null); // { tone, message }
   const [actingId, setActingId] = useState(null);
 
+  // edição de cidade
+  const [editCity, setEditCity] = useState(null);
+  const [editDraft, setEditDraft] = useState(null);
+  const [editError, setEditError] = useState(null);
+
+  // exclusão de cidade (confirmação por nome)
+  const [deleteCity, setDeleteCity] = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState("");
+  const [deleteError, setDeleteError] = useState(null);
+
   const createM = useMutation((body) => createTenant(body));
+  const updateM = useMutation(({ id, body }) => updateTenant(id, body));
+  const removeM = useMutation((id) => removeTenant(id));
   const activateM = useMutation((id) => activateTenant(id));
   const deactivateM = useMutation((id) => deactivateTenant(id));
   const resendM = useMutation((id) => resendTenantInvite(id));
@@ -194,6 +208,94 @@ export default function CitiesConsolePage() {
     }
   }
 
+  // ---- editar cidade ----
+  function openEdit(city) {
+    const t = city.raw || {};
+    setEditCity(city);
+    setEditDraft({
+      name: city.name || "",
+      primaryColor: t.primaryColor || city.primaryColor || "#032e59",
+      secondaryColor: t.secondaryColor || city.secondaryColor || "#0a4a8c",
+      logoUrl: t.logoUrl || "",
+      cnpj: t.cnpj ? maskCnpj(t.cnpj) : "",
+      phone: t.phone ? maskPhone(t.phone) : "",
+      email: t.email || city.email || "",
+      documentHeader: t.documentHeader || "",
+    });
+    setEditError(null);
+  }
+
+  function setEdit(field, value) {
+    setEditDraft((d) => ({ ...d, [field]: value }));
+  }
+
+  // payload só com os campos editáveis que foram realmente alterados.
+  function buildEditPayload() {
+    const t = editCity.raw || {};
+    const body = {};
+    const name = editDraft.name.trim();
+    if (name && name !== (editCity.name || "")) body.name = name;
+
+    const email = editDraft.email.trim() ? normalizeEmail(editDraft.email) : "";
+    const fields = [
+      ["primaryColor", editDraft.primaryColor, t.primaryColor],
+      ["secondaryColor", editDraft.secondaryColor, t.secondaryColor],
+      ["logoUrl", editDraft.logoUrl.trim(), t.logoUrl],
+      ["cnpj", editDraft.cnpj.trim(), t.cnpj],
+      ["phone", editDraft.phone.trim(), t.phone],
+      ["email", email, t.email],
+      ["documentHeader", editDraft.documentHeader.trim(), t.documentHeader],
+    ];
+    for (const [key, value, original] of fields) {
+      if (value && value !== (original || "")) body[key] = value;
+    }
+    return body;
+  }
+
+  const canSubmitEdit = Boolean(editDraft?.name.trim());
+
+  async function submitEdit() {
+    setEditError(null);
+    const body = buildEditPayload();
+    if (Object.keys(body).length === 0) {
+      setEditCity(null);
+      flash("Nenhuma alteração para salvar.", "warning");
+      return;
+    }
+    try {
+      await updateM.mutate({ id: editCity.id, body });
+      setEditCity(null);
+      await refetch();
+      flash("Cidade atualizada.");
+    } catch (err) {
+      setEditError(err?.message || "Não foi possível salvar as alterações. Tente novamente.");
+    }
+  }
+
+  // ---- apagar cidade (confirmação por nome) ----
+  function openDelete(city) {
+    setDeleteCity(city);
+    setDeleteConfirm("");
+    setDeleteError(null);
+  }
+
+  const canConfirmDelete =
+    deleteCity &&
+    deleteConfirm.trim().toLowerCase() === String(deleteCity.name || "").trim().toLowerCase();
+
+  async function submitDelete() {
+    setDeleteError(null);
+    const name = deleteCity.name;
+    try {
+      await removeM.mutate(deleteCity.id);
+      setDeleteCity(null);
+      await refetch();
+      flash(`Cidade ${name} apagada.`);
+    } catch (err) {
+      setDeleteError(err?.message || "Não foi possível apagar a cidade. Tente novamente.");
+    }
+  }
+
   const columns = [
     {
       key: "city",
@@ -251,11 +353,27 @@ export default function CitiesConsolePage() {
             </button>
             <button
               type="button"
+              className={styles.rowLink}
+              disabled={busy}
+              onClick={() => openEdit(c)}
+            >
+              Editar
+            </button>
+            <button
+              type="button"
               className={`${styles.rowLink} ${c.active ? styles.rowDanger : ""}`}
               disabled={busy}
               onClick={() => toggleActive(c)}
             >
               {c.active ? "Desativar" : "Ativar"}
+            </button>
+            <button
+              type="button"
+              className={`${styles.rowLink} ${styles.rowDanger}`}
+              disabled={busy}
+              onClick={() => openDelete(c)}
+            >
+              Apagar
             </button>
           </div>
         );
@@ -363,11 +481,25 @@ export default function CitiesConsolePage() {
                             Reenviar convite
                           </Button>
                           <Button
+                            variant="secondary"
+                            disabled={busy}
+                            onClick={() => openEdit(c)}
+                          >
+                            Editar
+                          </Button>
+                          <Button
                             variant={c.active ? "danger" : "primary"}
                             disabled={busy}
                             onClick={() => toggleActive(c)}
                           >
                             {c.active ? "Desativar" : "Ativar"}
+                          </Button>
+                          <Button
+                            variant="danger"
+                            disabled={busy}
+                            onClick={() => openDelete(c)}
+                          >
+                            Apagar
                           </Button>
                         </div>
                       </li>
@@ -541,6 +673,150 @@ export default function CitiesConsolePage() {
 
           {formError && <Alert tone="danger">{formError}</Alert>}
         </div>
+      </Modal>
+
+      {/* ---------- editar cidade ---------- */}
+      <Modal
+        open={Boolean(editCity)}
+        onClose={() => setEditCity(null)}
+        title="Editar cidade"
+        subtitle={editCity ? editCity.name : ""}
+        width={640}
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setEditCity(null)}>Cancelar</Button>
+            <Button loading={updateM.loading} disabled={!canSubmitEdit} onClick={submitEdit}>
+              Salvar alterações
+            </Button>
+          </>
+        }
+      >
+        {editDraft && (
+          <div className={styles.form}>
+            {/* dados da cidade */}
+            <div className={styles.section}>
+              <span className={styles.sectionLabel}>Cidade</span>
+              <div className={styles.grid}>
+                <FormField label="Nome da cidade" required className={styles.spanTwo}>
+                  <Input
+                    placeholder="Prefeitura de São Paulo"
+                    value={editDraft.name}
+                    onChange={(e) => setEdit("name", e.target.value)}
+                  />
+                </FormField>
+                <FormField
+                  label="Subdomínio (imutável)"
+                  className={styles.spanTwo}
+                  hint="O subdomínio não pode ser alterado após a criação."
+                >
+                  <Input value={editCity?.domain || ""} readOnly disabled />
+                </FormField>
+              </div>
+            </div>
+
+            {/* marca */}
+            <div className={styles.section}>
+              <span className={styles.sectionLabel}>Marca</span>
+              <div className={styles.grid}>
+                <FormField label="Cor primária">
+                  <ColorField value={editDraft.primaryColor} onChange={(v) => setEdit("primaryColor", v)} />
+                </FormField>
+                <FormField label="Cor secundária">
+                  <ColorField value={editDraft.secondaryColor} onChange={(v) => setEdit("secondaryColor", v)} />
+                </FormField>
+                <FormField label="Logo (URL)" className={styles.spanTwo}>
+                  <Input
+                    placeholder="https://…/logo.png"
+                    value={editDraft.logoUrl}
+                    onChange={(e) => setEdit("logoUrl", e.target.value)}
+                  />
+                </FormField>
+              </div>
+            </div>
+
+            {/* órgão gestor */}
+            <div className={styles.section}>
+              <span className={styles.sectionLabel}>Órgão gestor</span>
+              <div className={styles.grid}>
+                <FormField label="CNPJ">
+                  <Input
+                    placeholder="00.000.000/0000-00"
+                    inputMode="numeric"
+                    value={editDraft.cnpj}
+                    onChange={(e) => setEdit("cnpj", maskCnpj(e.target.value))}
+                  />
+                </FormField>
+                <FormField label="Telefone">
+                  <Input
+                    placeholder="(00) 0000-0000"
+                    value={editDraft.phone}
+                    onChange={(e) => setEdit("phone", maskPhone(e.target.value))}
+                  />
+                </FormField>
+                <FormField label="E-mail">
+                  <Input
+                    type="email"
+                    placeholder="contato@cidade.gov.br"
+                    value={editDraft.email}
+                    onChange={(e) => setEdit("email", normalizeEmail(e.target.value))}
+                  />
+                </FormField>
+                <FormField label="Cabeçalho do documento">
+                  <Input
+                    placeholder="Prefeitura Municipal de…"
+                    value={editDraft.documentHeader}
+                    onChange={(e) => setEdit("documentHeader", e.target.value)}
+                  />
+                </FormField>
+              </div>
+            </div>
+
+            {editError && <Alert tone="danger">{editError}</Alert>}
+          </div>
+        )}
+      </Modal>
+
+      {/* ---------- apagar cidade (confirmação forte) ---------- */}
+      <Modal
+        open={Boolean(deleteCity)}
+        onClose={() => setDeleteCity(null)}
+        title="Apagar cidade"
+        subtitle={deleteCity ? deleteCity.name : ""}
+        width={520}
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setDeleteCity(null)}>Cancelar</Button>
+            <Button
+              variant="danger"
+              loading={removeM.loading}
+              disabled={!canConfirmDelete}
+              onClick={submitDelete}
+            >
+              Apagar definitivamente
+            </Button>
+          </>
+        }
+      >
+        {deleteCity && (
+          <div className={styles.confirmBody}>
+            <Alert tone="danger">
+              A cidade <strong>{deleteCity.name}</strong> será removida do sistema e o acesso será
+              bloqueado imediatamente. A remoção é reversível pelo suporte (soft delete), mas exige
+              cautela — proceda apenas se tiver certeza.
+            </Alert>
+            <FormField
+              label={`Para confirmar, digite o nome exato da cidade: "${deleteCity.name}"`}
+            >
+              <Input
+                placeholder={deleteCity.name}
+                value={deleteConfirm}
+                onChange={(e) => setDeleteConfirm(e.target.value)}
+                autoComplete="off"
+              />
+            </FormField>
+            {deleteError && <Alert tone="danger">{deleteError}</Alert>}
+          </div>
+        )}
       </Modal>
     </div>
   );
