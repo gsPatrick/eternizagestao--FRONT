@@ -278,6 +278,17 @@
   opacity: 1;
 }
 
+/* crédito minimalista do desenvolvedor */
+.credit {
+  opacity: 0.6;
+}
+
+.credit a {
+  color: #fff;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 /* ---------- responsivo ---------- */
 @media (min-width: 768px) {
   .bottom {

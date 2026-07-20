@@ -44,7 +44,7 @@ export default function PublicFooter({ variant = "sales", nav, heading, cityName
             {isPublic ? (
               <p className={styles.ctaText}>
                 Dúvidas sobre um jazigo ou uma cobrança?{" "}
-                <a className={styles.ctaLink} href="mailto:contato@eterniza.com.br">
+                <a className={styles.ctaLink} href="mailto:contato@eternizagestao.com.br">
                   <span>fale com a administração</span>
                   <span className={styles.ctaArrow} aria-hidden="true">
                     <ArrowIcon />
@@ -56,7 +56,7 @@ export default function PublicFooter({ variant = "sales", nav, heading, cityName
                 Quer ver funcionando na sua?{" "}
                 <a
                   className={styles.ctaLink}
-                  href="mailto:contato@eterniza.com.br?subject=Demonstração%20Eterniza%20Gestão"
+                  href="mailto:contato@eternizagestao.com.br?subject=Demonstração%20Eterniza%20Gestão"
                 >
                   <span>agende uma demonstração</span>
                   <span className={styles.ctaArrow} aria-hidden="true">
@@ -107,7 +107,13 @@ export default function PublicFooter({ variant = "sales", nav, heading, cityName
           <img src="/media/hero.jpg" alt="" className={styles.bgImage} />
           <div className={styles.bgBar}>
             <span>© 2026 Eterniza Gestão — plataforma de gestão de cemitérios</span>
-            <a href="mailto:contato@eterniza.com.br">contato@eterniza.com.br</a>
+            <span className={styles.credit}>
+              Desenvolvido por{" "}
+              <a href="https://www.codebypatrick.dev/" target="_blank" rel="noreferrer">
+                Patrick.Developer
+              </a>
+            </span>
+            <a href="mailto:contato@eternizagestao.com.br">contato@eternizagestao.com.br</a>
           </div>
         </div>
       </div>

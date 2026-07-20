@@ -112,7 +112,7 @@ export default function PublicHero({ variant = "public", tenantSlug = null }) {
           {variant === "sales" ? (
             <div className={styles.salesCtas}>
               <a
-                href="mailto:contato@eterniza.com.br?subject=Demonstração%20Eterniza%20Gestão"
+                href="mailto:contato@eternizagestao.com.br?subject=Demonstração%20Eterniza%20Gestão"
                 className={styles.ctaSolid}
               >
                 Agendar demonstração

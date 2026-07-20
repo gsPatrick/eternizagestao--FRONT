@@ -84,8 +84,8 @@ export default function PublicNav({ solid = false, links = SALES_LINKS, home = "
               </li>
             ))}
           </ul>
-          <a className={styles.popupMail} href="mailto:contato@eterniza.com.br">
-            contato@eterniza.com.br
+          <a className={styles.popupMail} href="mailto:contato@eternizagestao.com.br">
+            contato@eternizagestao.com.br
           </a>
         </div>
       </div>
