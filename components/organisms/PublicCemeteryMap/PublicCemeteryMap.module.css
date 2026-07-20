@@ -1,0 +1,99 @@
+.root {
+  position: relative;
+  width: 100%;
+  min-height: 320px;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--color-mist-soft);
+}
+
+/* o Leaflet exige altura explícita no container do mapa */
+.canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+}
+
+.overlayState {
+  position: absolute;
+  inset: 0;
+  z-index: 500;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(2px);
+  color: var(--color-slate);
+  font: 500 var(--text-body) / 1.4 var(--font-body);
+}
+
+.spinner {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 3px solid var(--color-mist);
+  border-top-color: var(--color-navy);
+  animation: pcmSpin 0.8s linear infinite;
+}
+
+@keyframes pcmSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ----- afinação premium dos controles nativos do Leaflet ----- */
+.root :global(.leaflet-container) {
+  font-family: var(--font-body);
+  background: var(--color-mist-soft);
+}
+
+.root :global(.leaflet-control-zoom) {
+  border: none;
+  box-shadow: var(--shadow-md);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.root :global(.leaflet-control-zoom a) {
+  color: var(--color-navy);
+  border: none;
+  width: 32px;
+  height: 32px;
+  line-height: 32px;
+  font-size: 18px;
+  background: var(--color-surface);
+}
+
+.root :global(.leaflet-control-zoom a:hover) {
+  background: var(--color-navy-soft);
+}
+
+.root :global(.leaflet-bar) {
+  border-radius: var(--radius-md);
+}
+
+.root :global(.leaflet-control-attribution) {
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--color-slate);
+  font-size: 10px;
+  border-radius: var(--radius-sm) 0 0 0;
+}
+
+.root :global(.leaflet-tooltip) {
+  border: 1px solid var(--color-mist);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-sm);
+  color: var(--color-ink);
+  font: 500 var(--text-caption) / 1.35 var(--font-body);
+  padding: 6px 9px;
+}
+
+.root :global(.leaflet-popup-content) {
+  font: 500 var(--text-caption) / 1.4 var(--font-body);
+  color: var(--color-ink);
+}

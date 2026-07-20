@@ -654,6 +654,7 @@ export default function MapPage() {
               orthoOpacity={orthoOpacity}
               positioning={positioning}
               graves={graves}
+              layers={ctx?.layers}
               drawing={drawing}
               focusGrave={focusGrave}
               statusColors={STATUS_COLORS}

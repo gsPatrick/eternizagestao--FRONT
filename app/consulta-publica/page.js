@@ -1,12 +1,12 @@
 "use client";
 
-import { Suspense, useRef, useState } from "react";
+import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import styles from "./page.module.css";
 
 import PublicNav from "@/components/organisms/PublicNav/PublicNav";
-import MapExplorer, { GRAVES, routeTo } from "@/components/organisms/MapExplorer/MapExplorer";
 import TenantTheme, { useTenant } from "@/components/providers/TenantTheme/TenantTheme";
 import Skeleton from "@/components/atoms/Skeleton/Skeleton";
 import ErrorState from "@/components/molecules/ErrorState/ErrorState";
@@ -15,18 +15,18 @@ import { getClientSubdomain } from "@/lib/tenant-subdomain";
 import { usePublicSearch, formatDate, yearOf } from "@/src/features/public-search";
 import { usePublicGraveRoute } from "@/src/features/public-map";
 
+// Mapa REAL georreferenciado (Leaflet: ortofoto + polígonos das sepulturas) —
+// client-only. Substitui o antigo mapa ilustrativo (SVG sintético).
+const PublicCemeteryMap = dynamic(
+  () => import("@/components/organisms/PublicCemeteryMap/PublicCemeteryMap"),
+  { ssr: false }
+);
+
 /**
  * Portal público de consulta (PDF 11): busca por nome, CPF ou número do jazigo
  * — sem cadastro. Os resultados vêm da API pública (/public/search) e cada um
  * abre o mapa com a distância real da entrada até a sepultura (/public/graves/:id/route).
  */
-
-// hash estável (UUID → índice) para posicionar a sepultura no mapa ilustrativo.
-function hashCode(str) {
-  let h = 0;
-  for (let i = 0; i < String(str).length; i += 1) h = (h * 31 + String(str).charCodeAt(i)) % 100000;
-  return h;
-}
 
 // monta "Quadra A › Rua 1 › Lote 01" com o que houver; senão, fallback digno.
 function locationLabel(r) {
@@ -74,7 +74,6 @@ function SearchContent() {
   const hasAdvanced = Object.values(initialFilters).some(Boolean);
   const [showFilters, setShowFilters] = useState(hasAdvanced);
   const [selected, setSelected] = useState(null);
-  const mapRef = useRef(null);
 
   // Resolução de tenant robusta nos DOIS modos:
   //   - subdomínio (guarulhos.dominio): cookie eterniza_tenant → getClientSubdomain()
@@ -100,12 +99,6 @@ function SearchContent() {
     [submitted && `“${submitted}”`, ...activeFilters.map(([k, v]) => `${k}: ${v}`)]
       .filter(Boolean)
       .join(" · ") || "sua busca";
-
-  // mapa ilustrativo: a geometria do SVG é sintética (o cemitério real é
-  // renderizado por ortofoto/polígonos no app do visitante). Aqui posicionamos
-  // a sepultura de forma estável para manter a experiência visual da rota.
-  const svgGrave = selected ? GRAVES[hashCode(selected.id) % GRAVES.length] : null;
-  const svgRoute = svgGrave ? routeTo(svgGrave) : null;
 
   function submit(event) {
     event.preventDefault();
@@ -134,7 +127,6 @@ function SearchContent() {
 
   function openMap(result) {
     setSelected(result);
-    setTimeout(() => mapRef.current?.reset(), 50);
   }
 
   const content = (
@@ -386,11 +378,11 @@ function SearchContent() {
                     </svg>
                   </button>
                 </header>
-                <MapExplorer
-                  ref={mapRef}
-                  layers={{ quadras: true, ruas: true, lotes: true, sepulturas: true, caminhos: true }}
-                  selectedId={svgGrave?.id}
-                  route={svgRoute}
+                <PublicCemeteryMap
+                  cemeteryId={selected?.cemeteryId}
+                  tenant={tenantSlug}
+                  focusGraveId={selected?.graveId}
+                  grave={grave}
                   height={460}
                 />
                 <p className={styles.mapPanelHint}>

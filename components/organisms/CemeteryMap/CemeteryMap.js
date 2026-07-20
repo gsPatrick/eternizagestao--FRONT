@@ -69,6 +69,35 @@ function polygonCentroid(latlngs) {
   return [sum[0] / n, sum[1] / n];
 }
 
+// Estilos SUTIS e DISTINTOS por camada (não interativas — só exibição).
+// Quadras: contorno azul translúcido com preenchimento leve.
+// Ruas: linha (polyline) tracejada cinza. Lotes: contorno fino teal, sem fill.
+const LAYER_STYLES = {
+  blocks: {
+    kind: "polygon",
+    color: "#2563eb",
+    weight: 2,
+    opacity: 0.7,
+    fillColor: "#2563eb",
+    fillOpacity: 0.08,
+  },
+  streets: {
+    kind: "polyline",
+    color: "#64748b",
+    weight: 3,
+    opacity: 0.65,
+    dashArray: "6,4",
+  },
+  lots: {
+    kind: "polygon",
+    color: "#0f766e",
+    weight: 1,
+    opacity: 0.6,
+    fill: false,
+  },
+};
+const LAYER_LABELS = { blocks: "Quadras", streets: "Ruas", lots: "Lotes" };
+
 export default function CemeteryMap({
   center = null,
   orthophoto = null, // { id, fileUrl, corners, opacity, rev }
@@ -76,6 +105,7 @@ export default function CemeteryMap({
   orthoOpacity = 1,
   positioning = false,
   graves = [],
+  layers = { blocks: [], streets: [], lots: [] }, // camadas de quadra/rua/lote
   drawing = false,
   focusGrave = null, // { id, nonce }
   statusColors = {},
@@ -93,6 +123,7 @@ export default function CemeteryMap({
   const overlayRef = useRef(null);
   const graveGroupRef = useRef(null);
   const graveLayersRef = useRef({});
+  const layerGroupsRef = useRef({}); // { blocks, streets, lots } → L.LayerGroup
   const highlightTimerRef = useRef(null);
   const lastOrthoKeyRef = useRef(null);
   const lastFitOrthoRef = useRef(null);
@@ -100,6 +131,13 @@ export default function CemeteryMap({
 
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
+  // visibilidade de cada camada (alternável pelo controle no canto)
+  const [layerVis, setLayerVis] = useState({
+    blocks: true,
+    streets: true,
+    lots: true,
+    graves: true,
+  });
 
   const cbRef = useRef({});
   cbRef.current = { onCornersChange, onGravePolygon, onGraveClick };
@@ -376,6 +414,72 @@ export default function CemeteryMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, graves, statusColors]);
 
+  // ------------------------- camadas de quadra/rua/lote (abaixo das sepulturas)
+  // Cada camada vira um L.LayerGroup próprio; recriamos ao trocar `layers` e
+  // adicionamos/removemos do mapa conforme o toggle. NÃO interativas (só exibem)
+  // e mantidas ABAIXO das sepulturas (bringToFront nas sepulturas ao final).
+  useEffect(() => {
+    const L = LRef.current;
+    const map = mapRef.current;
+    if (!ready || !L || !map) return;
+
+    // limpa grupos antigos
+    Object.values(layerGroupsRef.current).forEach((grp) => {
+      try {
+        map.removeLayer(grp);
+      } catch (_) {}
+    });
+    layerGroupsRef.current = {};
+
+    ["blocks", "streets", "lots"].forEach((key) => {
+      const feats = (layers && layers[key]) || [];
+      const style = LAYER_STYLES[key];
+      const group = L.layerGroup();
+      feats.forEach((f) => {
+        const pts = f.geoPolygon;
+        if (!Array.isArray(pts) || pts.length < 2) return;
+        const shape =
+          style.kind === "polyline"
+            ? L.polyline(pts, { ...style, interactive: false })
+            : L.polygon(pts, { ...style, interactive: false });
+        shape.addTo(group);
+      });
+      layerGroupsRef.current[key] = group;
+      if (layerVis[key]) group.addTo(map);
+    });
+
+    // garante as sepulturas por cima das camadas recém-adicionadas
+    if (graveGroupRef.current) {
+      try {
+        Object.values(graveLayersRef.current).forEach(
+          (lyr) => lyr.bringToFront && lyr.bringToFront()
+        );
+      } catch (_) {}
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, layers]);
+
+  // toggle de visibilidade das camadas (adiciona/remove os grupos do mapa)
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map) return;
+    ["blocks", "streets", "lots"].forEach((key) => {
+      const grp = layerGroupsRef.current[key];
+      if (!grp) return;
+      const on = map.hasLayer(grp);
+      if (layerVis[key] && !on) grp.addTo(map);
+      else if (!layerVis[key] && on) map.removeLayer(grp);
+    });
+    // sepulturas
+    const gg = graveGroupRef.current;
+    if (gg) {
+      const on = map.hasLayer(gg);
+      if (layerVis.graves && !on) gg.addTo(map);
+      else if (!layerVis.graves && on) map.removeLayer(gg);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, layerVis]);
+
   // ------------------------------------------------- focar/destacar sepultura
   useEffect(() => {
     const L = LRef.current;
@@ -413,9 +517,61 @@ export default function CemeteryMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, focusGrave && focusGrave.nonce, focusGrave && focusGrave.id]);
 
+  const layerCounts = {
+    blocks: (layers?.blocks || []).length,
+    streets: (layers?.streets || []).length,
+    lots: (layers?.lots || []).length,
+  };
+  const hasAnyLayer =
+    layerCounts.blocks > 0 || layerCounts.streets > 0 || layerCounts.lots > 0;
+
+  const toggleLayer = (key) =>
+    setLayerVis((v) => ({ ...v, [key]: !v[key] }));
+
   return (
     <div className={styles.root} style={{ height }}>
       <div ref={containerRef} className={styles.canvas} />
+
+      {/* controle de camadas (só aparece quando há geometria de quadra/rua/lote) */}
+      {ready && hasAnyLayer && (
+        <div className={styles.layerControl}>
+          <span className={styles.layerControlTitle}>Camadas</span>
+          {["blocks", "streets", "lots"].map((key) =>
+            layerCounts[key] > 0 ? (
+              <label key={key} className={styles.layerRow}>
+                <input
+                  type="checkbox"
+                  checked={layerVis[key]}
+                  onChange={() => toggleLayer(key)}
+                />
+                <span
+                  className={styles.layerSwatch}
+                  data-kind={LAYER_STYLES[key].kind}
+                  style={{ "--swatch": LAYER_STYLES[key].color }}
+                />
+                <span className={styles.layerName}>
+                  {LAYER_LABELS[key]}
+                  <span className={styles.layerCount}>{layerCounts[key]}</span>
+                </span>
+              </label>
+            ) : null
+          )}
+          <label className={styles.layerRow}>
+            <input
+              type="checkbox"
+              checked={layerVis.graves}
+              onChange={() => toggleLayer("graves")}
+            />
+            <span
+              className={styles.layerSwatch}
+              data-kind="polygon"
+              style={{ "--swatch": "#032e59" }}
+            />
+            <span className={styles.layerName}>Sepulturas</span>
+          </label>
+        </div>
+      )}
+
       {!ready && !failed && (
         <div className={styles.overlayState}>
           <div className={styles.spinner} />
