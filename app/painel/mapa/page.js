@@ -104,18 +104,30 @@ export default function MapPage() {
   const [selectedGrave, setSelectedGrave] = useState(null);
   const [focusGrave, setFocusGrave] = useState(null);
 
-  // RBAC — posicionar/demarcar só admin/operador. Lido após montar para não
-  // divergir do HTML do servidor (getUser depende de localStorage → hidratação).
+  // RBAC. Lido após montar para não divergir do HTML do servidor (getUser
+  // depende de localStorage → hidratação).
   const [user, setUser] = useState(null);
+  // Cidade sob operação do super_admin (via ?t=<subdomínio>, vindo do console
+  // da plataforma). Para o super_admin, todas as chamadas do mapa levam o
+  // header X-Tenant-Subdomain; para o admin da cidade, o tenant vem do token.
+  const [tenantSub, setTenantSub] = useState(null);
   useEffect(() => {
     setUser(getUser());
+    const t = new URLSearchParams(window.location.search).get("t");
+    if (t) setTenantSub(t);
   }, []);
+  const isSuperAdmin = user?.role === "super_admin";
+  // Demarcação de sepultura/camada: admin/operador (staff da cidade).
   const canEdit = ["admin", "super_admin", "operador"].includes(user?.role);
+  // Edição da ORTOFOTO: SÓ super_admin (a Eterniza aplica; o cliente não).
+  const canEditOrtho = isSuperAdmin;
+  // Tenant a enviar nas chamadas (só para super_admin operando uma cidade).
+  const mapTenant = isSuperAdmin ? tenantSub || undefined : undefined;
 
   // ---- dados ----
   const cemsState = useResource(
-    ({ signal }) => listCemeteries({ perPage: 100 }, { signal }),
-    []
+    ({ signal }) => listCemeteries({ perPage: 100 }, { signal, tenant: mapTenant }),
+    [mapTenant]
   );
   const cemeteries = useMemo(
     () => (cemsState.data?.data ?? []).map(adaptCemetery),
@@ -131,8 +143,8 @@ export default function MapPage() {
 
   const ctxState = useResource(
     ({ signal }) =>
-      cemetery ? getMapContext(cemetery, { signal }) : Promise.resolve(null),
-    [cemetery]
+      cemetery ? getMapContext(cemetery, { signal, tenant: mapTenant }) : Promise.resolve(null),
+    [cemetery, mapTenant]
   );
   const ctx = useMemo(
     () => (ctxState.data ? adaptMapContext(ctxState.data) : null),
@@ -141,8 +153,8 @@ export default function MapPage() {
 
   const orthoState = useResource(
     ({ signal }) =>
-      cemetery ? listOrthophotos(cemetery, { signal }) : Promise.resolve([]),
-    [cemetery]
+      cemetery ? listOrthophotos(cemetery, { signal, tenant: mapTenant }) : Promise.resolve([]),
+    [cemetery, mapTenant]
   );
   const orthophotos = useMemo(
     () => (Array.isArray(orthoState.data) ? orthoState.data : []).map(adaptOrthophoto),
@@ -151,8 +163,8 @@ export default function MapPage() {
 
   const gravesState = useResource(
     ({ signal }) =>
-      cemetery ? listMapGraves(cemetery, { signal }) : Promise.resolve({ data: [] }),
-    [cemetery]
+      cemetery ? listMapGraves(cemetery, { signal, tenant: mapTenant }) : Promise.resolve({ data: [] }),
+    [cemetery, mapTenant]
   );
   const graves = useMemo(() => {
     const raw = gravesState.data;
@@ -163,8 +175,8 @@ export default function MapPage() {
   // estrutura (quadras/ruas/lotes) — para demarcar as camadas de navegação
   const structState = useResource(
     ({ signal }) =>
-      cemetery ? getStructure(cemetery, { signal }) : Promise.resolve(null),
-    [cemetery]
+      cemetery ? getStructure(cemetery, { signal, tenant: mapTenant }) : Promise.resolve(null),
+    [cemetery, mapTenant]
   );
   const structureFeatures = useMemo(
     () => flattenStructure(structState.data),
@@ -211,13 +223,13 @@ export default function MapPage() {
     if (activeOrtho) setOrthoOpacity(activeOrtho.opacity ?? 1);
   }, [activeOrtho?.id]);
 
-  // ortofoto ainda sem posição → já entra no modo de alinhamento
+  // ortofoto ainda sem posição → já entra no modo de alinhamento (só super_admin)
   useEffect(() => {
-    if (activeOrtho && !activeOrtho.corners && canEdit) {
+    if (activeOrtho && !activeOrtho.corners && canEditOrtho) {
       setPositioning(true);
       setOrthoDirty(true);
     }
-  }, [activeOrtho?.id, activeOrtho?.corners, canEdit]);
+  }, [activeOrtho?.id, activeOrtho?.corners, canEditOrtho]);
 
   // centro: contexto → entrada do cemitério → média entre cemitérios → default
   const center = useMemo(() => {
@@ -266,12 +278,15 @@ export default function MapPage() {
     setOrthoMsg(null);
     try {
       const contentBase64 = await fileToBase64(file);
-      const created = await doUpload({
-        cemeteryId: cemetery,
-        contentBase64,
-        fileName: file.name,
-        mimeType: file.type || "image/png",
-      });
+      const created = await doUpload(
+        {
+          cemeteryId: cemetery,
+          contentBase64,
+          fileName: file.name,
+          mimeType: file.type || "image/png",
+        },
+        { tenant: mapTenant }
+      );
       if (created?.id) setPreferredOrthoId(created.id);
       await orthoState.refetch();
       setOrthoVisible(true);
@@ -303,11 +318,15 @@ export default function MapPage() {
       return;
     }
     try {
-      await doSaveOrtho(activeOrtho.id, {
-        corners: liveCorners,
-        opacity: orthoOpacity,
-        active: true,
-      });
+      await doSaveOrtho(
+        activeOrtho.id,
+        {
+          corners: liveCorners,
+          opacity: orthoOpacity,
+          active: true,
+        },
+        { tenant: mapTenant }
+      );
       await orthoState.refetch();
       setPositioning(false);
       setOrthoDirty(false);
@@ -429,7 +448,7 @@ export default function MapPage() {
               ))}
             </Select>
           </div>
-          {canEdit && (
+          {canEditOrtho && (
             <>
               <input
                 ref={fileInputRef}
@@ -551,9 +570,9 @@ export default function MapPage() {
               <span className={styles.panelLabel}>Ortofoto</span>
               {!activeOrtho ? (
                 <p className={styles.hint}>
-                  {canEdit
+                  {canEditOrtho
                     ? "Carregue a ortofoto (imagem aérea) e posicione-a sobre o cemitério para georreferenciar o mapa."
-                    : "Nenhuma ortofoto posicionada neste cemitério."}
+                    : "Nenhuma ortofoto posicionada neste cemitério. A aplicação da ortofoto é feita pela equipe Eterniza."}
                 </p>
               ) : (
                 <>
@@ -594,7 +613,7 @@ export default function MapPage() {
                       </Badge>
                     )}
                   </p>
-                  {canEdit &&
+                  {canEditOrtho &&
                     (positioning ? (
                       <div className={styles.btnRow}>
                         <Button

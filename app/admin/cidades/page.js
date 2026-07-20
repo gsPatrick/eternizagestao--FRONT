@@ -400,6 +400,13 @@ export default function CitiesConsolePage() {
         const busy = actingId === c.id;
         return (
           <div className={styles.rowActions}>
+            <a
+              className={styles.rowLink}
+              href={`/painel/mapa?t=${c.subdomain}`}
+              title="Aplicar/ajustar a ortofoto desta cidade (exclusivo da plataforma)"
+            >
+              Abrir mapa
+            </a>
             <button
               type="button"
               className={styles.rowLink}
@@ -530,6 +537,9 @@ export default function CitiesConsolePage() {
                           )}
                         </div>
                         <div className={styles.cardActions}>
+                          <a href={`/painel/mapa?t=${c.subdomain}`} style={{ textDecoration: "none" }}>
+                            <Button variant="secondary">Abrir mapa</Button>
+                          </a>
                           <Button
                             variant="secondary"
                             disabled={busy}
