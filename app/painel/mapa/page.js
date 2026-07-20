@@ -277,14 +277,9 @@ export default function MapPage() {
     if (!file || !cemetery) return;
     setOrthoMsg(null);
     try {
-      const contentBase64 = await fileToBase64(file);
+      // envio BINÁRIO (o arquivo cru vai no corpo) — aguenta ortofotos grandes.
       const created = await doUpload(
-        {
-          cemeteryId: cemetery,
-          contentBase64,
-          fileName: file.name,
-          mimeType: file.type || "image/png",
-        },
+        { cemeteryId: cemetery, file },
         { tenant: mapTenant }
       );
       if (created?.id) setPreferredOrthoId(created.id);
