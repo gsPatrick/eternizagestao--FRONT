@@ -1,48 +1,57 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import styles from "./page.module.css";
 
 import Button from "@/components/atoms/Button/Button";
-import Input from "@/components/atoms/Input/Input";
-import Select from "@/components/atoms/Select/Select";
 import Switch from "@/components/atoms/Switch/Switch";
 import Badge from "@/components/atoms/Badge/Badge";
-import FormField from "@/components/molecules/FormField/FormField";
-import Modal from "@/components/molecules/Modal/Modal";
-import Alert from "@/components/molecules/Alert/Alert";
+import Select from "@/components/atoms/Select/Select";
 import Skeleton from "@/components/atoms/Skeleton/Skeleton";
+import Alert from "@/components/molecules/Alert/Alert";
 import ErrorState from "@/components/molecules/ErrorState/ErrorState";
 import EmptyState from "@/components/molecules/EmptyState/EmptyState";
-import MapExplorer, { GRAVES, STATUS_META, routeTo } from "@/components/organisms/MapExplorer/MapExplorer";
 
 import { useResource, useMutation } from "@/lib/api/useResource";
+import { getUser } from "@/lib/api/session";
 import { listCemeteries, adaptCemetery } from "@/lib/api/resources/cemeteries";
 import {
   listOrthophotos,
   uploadOrthophoto,
-  listMapPaths,
-  createMapPath,
-  removeMapPath,
-  adaptMapPath,
+  updateOrthophoto,
+  getMapContext,
+  listMapGraves,
+  setGraveGeometry,
   adaptOrthophoto,
+  adaptMapContext,
+  adaptMapGrave,
+  averageCenter,
 } from "@/lib/api/resources/map";
 
-const LAYER_LABELS = {
-  quadras: "Quadras",
-  ruas: "Ruas",
-  lotes: "Lotes",
-  sepulturas: "Sepulturas",
-  caminhos: "Caminhos GPS",
-};
+// O Leaflet depende de `window` → mapa é CLIENT-ONLY (sem SSR).
+const CemeteryMap = dynamic(
+  () => import("@/components/organisms/CemeteryMap/CemeteryMap"),
+  {
+    ssr: false,
+    loading: () => <div className={styles.mapLoading} />,
+  }
+);
 
-// "-23.5490, -46.6350" → [-23.549, -46.635] (ou null se inválido)
-function parseLatLng(value = "") {
-  const parts = String(value).split(",").map((p) => Number(p.trim()));
-  if (parts.length !== 2 || parts.some((n) => Number.isNaN(n))) return null;
-  return parts;
-}
+// Situação das sepulturas (fonte da verdade do front — cores do design system).
+const STATUS_META = {
+  livre: { label: "Livre", color: "#1a7f5c", tone: "success" },
+  ocupada: { label: "Ocupada", color: "#032e59", tone: "navy" },
+  reservada: { label: "Reservada", color: "#9a6b15", tone: "warning" },
+  em_manutencao: { label: "Em manutenção", color: "#5b8ac2", tone: "navy" },
+  em_perpetuidade: { label: "Perpetuidade", color: "#0e1c2f", tone: "navy" },
+  interditada: { label: "Interditada", color: "#b03535", tone: "danger" },
+};
+const STATUS_COLORS = Object.fromEntries(
+  Object.entries(STATUS_META).map(([k, v]) => [k, v.color])
+);
+const statusLabel = (s) => STATUS_META[s]?.label || s;
 
 // File → base64 puro (sem o prefixo data:...;base64,)
 function fileToBase64(file) {
@@ -55,29 +64,52 @@ function fileToBase64(file) {
 }
 
 export default function MapPage() {
-  const mapRef = useRef(null);
+  const fileInputRef = useRef(null);
+  const mapApiRef = useRef(null);
+  const onMapApi = useCallback((api) => {
+    mapApiRef.current = api;
+  }, []);
+
   const [cemetery, setCemetery] = useState(null);
-  const [layers, setLayers] = useState({ quadras: true, ruas: true, lotes: true, sepulturas: true, caminhos: false });
-  const [statusFilter, setStatusFilter] = useState(null);
-  const [selected, setSelected] = useState(null);
-  const [route, setRoute] = useState(null);
   const [query, setQuery] = useState("");
-  const [importOpen, setImportOpen] = useState(false);
+
+  // ortofoto
+  const [preferredOrthoId, setPreferredOrthoId] = useState(null);
+  const [positioning, setPositioning] = useState(false);
+  const [orthoVisible, setOrthoVisible] = useState(true);
+  const [orthoOpacity, setOrthoOpacity] = useState(1);
+  const [draftCorners, setDraftCorners] = useState(null);
+  const [orthoDirty, setOrthoDirty] = useState(false);
+  const [orthoRev, setOrthoRev] = useState(0);
+  const [orthoMsg, setOrthoMsg] = useState(null);
+
+  // demarcação
+  const [demarcTarget, setDemarcTarget] = useState(null);
   const [drawing, setDrawing] = useState(false);
-  const [draftPath, setDraftPath] = useState([]);
-  const [pathActionError, setPathActionError] = useState(null);
+  const [demarcMsg, setDemarcMsg] = useState(null);
 
-  // formulário da ortofoto
-  const [orthoFile, setOrthoFile] = useState(null);
-  const [orthoNW, setOrthoNW] = useState("");
-  const [orthoSE, setOrthoSE] = useState("");
-  const [orthoError, setOrthoError] = useState(null);
+  // seleção / foco
+  const [selectedGrave, setSelectedGrave] = useState(null);
+  const [focusGrave, setFocusGrave] = useState(null);
 
-  // ---- dados reais (a FONTE; o componente de mapa segue intacto) ----
-  const cemsState = useResource(({ signal }) => listCemeteries({ perPage: 100 }, { signal }), []);
-  const cemeteries = useMemo(() => (cemsState.data?.data ?? []).map(adaptCemetery), [cemsState.data]);
+  // RBAC — posicionar/demarcar só admin/operador. Lido após montar para não
+  // divergir do HTML do servidor (getUser depende de localStorage → hidratação).
+  const [user, setUser] = useState(null);
+  useEffect(() => {
+    setUser(getUser());
+  }, []);
+  const canEdit = ["admin", "super_admin", "operador"].includes(user?.role);
 
-  // seleciona o primeiro cemitério ativo assim que a lista chega
+  // ---- dados ----
+  const cemsState = useResource(
+    ({ signal }) => listCemeteries({ perPage: 100 }, { signal }),
+    []
+  );
+  const cemeteries = useMemo(
+    () => (cemsState.data?.data ?? []).map(adaptCemetery),
+    [cemsState.data]
+  );
+
   useEffect(() => {
     if (!cemetery && cemeteries.length) {
       const first = cemeteries.find((c) => c.active) || cemeteries[0];
@@ -85,125 +117,227 @@ export default function MapPage() {
     }
   }, [cemeteries, cemetery]);
 
-  const orthoState = useResource(
-    ({ signal }) => (cemetery ? listOrthophotos(cemetery, { signal }) : Promise.resolve([])),
+  const ctxState = useResource(
+    ({ signal }) =>
+      cemetery ? getMapContext(cemetery, { signal }) : Promise.resolve(null),
     [cemetery]
   );
-  const orthophotos = useMemo(() => (orthoState.data ?? []).map(adaptOrthophoto), [orthoState.data]);
-  const hasOrtho = orthophotos.some((o) => o.active);
+  const ctx = useMemo(
+    () => (ctxState.data ? adaptMapContext(ctxState.data) : null),
+    [ctxState.data]
+  );
 
-  const pathsState = useResource(
-    ({ signal }) => (cemetery ? listMapPaths(cemetery, { signal }) : Promise.resolve([])),
+  const orthoState = useResource(
+    ({ signal }) =>
+      cemetery ? listOrthophotos(cemetery, { signal }) : Promise.resolve([]),
     [cemetery]
   );
-  const paths = useMemo(() => (pathsState.data ?? []).map((p, i) => adaptMapPath(p, i)), [pathsState.data]);
+  const orthophotos = useMemo(
+    () => (Array.isArray(orthoState.data) ? orthoState.data : []).map(adaptOrthophoto),
+    [orthoState.data]
+  );
+
+  const gravesState = useResource(
+    ({ signal }) =>
+      cemetery ? listMapGraves(cemetery, { signal }) : Promise.resolve({ data: [] }),
+    [cemetery]
+  );
+  const graves = useMemo(() => {
+    const raw = gravesState.data;
+    const list = Array.isArray(raw) ? raw : raw?.data ?? [];
+    return list.map(adaptMapGrave);
+  }, [gravesState.data]);
 
   const { mutate: doUpload, loading: uploading } = useMutation(uploadOrthophoto);
-  const { mutate: doCreatePath } = useMutation(createMapPath);
-  const { mutate: doRemovePath } = useMutation(removeMapPath);
-
-  const counts = useMemo(() => {
-    const acc = {};
-    GRAVES.forEach((g) => { acc[g.status] = (acc[g.status] || 0) + 1; });
-    return acc;
-  }, []);
-
-  const results = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (q.length < 2) return [];
-    return GRAVES.filter(
-      (g) => g.code.toLowerCase().includes(q) || (g.occupant && g.occupant.toLowerCase().includes(q))
-    ).slice(0, 6);
-  }, [query]);
-
-  function toggleLayer(key) {
-    setLayers((prev) => ({ ...prev, [key]: !prev[key] }));
-  }
-
-  function selectGrave(grave, { zoom = false } = {}) {
-    setSelected(grave);
-    setRoute(null);
-    if (grave && zoom) mapRef.current?.zoomTo(grave.cx, grave.cy);
-  }
-
-  function pickResult(grave) {
-    setQuery("");
-    selectGrave(grave, { zoom: true });
-  }
-
-  function simulateRoute() {
-    if (!selected) return;
-    setRoute(routeTo(selected));
-    mapRef.current?.reset();
-  }
-
-  async function importOrthophoto() {
-    if (!cemetery) return;
-    setOrthoError(null);
-    try {
-      const body = {
-        name: orthoFile?.name?.replace(/\.[^.]+$/, "") || `Ortofoto ${cem?.name || ""}`.trim(),
-      };
-      const nw = parseLatLng(orthoNW);
-      const se = parseLatLng(orthoSE);
-      if (nw && se) body.bounds = { nw, se };
-      if (orthoFile) {
-        body.fileName = orthoFile.name;
-        body.mimeType = orthoFile.type || "image/png";
-        body.contentBase64 = await fileToBase64(orthoFile);
-      }
-      await doUpload(cemetery, body);
-      setImportOpen(false);
-      setOrthoFile(null);
-      setOrthoNW("");
-      setOrthoSE("");
-      orthoState.refetch();
-    } catch (e) {
-      setOrthoError(e?.message || "Não foi possível enviar a ortofoto.");
-    }
-  }
-
-  function startDrawing() {
-    setSelected(null);
-    setRoute(null);
-    setPathActionError(null);
-    setDraftPath([]);
-    setDrawing(true);
-  }
-
-  async function finishDrawing() {
-    const pts = draftPath;
-    setDrawing(false);
-    setDraftPath([]);
-    if (pts.length < 2 || !cemetery) return;
-    setPathActionError(null);
-    try {
-      await doCreatePath(cemetery, { name: `Caminho ${paths.length + 1}`, pathCoordinates: pts });
-      setLayers((prev) => ({ ...prev, caminhos: true }));
-      pathsState.refetch();
-    } catch (e) {
-      setPathActionError(e?.message || "Não foi possível salvar o caminho.");
-    }
-  }
-
-  function cancelDrawing() {
-    setDrawing(false);
-    setDraftPath([]);
-  }
-
-  async function removePath(id) {
-    setPathActionError(null);
-    try {
-      await doRemovePath(id);
-      pathsState.refetch();
-    } catch (e) {
-      setPathActionError(e?.message || "Não foi possível remover o caminho.");
-    }
-  }
+  const { mutate: doSaveOrtho, loading: savingOrtho } = useMutation(updateOrthophoto);
+  const { mutate: doSetGeometry, loading: savingGeometry } = useMutation(setGraveGeometry);
 
   const cem = cemeteries.find((c) => c.id === cemetery);
 
-  // estado da fonte de cemitérios governa o workspace (o header permanece)
+  // ortofoto ativa a exibir (recém-enviada tem prioridade)
+  const activeOrtho = useMemo(() => {
+    if (!orthophotos.length) return null;
+    if (preferredOrthoId) {
+      const m = orthophotos.find((o) => o.id === preferredOrthoId);
+      if (m) return m;
+    }
+    return orthophotos.find((o) => o.active) || orthophotos[0];
+  }, [orthophotos, preferredOrthoId]);
+
+  // reset ao trocar de cemitério
+  useEffect(() => {
+    setPositioning(false);
+    setDrawing(false);
+    setDemarcTarget(null);
+    setSelectedGrave(null);
+    setFocusGrave(null);
+    setDraftCorners(null);
+    setOrthoDirty(false);
+    setOrthoMsg(null);
+    setDemarcMsg(null);
+    setPreferredOrthoId(null);
+    setOrthoVisible(true);
+  }, [cemetery]);
+
+  // sincroniza opacidade com a ortofoto ativa
+  useEffect(() => {
+    if (activeOrtho) setOrthoOpacity(activeOrtho.opacity ?? 1);
+  }, [activeOrtho?.id]);
+
+  // ortofoto ainda sem posição → já entra no modo de alinhamento
+  useEffect(() => {
+    if (activeOrtho && !activeOrtho.corners && canEdit) {
+      setPositioning(true);
+      setOrthoDirty(true);
+    }
+  }, [activeOrtho?.id, activeOrtho?.corners, canEdit]);
+
+  // centro: contexto → entrada do cemitério → média entre cemitérios → default
+  const center = useMemo(() => {
+    if (ctx?.center) return ctx.center;
+    const lat = cem?.raw?.entranceLatitude;
+    const lng = cem?.raw?.entranceLongitude;
+    if (lat != null && lng != null) return [Number(lat), Number(lng)];
+    const all = cemeteries
+      .map((c) => [c.raw?.entranceLatitude, c.raw?.entranceLongitude])
+      .filter(([a, b]) => a != null && b != null);
+    return averageCenter(all);
+  }, [ctx, cem, cemeteries]);
+
+  // objeto de ortofoto entregue ao mapa (rev força remontar na revert)
+  const orthoForMap = useMemo(() => {
+    if (!activeOrtho || !activeOrtho.fileUrl) return null;
+    return {
+      id: activeOrtho.id,
+      fileUrl: activeOrtho.fileUrl,
+      corners: activeOrtho.corners,
+      opacity: activeOrtho.opacity,
+      rev: orthoRev,
+    };
+  }, [activeOrtho, orthoRev]);
+
+  // busca de sepulturas
+  const results = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (q.length < 2) return [];
+    return graves
+      .filter(
+        (g) =>
+          g.code.toLowerCase().includes(q) ||
+          (g.occupant && g.occupant.toLowerCase().includes(q))
+      )
+      .slice(0, 8);
+  }, [query, graves]);
+
+  const mappedCount = useMemo(() => graves.filter((g) => g.mapped).length, [graves]);
+
+  // ---- ações ----
+  async function handleFile(e) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !cemetery) return;
+    setOrthoMsg(null);
+    try {
+      const contentBase64 = await fileToBase64(file);
+      const created = await doUpload({
+        cemeteryId: cemetery,
+        contentBase64,
+        fileName: file.name,
+        mimeType: file.type || "image/png",
+      });
+      if (created?.id) setPreferredOrthoId(created.id);
+      await orthoState.refetch();
+      setOrthoVisible(true);
+      setPositioning(true); // já entra no modo de alinhamento
+      setOrthoDirty(true);
+      setOrthoMsg({
+        tone: "info",
+        text: "Ortofoto carregada. Arraste os cantos para alinhar sobre o cemitério e salve a posição.",
+      });
+    } catch (err) {
+      setOrthoMsg({ tone: "danger", text: err?.message || "Falha ao enviar a ortofoto." });
+    }
+  }
+
+  function onCornersChange(corners, meta) {
+    setDraftCorners(corners);
+    setOrthoDirty(true);
+    if (meta?.isNew && !positioning) setPositioning(true);
+  }
+
+  async function saveOrthoPosition() {
+    if (!activeOrtho) return;
+    setOrthoMsg(null);
+    // lê os cantos vigentes direto do overlay (robusto, independe de eventos)
+    const liveCorners =
+      mapApiRef.current?.getLiveCorners() || draftCorners || activeOrtho.corners;
+    if (!liveCorners) {
+      setOrthoMsg({ tone: "danger", text: "Nenhuma posição de ortofoto para salvar." });
+      return;
+    }
+    try {
+      await doSaveOrtho(activeOrtho.id, {
+        corners: liveCorners,
+        opacity: orthoOpacity,
+        active: true,
+      });
+      await orthoState.refetch();
+      setPositioning(false);
+      setOrthoDirty(false);
+      setDraftCorners(null);
+      setOrthoMsg({ tone: "success", text: "Posição da ortofoto salva." });
+    } catch (err) {
+      setOrthoMsg({ tone: "danger", text: err?.message || "Não foi possível salvar a posição." });
+    }
+  }
+
+  function cancelPositioning() {
+    setPositioning(false);
+    setOrthoDirty(false);
+    setDraftCorners(null);
+    setOrthoRev((r) => r + 1); // remonta o overlay nos cantos salvos
+    setOrthoMsg(null);
+  }
+
+  function startDemarcation() {
+    if (!demarcTarget) return;
+    setPositioning(false);
+    setDemarcMsg(null);
+    setDrawing(true);
+  }
+
+  async function onGravePolygon({ geoPolygon, latitude, longitude }) {
+    setDrawing(false);
+    if (!demarcTarget) return;
+    setDemarcMsg(null);
+    try {
+      await doSetGeometry(demarcTarget.id, { geoPolygon, latitude, longitude });
+      await gravesState.refetch();
+      setDemarcMsg({
+        tone: "success",
+        text: `Sepultura ${demarcTarget.code} demarcada.`,
+      });
+      setDemarcTarget(null);
+    } catch (err) {
+      setDemarcMsg({ tone: "danger", text: err?.message || "Não foi possível salvar a demarcação." });
+    }
+  }
+
+  function pickGrave(g, { demarc = false } = {}) {
+    setQuery("");
+    if (demarc) {
+      setDemarcTarget(g);
+    } else {
+      setSelectedGrave(g);
+      setFocusGrave({ id: g.id, nonce: Date.now() });
+    }
+  }
+
+  function onGraveClick(id) {
+    const g = graves.find((x) => x.id === id);
+    if (g) setSelectedGrave(g);
+  }
+
   const workspaceLoading = cemsState.loading || (cemeteries.length > 0 && !cem);
 
   return (
@@ -211,7 +345,9 @@ export default function MapPage() {
       <header className={styles.top}>
         <div>
           <h1 className={styles.title}>Mapa</h1>
-          <p className={styles.subtitle}>Ortofoto, camadas e localização de sepulturas</p>
+          <p className={styles.subtitle}>
+            Base OpenStreetMap · ortofoto georreferenciada · demarcação de sepulturas
+          </p>
         </div>
         <div className={styles.actions}>
           <div className={styles.cemeterySelect}>
@@ -222,21 +358,46 @@ export default function MapPage() {
               disabled={cemsState.loading || !cemeteries.length}
             >
               {cemsState.loading && <option value="">Carregando cemitérios…</option>}
-              {!cemsState.loading && !cemeteries.length && <option value="">Nenhum cemitério</option>}
-              {cemeteries.filter((c) => c.active).map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
+              {!cemsState.loading && !cemeteries.length && (
+                <option value="">Nenhum cemitério</option>
+              )}
+              {cemeteries.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
               ))}
             </Select>
           </div>
-          <Button variant="secondary" onClick={() => setImportOpen(true)} disabled={!cem}
-            iconLeft={
-              <svg viewBox="0 0 16 16" fill="none">
-                <path d="M8 10V2m0 0L5 5m3-3 3 3M3 12v1a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            }
-          >
-            Importar ortofoto
-          </Button>
+          {canEdit && (
+            <>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className={styles.hiddenFile}
+                onChange={handleFile}
+              />
+              <Button
+                variant="secondary"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={!cem || uploading}
+                loading={uploading}
+                iconLeft={
+                  <svg viewBox="0 0 16 16" fill="none">
+                    <path
+                      d="M8 10V2m0 0L5 5m3-3 3 3M3 12v1a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-1"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                }
+              >
+                Carregar ortofoto
+              </Button>
+            </>
+          )}
         </div>
       </header>
 
@@ -256,7 +417,7 @@ export default function MapPage() {
       ) : !cemeteries.length ? (
         <EmptyState
           title="Selecione um cemitério para ver o mapa"
-          message="Cadastre um cemitério em Cemitérios para começar a demarcar sepulturas e traçar os caminhos do visitante."
+          message="Cadastre um cemitério em Cemitérios para carregar a ortofoto e demarcar sepulturas sobre o mapa real."
           action={
             <Link href="/painel/cemiterios">
               <Button>Ir para Cemitérios</Button>
@@ -264,300 +425,338 @@ export default function MapPage() {
           }
         />
       ) : (
-      <div className={styles.workspace}>
-        {/* ---------- painel lateral ---------- */}
-        <aside className={styles.panel}>
-          <div className={styles.searchWrap}>
-            <div className={styles.searchBox}>
-              <svg viewBox="0 0 16 16" fill="none">
-                <circle cx="7" cy="7" r="4.4" stroke="currentColor" strokeWidth="1.5" />
-                <path d="m13.5 13.5-3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-              </svg>
-              <input
-                placeholder="Buscar sepultura ou sepultado…"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-              />
-            </div>
-            {results.length > 0 && (
-              <ul className={styles.results}>
-                {results.map((g) => (
-                  <li key={g.id}>
-                    <button className={styles.resultRow} onClick={() => pickResult(g)}>
-                      <span className={styles.resultDot} style={{ background: STATUS_META[g.status].color }} />
-                      <span className={styles.resultInfo}>
-                        <span className={styles.resultCode}>{g.code}</span>
-                        <span className={styles.resultMeta}>
-                          {g.occupant || STATUS_META[g.status].label} · Quadra {g.block}
+        <div className={styles.workspace}>
+          {/* ---------- painel lateral ---------- */}
+          <aside className={styles.panel}>
+            {/* busca */}
+            <div className={styles.searchWrap}>
+              <div className={styles.searchBox}>
+                <svg viewBox="0 0 16 16" fill="none">
+                  <circle cx="7" cy="7" r="4.4" stroke="currentColor" strokeWidth="1.5" />
+                  <path d="m13.5 13.5-3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
+                <input
+                  placeholder="Buscar sepultura ou sepultado…"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                />
+              </div>
+              {results.length > 0 && (
+                <ul className={styles.results}>
+                  {results.map((g) => (
+                    <li key={g.id}>
+                      <div
+                        className={styles.resultRow}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => pickGrave(g)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") pickGrave(g);
+                        }}
+                      >
+                        <span
+                          className={styles.resultDot}
+                          style={{ background: STATUS_COLORS[g.status] || "#032e59" }}
+                        />
+                        <span className={styles.resultInfo}>
+                          <span className={styles.resultCode}>{g.code}</span>
+                          <span className={styles.resultMeta}>
+                            {g.occupant || statusLabel(g.status)}
+                            {g.block ? ` · ${g.block}` : ""}
+                            {g.mapped ? " · demarcada" : ""}
+                          </span>
                         </span>
-                      </span>
-                      <svg viewBox="0 0 16 16" fill="none" className={styles.resultChevron}>
-                        <path d="m6 4 4 4-4 4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+                        {canEdit && (
+                          <button
+                            className={styles.resultDemarc}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              pickGrave(g, { demarc: true });
+                            }}
+                            title="Selecionar para demarcar"
+                          >
+                            Demarcar
+                          </button>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
 
-          <section className={styles.panelSection}>
-            <span className={styles.panelLabel}>Camadas</span>
-            <div className={styles.layerList}>
-              {Object.keys(LAYER_LABELS).map((key) => (
-                <div key={key} className={styles.layerRow}>
-                  <span>{LAYER_LABELS[key]}</span>
-                  <Switch checked={layers[key]} onChange={() => toggleLayer(key)} />
+            {/* ortofoto */}
+            <section className={styles.panelSection}>
+              <span className={styles.panelLabel}>Ortofoto</span>
+              {!activeOrtho ? (
+                <p className={styles.hint}>
+                  {canEdit
+                    ? "Carregue a ortofoto (imagem aérea) e posicione-a sobre o cemitério para georreferenciar o mapa."
+                    : "Nenhuma ortofoto posicionada neste cemitério."}
+                </p>
+              ) : (
+                <>
+                  <div className={styles.rowBetween}>
+                    <span className={styles.rowLabel}>Exibir ortofoto</span>
+                    <Switch
+                      checked={orthoVisible}
+                      onChange={() => setOrthoVisible((v) => !v)}
+                    />
+                  </div>
+                  <div className={styles.opacityRow}>
+                    <span className={styles.rowLabel}>Opacidade</span>
+                    <input
+                      type="range"
+                      min="0.2"
+                      max="1"
+                      step="0.05"
+                      value={orthoOpacity}
+                      onChange={(e) => {
+                        setOrthoOpacity(Number(e.target.value));
+                        if (positioning) setOrthoDirty(true);
+                      }}
+                      className={styles.range}
+                      disabled={!orthoVisible}
+                    />
+                    <span className={styles.opacityVal}>
+                      {Math.round(orthoOpacity * 100)}%
+                    </span>
+                  </div>
+                  <p className={styles.statusLine}>
+                    {activeOrtho.corners ? (
+                      <Badge tone="success" dot>
+                        Georreferenciada
+                      </Badge>
+                    ) : (
+                      <Badge tone="warning" dot>
+                        Aguardando posicionamento
+                      </Badge>
+                    )}
+                  </p>
+                  {canEdit &&
+                    (positioning ? (
+                      <div className={styles.btnRow}>
+                        <Button
+                          size="sm"
+                          onClick={saveOrthoPosition}
+                          loading={savingOrtho}
+                        >
+                          Salvar posição
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={cancelPositioning}>
+                          Cancelar
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => {
+                          setDrawing(false);
+                          setPositioning(true);
+                        }}
+                      >
+                        Posicionar ortofoto
+                      </Button>
+                    ))}
+                </>
+              )}
+              {orthoMsg && (
+                <div className={styles.msg}>
+                  <Alert tone={orthoMsg.tone}>{orthoMsg.text}</Alert>
                 </div>
-              ))}
-            </div>
-          </section>
+              )}
+            </section>
 
-          <section className={styles.panelSection}>
-            <span className={styles.panelLabel}>Situação dos jazigos</span>
-            <div className={styles.legend}>
-              {Object.entries(STATUS_META).map(([key, meta]) => (
-                <button
-                  key={key}
-                  className={`${styles.legendRow} ${statusFilter === key ? styles.legendActive : ""} ${statusFilter && statusFilter !== key ? styles.legendMuted : ""}`}
-                  onClick={() => setStatusFilter(statusFilter === key ? null : key)}
-                >
-                  <span className={styles.legendDot} style={{ background: meta.color }} />
-                  <span className={styles.legendLabel}>{meta.label}</span>
-                  <span className={styles.legendCount}>{counts[key] || 0}</span>
-                </button>
-              ))}
-            </div>
-            {statusFilter && (
-              <button className={styles.clearFilter} onClick={() => setStatusFilter(null)}>
-                Limpar filtro de situação
-              </button>
-            )}
-          </section>
-
-          <section className={styles.panelSection}>
-            <span className={styles.panelLabel}>Caminhos GPS</span>
-            <p className={styles.pathHint}>
-              Trace os trajetos caminháveis — são eles que guiam a rota do visitante
-              até a sepultura.
-            </p>
-            {pathActionError && (
-              <Alert tone="danger">{pathActionError}</Alert>
-            )}
-            {pathsState.loading ? (
-              <Skeleton variant="row" count={2} />
-            ) : pathsState.error ? (
-              <button className={styles.clearFilter} onClick={pathsState.refetch}>
-                Não foi possível carregar os caminhos — tentar novamente
-              </button>
-            ) : paths.length > 0 ? (
-              <ul className={styles.pathList}>
-                {paths.map((path) => (
-                  <li key={path.id} className={styles.pathRow}>
-                    <span className={styles.pathDot} />
-                    <span className={styles.pathName}>{path.name} · {path.points.length} pontos</span>
+            {/* demarcação */}
+            {canEdit && (
+              <section className={styles.panelSection}>
+                <span className={styles.panelLabel}>Demarcar sepultura</span>
+                {demarcTarget ? (
+                  <div className={styles.targetCard}>
+                    <div>
+                      <span className={styles.targetCode}>{demarcTarget.code}</span>
+                      <span className={styles.targetMeta}>
+                        {demarcTarget.occupant || statusLabel(demarcTarget.status)}
+                      </span>
+                    </div>
                     <button
-                      className={styles.pathRemove}
-                      onClick={() => removePath(path.id)}
-                      aria-label={`Remover ${path.name}`}
+                      className={styles.targetClear}
+                      onClick={() => {
+                        setDemarcTarget(null);
+                        setDrawing(false);
+                      }}
+                      aria-label="Limpar seleção"
                     >
                       <svg viewBox="0 0 16 16" fill="none">
                         <path d="m4 4 8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
                       </svg>
                     </button>
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-            <Button variant="secondary" size="sm" onClick={startDrawing} disabled={drawing}>
-              + Traçar caminho
-            </Button>
-          </section>
-
-          <section className={styles.panelSection}>
-            <span className={styles.panelLabel}>Cemitério</span>
-            <p className={styles.cemInfo}>
-              <strong>{cem.name}</strong>
-              {hasOrtho
-                ? " · ortofoto georreferenciada ativa"
-                : " · sem ortofoto — usando planta ilustrativa"}
-            </p>
-          </section>
-        </aside>
-
-        {/* ---------- mapa ---------- */}
-        <div className={styles.mapArea}>
-          <MapExplorer
-            ref={mapRef}
-            layers={layers}
-            statusFilter={statusFilter}
-            selectedId={selected?.id || null}
-            onSelect={(g) => selectGrave(g)}
-            route={route}
-            height="100%"
-            paths={paths}
-            drawing={drawing}
-            draftPath={draftPath}
-            onDraftPoint={(point) => setDraftPath((prev) => [...prev, point])}
-          />
-
-          {/* banner do modo de traçado */}
-          {drawing && (
-            <div className={styles.drawBanner}>
-              <span className={styles.drawBannerText}>
-                <strong>Traçando caminho</strong> — toque no mapa para adicionar pontos
-                <span className={styles.drawCount}>{draftPath.length}</span>
-              </span>
-              <div className={styles.drawBannerActions}>
-                {draftPath.length > 0 && (
-                  <Button variant="ghost" size="sm" onClick={() => setDraftPath((prev) => prev.slice(0, -1))}>
-                    Desfazer
-                  </Button>
-                )}
-                <Button variant="ghost" size="sm" onClick={cancelDrawing}>Cancelar</Button>
-                <Button size="sm" disabled={draftPath.length < 2} onClick={finishDrawing}>
-                  Concluir caminho
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* card da sepultura selecionada */}
-          {selected && (
-            <div className={styles.graveCard}>
-              <header className={styles.graveCardHead}>
-                <div>
-                  <span className={styles.graveCode}>{selected.code}</span>
-                  <span className={styles.graveTrail}>
-                    Quadra {selected.block} › {selected.street} › {selected.lot}
-                  </span>
-                </div>
-                <button className={styles.closeCard} onClick={() => selectGrave(null)} aria-label="Fechar">
-                  <svg viewBox="0 0 16 16" fill="none">
-                    <path d="m4 4 8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                  </svg>
-                </button>
-              </header>
-
-              <div className={styles.graveCardBody}>
-                <div className={styles.graveStatusRow}>
-                  <Badge tone={selected.status === "livre" ? "success" : selected.status === "interditada" ? "danger" : selected.status === "reservada" || selected.status === "em_manutencao" ? "warning" : "navy"}>
-                    {STATUS_META[selected.status].label}
-                  </Badge>
-                  {selected.blocked && <Badge tone="danger" dot>Bloqueada — inadimplência</Badge>}
-                </div>
-                {selected.occupant && (
-                  <p className={styles.graveOccupant}>
-                    <svg viewBox="0 0 16 16" fill="none">
-                      <circle cx="8" cy="5.5" r="2.6" stroke="currentColor" strokeWidth="1.4" />
-                      <path d="M3.2 13.5c.8-2.4 2.6-3.6 4.8-3.6s4 1.2 4.8 3.6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-                    </svg>
-                    {selected.occupant}
-                  </p>
-                )}
-                {route && (
-                  <p className={styles.routeInfo}>
-                    🧭 Rota da entrada: <strong>{route.meters} m · ~{route.minutes} min a pé</strong>
-                  </p>
-                )}
-              </div>
-
-              <footer className={styles.graveCardFoot}>
-                <Link href="/painel/sepulturas/1" className={styles.graveCardLink}>
-                  <Button variant="secondary" size="sm">Ver sepultura</Button>
-                </Link>
-                {route ? (
-                  <Button variant="secondary" size="sm" onClick={() => setRoute(null)}>Limpar rota</Button>
+                  </div>
                 ) : (
-                  <Button variant="secondary" size="sm" onClick={simulateRoute}>Rota do visitante</Button>
+                  <p className={styles.hint}>
+                    Selecione uma sepultura na busca (botão “Demarcar”) e desenhe o
+                    contorno da cova sobre a ortofoto.
+                  </p>
                 )}
-              </footer>
-            </div>
-          )}
-        </div>
-      </div>
-      )}
+                {demarcTarget &&
+                  (drawing ? (
+                    <Button variant="ghost" size="sm" onClick={() => setDrawing(false)}>
+                      Cancelar desenho
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      onClick={startDemarcation}
+                      loading={savingGeometry}
+                      disabled={!activeOrtho?.corners}
+                    >
+                      Desenhar contorno
+                    </Button>
+                  ))}
+                {!activeOrtho?.corners && demarcTarget && (
+                  <p className={styles.hintSm}>
+                    Posicione a ortofoto antes de demarcar.
+                  </p>
+                )}
+                {demarcMsg && (
+                  <div className={styles.msg}>
+                    <Alert tone={demarcMsg.tone}>{demarcMsg.text}</Alert>
+                  </div>
+                )}
+                <p className={styles.mappedInfo}>
+                  {mappedCount} de {graves.length} sepulturas demarcadas
+                </p>
+              </section>
+            )}
 
-      {/* ---------- importar ortofoto ---------- */}
-      <Modal
-        open={importOpen}
-        onClose={() => setImportOpen(false)}
-        title="Importar ortofoto"
-        subtitle={cem?.name}
-        width={560}
-        footer={
-          <>
-            <Button variant="ghost" onClick={() => setImportOpen(false)}>Cancelar</Button>
-            <Button loading={uploading} onClick={importOrthophoto}>Enviar ortofoto</Button>
-          </>
-        }
-      >
-        <div className={styles.modalBody}>
-          <div className={styles.guide}>
-            <span className={styles.guideTitle}>Como obter o arquivo certo</span>
-            <ol className={styles.guideList}>
-              <li className={styles.guideStep}>
-                <span className={styles.guideNum}>1</span>
-                <span className={styles.guideText}>
-                  <strong>Contrate um mapeamento aéreo por drone</strong> (aerofotogrametria) com uma
-                  empresa da sua região. Peça o resultado em <strong>GeoTIFF georreferenciado</strong>,
-                  com resolução de <strong>3 a 5 cm por pixel</strong> — é o padrão do mercado e o
-                  ideal para demarcar covas.
-                </span>
-              </li>
-              <li className={styles.guideStep}>
-                <span className={styles.guideNum}>2</span>
-                <span className={styles.guideText}>
-                  <strong>Alternativa sem custo:</strong> o setor de geoprocessamento da prefeitura
-                  (ou o órgão estadual de cartografia) muitas vezes já possui ortofotos do município
-                  — solicite o recorte da área do cemitério.
-                </span>
-              </li>
-              <li className={styles.guideStep}>
-                <span className={styles.guideNum}>3</span>
-                <span className={styles.guideText}>
-                  <strong>GeoTIFF:</strong> as coordenadas são lidas automaticamente do arquivo.
-                  <strong> JPG/PNG:</strong> informe abaixo os dois cantos da imagem — no Google Maps,
-                  clique com o botão direito no ponto exato e copie o <em>"lat, lng"</em> que aparece.
-                </span>
-              </li>
-            </ol>
-          </div>
+            {/* legenda */}
+            <section className={styles.panelSection}>
+              <span className={styles.panelLabel}>Situação das sepulturas</span>
+              <div className={styles.legend}>
+                {Object.entries(STATUS_META).map(([key, meta]) => (
+                  <div key={key} className={styles.legendRow}>
+                    <span className={styles.legendDot} style={{ background: meta.color }} />
+                    <span className={styles.legendLabel}>{meta.label}</span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          </aside>
 
-          <label className={styles.upload}>
-            <input
-              type="file"
-              accept="image/*,.tif,.tiff"
-              className={styles.uploadInput}
-              onChange={(e) => setOrthoFile(e.target.files?.[0] || null)}
+          {/* ---------- mapa ---------- */}
+          <div className={styles.mapArea}>
+            <CemeteryMap
+              onApi={onMapApi}
+              center={center}
+              orthophoto={orthoForMap}
+              orthoVisible={orthoVisible}
+              orthoOpacity={orthoOpacity}
+              positioning={positioning}
+              graves={graves}
+              drawing={drawing}
+              focusGrave={focusGrave}
+              statusColors={STATUS_COLORS}
+              canEdit={canEdit}
+              onCornersChange={onCornersChange}
+              onGravePolygon={onGravePolygon}
+              onGraveClick={onGraveClick}
+              height="100%"
             />
-            <svg viewBox="0 0 24 24" fill="none">
-              <rect x="3" y="5" width="18" height="15" rx="2.5" stroke="currentColor" strokeWidth="1.5" />
-              <circle cx="9" cy="10.5" r="1.8" stroke="currentColor" strokeWidth="1.5" />
-              <path d="m5 18 4.5-4 3.5 3 3-2.5 3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            <span className={styles.uploadText}>
-              {orthoFile ? orthoFile.name : "Clique ou arraste a ortofoto aqui"}
-              <em className={styles.uploadFormats}>GeoTIFF (recomendado) · JPG · PNG — até 500 MB</em>
-            </span>
-          </label>
 
-          <div className={styles.formGrid}>
-            <FormField label="Canto noroeste (lat, lng)" hint="somente para JPG/PNG — canto superior esquerdo">
-              <Input placeholder="-23.5490, -46.6350" value={orthoNW} onChange={(e) => setOrthoNW(e.target.value)} />
-            </FormField>
-            <FormField label="Canto sudeste (lat, lng)" hint="canto inferior direito da imagem">
-              <Input placeholder="-23.5520, -46.6310" value={orthoSE} onChange={(e) => setOrthoSE(e.target.value)} />
-            </FormField>
+            {positioning && (
+              <div className={styles.banner}>
+                <span className={styles.bannerText}>
+                  <strong>Posicionando ortofoto</strong> — arraste, escale e rotacione os
+                  cantos para alinhar sobre o cemitério
+                </span>
+                <div className={styles.bannerActions}>
+                  <Button variant="ghost" size="sm" onClick={cancelPositioning}>
+                    Cancelar
+                  </Button>
+                  <Button size="sm" onClick={saveOrthoPosition} loading={savingOrtho}>
+                    Salvar posição
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {drawing && (
+              <div className={styles.banner}>
+                <span className={styles.bannerText}>
+                  <strong>Demarcando {demarcTarget?.code}</strong> — clique para adicionar
+                  vértices e finalize no primeiro ponto
+                </span>
+                <div className={styles.bannerActions}>
+                  <Button variant="ghost" size="sm" onClick={() => setDrawing(false)}>
+                    Cancelar
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {orthoState.error && !activeOrtho && (
+              <div className={styles.floatNote}>
+                <Alert tone="warning">
+                  Não foi possível carregar a ortofoto deste cemitério.
+                </Alert>
+              </div>
+            )}
+
+            {selectedGrave && (
+              <div className={styles.graveCard}>
+                <header className={styles.graveCardHead}>
+                  <div>
+                    <span className={styles.graveCode}>{selectedGrave.code}</span>
+                    {selectedGrave.block && (
+                      <span className={styles.graveTrail}>{selectedGrave.block}</span>
+                    )}
+                  </div>
+                  <button
+                    className={styles.closeCard}
+                    onClick={() => setSelectedGrave(null)}
+                    aria-label="Fechar"
+                  >
+                    <svg viewBox="0 0 16 16" fill="none">
+                      <path d="m4 4 8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                    </svg>
+                  </button>
+                </header>
+                <div className={styles.graveCardBody}>
+                  <Badge tone={STATUS_META[selectedGrave.status]?.tone || "navy"}>
+                    {statusLabel(selectedGrave.status)}
+                  </Badge>
+                  {selectedGrave.occupant && (
+                    <p className={styles.graveOccupant}>{selectedGrave.occupant}</p>
+                  )}
+                  {!selectedGrave.mapped && (
+                    <p className={styles.graveHint}>Sepultura ainda não demarcada.</p>
+                  )}
+                </div>
+                <footer className={styles.graveCardFoot}>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() =>
+                      setFocusGrave({ id: selectedGrave.id, nonce: Date.now() })
+                    }
+                  >
+                    Localizar no mapa
+                  </Button>
+                  {canEdit && (
+                    <Button
+                      size="sm"
+                      onClick={() => pickGrave(selectedGrave, { demarc: true })}
+                    >
+                      Demarcar
+                    </Button>
+                  )}
+                </footer>
+              </div>
+            )}
           </div>
-          {orthoError && <Alert tone="danger">{orthoError}</Alert>}
-          <Alert tone="info">
-            Com a ortofoto georreferenciada, as demarcações feitas aqui viram
-            <strong> coordenadas GPS reais</strong> — usadas nas rotas do app do visitante
-            e no portal público.
-          </Alert>
         </div>
-      </Modal>
+      )}
     </div>
   );
 }

@@ -769,3 +769,250 @@
   font-size: 11.5px;
   color: var(--color-slate);
 }
+
+/* ============================================================================
+ * Mapa Leaflet — controles do painel + banners
+ * ==========================================================================*/
+
+.hiddenFile {
+  display: none;
+}
+
+.mapLoading {
+  flex: 1;
+  min-height: 520px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(
+    100deg,
+    var(--color-mist-soft) 30%,
+    var(--color-canvas) 50%,
+    var(--color-mist-soft) 70%
+  );
+  background-size: 200% 100%;
+  animation: mapShimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes mapShimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.hint {
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--color-slate);
+}
+
+.hintSm {
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--color-warning);
+}
+
+.rowBetween {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.rowLabel {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.opacityRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.opacityRow .rowLabel {
+  flex: 0 0 auto;
+}
+
+.range {
+  flex: 1;
+  accent-color: var(--color-navy);
+  cursor: pointer;
+}
+
+.range:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.opacityVal {
+  flex: 0 0 auto;
+  min-width: 38px;
+  text-align: right;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-slate);
+  font-variant-numeric: tabular-nums;
+}
+
+.statusLine {
+  display: flex;
+}
+
+.btnRow {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.msg {
+  margin-top: 2px;
+}
+
+.targetCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-navy-ghost);
+  border: 1px solid var(--color-navy-soft);
+}
+
+.targetCode {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-ink);
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+.targetMeta {
+  display: block;
+  margin-top: 1px;
+  font-size: 11.5px;
+  color: var(--color-slate);
+}
+
+.targetClear {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-slate);
+  cursor: pointer;
+  transition: background 0.15s var(--ease-out), color 0.15s var(--ease-out);
+}
+
+.targetClear:hover {
+  background: var(--color-surface);
+  color: var(--color-ink);
+}
+
+.targetClear svg {
+  width: 12px;
+  height: 12px;
+}
+
+.mappedInfo {
+  font-size: 11.5px;
+  color: var(--color-slate);
+  font-variant-numeric: tabular-nums;
+}
+
+.resultDemarc {
+  flex: 0 0 auto;
+  border: 1px solid var(--color-mist);
+  background: var(--color-surface);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-navy);
+  cursor: pointer;
+  transition: background 0.15s var(--ease-out), border-color 0.15s var(--ease-out);
+}
+
+.resultDemarc:hover {
+  background: var(--color-navy-soft);
+  border-color: var(--color-navy-bright);
+}
+
+.graveHint {
+  font-size: 12px;
+  color: var(--color-slate);
+}
+
+/* banners flutuantes sobre o mapa (posicionar / demarcar) */
+.banner {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 25;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  max-width: calc(100% - 28px);
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-mist);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-lg);
+  animation: cardIn 0.3s var(--ease-out) both;
+}
+
+.bannerText {
+  font-size: 13px;
+  color: var(--color-slate);
+  white-space: nowrap;
+}
+
+.bannerText strong {
+  color: var(--color-ink);
+}
+
+.bannerActions {
+  display: flex;
+  gap: var(--space-1);
+  align-items: center;
+}
+
+.floatNote {
+  position: absolute;
+  bottom: 14px;
+  left: 14px;
+  right: 14px;
+  z-index: 20;
+  max-width: 420px;
+}
+
+@media (max-width: 768px) {
+  .banner {
+    left: 10px;
+    right: 10px;
+    transform: none;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-2);
+    border-radius: var(--radius-lg);
+    padding: var(--space-3);
+  }
+
+  .bannerText {
+    white-space: normal;
+    text-align: center;
+  }
+
+  .bannerActions {
+    justify-content: center;
+  }
+}
