@@ -34,3 +34,16 @@ export function isHex(v) {
 export function safeColor(v, fallback) {
   return isHex(v) ? v : fallback;
 }
+
+// Escurece um hex por um fator (0..1) — usado p/ derivar o tom "deep" do navy
+// no preview ao vivo da sidebar de Configurações.
+export function darken(hex, factor = 0.7) {
+  const h = String(hex || "").replace("#", "");
+  const full = h.length === 3 ? h.split("").map((c) => c + c).join("") : h;
+  const n = parseInt(full || "000000", 16);
+  const clamp = (x) => Math.max(0, Math.min(255, Math.round(x)));
+  const r = clamp(((n >> 16) & 255) * factor);
+  const g = clamp(((n >> 8) & 255) * factor);
+  const b = clamp((n & 255) * factor);
+  return `#${[r, g, b].map((c) => c.toString(16).padStart(2, "0")).join("")}`;
+}

@@ -19,10 +19,12 @@ import {
   toPatchPayload,
 } from "@/lib/api/resources/tenant";
 import { EDIT_ROLES } from "./helpers";
+import { useConfigPreview } from "./PreviewContext";
 
 export function useOnboardingForm() {
   const { data, loading, error, refetch } = useResource(getOnboarding, []);
   const { mutate: save, loading: saving } = useMutation(saveOnboarding);
+  const { setPreview } = useConfigPreview();
 
   const [form, setForm] = useState(null);
   const [feedback, setFeedback] = useState(null); // { tone, title?, msg }
@@ -32,6 +34,16 @@ export function useOnboardingForm() {
   useEffect(() => {
     if (data) setForm(toFormState(data));
   }, [data]);
+
+  // Empurra cor/logo AO VIVO para o card da sidebar (muda antes de salvar).
+  useEffect(() => {
+    if (!form) return;
+    setPreview({
+      logoUrl: form.logoUrl,
+      primaryColor: form.primaryColor,
+      secondaryColor: form.secondaryColor,
+    });
+  }, [form?.logoUrl, form?.primaryColor, form?.secondaryColor, setPreview]);
 
   function set(field, value) {
     setForm((f) => ({ ...f, [field]: value }));

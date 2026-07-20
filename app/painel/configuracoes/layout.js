@@ -13,6 +13,8 @@ import { useResource } from "@/lib/api/useResource";
 import { getOnboarding } from "@/lib/api/resources/tenant";
 import Badge from "@/components/atoms/Badge/Badge";
 import styles from "./layout.module.css";
+import { ConfigPreviewProvider, useConfigPreview } from "./_lib/PreviewContext";
+import { safeColor, darken } from "./_lib/helpers";
 
 const BASE = "/painel/configuracoes";
 
@@ -50,12 +52,30 @@ const TOPICS = [
 ];
 
 export default function ConfiguracoesLayout({ children }) {
+  return (
+    <ConfigPreviewProvider>
+      <ConfigHub>{children}</ConfigHub>
+    </ConfigPreviewProvider>
+  );
+}
+
+function ConfigHub({ children }) {
   const pathname = usePathname();
   const { data } = useResource(getOnboarding, []);
+  const { preview } = useConfigPreview();
 
   const isPending = data && data.onboardingStatus === "pendente";
   const cityName = data?.name || "Sua cidade";
   const monogram = cityName.trim().charAt(0).toUpperCase();
+
+  // valores AO VIVO (preview do form) sobrepõem os salvos — cor/logo mudam
+  // na esquerda enquanto o usuário edita, antes de salvar.
+  const liveLogo = preview?.logoUrl !== undefined ? preview.logoUrl : data?.logoUrl;
+  const livePrimary = safeColor(preview?.primaryColor, data?.primaryColor || "#032e59");
+  const sidebarStyle = {
+    "--color-navy": livePrimary,
+    "--color-navy-deep": darken(livePrimary, 0.62),
+  };
 
   return (
     <div className={styles.page}>
@@ -70,13 +90,13 @@ export default function ConfiguracoesLayout({ children }) {
       </header>
 
       <div className={styles.hub}>
-        <aside className={styles.sidebar}>
-          {/* Cartão da cidade — navy premium */}
+        <aside className={styles.sidebar} style={sidebarStyle}>
+          {/* Cartão da cidade — navy premium (ao vivo) */}
           <div className={styles.cityCard}>
             <div className={styles.cityLogo}>
-              {data?.logoUrl ? (
+              {liveLogo ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={data.logoUrl} alt="Logo da cidade" />
+                <img src={liveLogo} alt="Logo da cidade" />
               ) : (
                 <span className={styles.cityMonogram}>{monogram}</span>
               )}
