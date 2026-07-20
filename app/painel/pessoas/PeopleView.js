@@ -27,6 +27,7 @@ import {
   getPerson,
   createPerson,
   updatePerson,
+  uploadPersonPhoto,
   addRelationship as apiAddRelationship,
   invitePortal as apiInvitePortal,
   revokePortal as apiRevokePortal,
@@ -75,6 +76,9 @@ export default function PeopleView({
   const [feedback, setFeedback] = useState(null); // { tone, message }
   const [addr, setAddr] = useState({ zip: "", city: "", street: "" });
   const [cepStatus, setCepStatus] = useState("idle"); // idle | loading | done | error
+  // foto da pessoa: url exibida no preview + arquivo pendente (modo criação, antes
+  // de existir o id) + estado de envio. NUNCA guardamos link — só upload.
+  const [photo, setPhoto] = useState({ url: null, pendingFile: null, uploading: false });
   const formRef = useRef(null);
 
   // ---- parâmetros de listagem derivados dos filtros/busca (server-side) ----
@@ -159,7 +163,37 @@ export default function PeopleView({
     setEditing(person);
     setAddr({ zip: person?.zipcode || "", city: person?.city || "", street: person?.address || "" });
     setCepStatus("idle");
+    setPhoto({ url: person?.photoUrl || null, pendingFile: null, uploading: false });
     setFormOpen(true);
+  }
+
+  // Upload da foto da pessoa. Em EDIÇÃO (id já existe) sobe na hora e atualiza o
+  // preview/listas. Em CRIAÇÃO (sem id ainda) guarda o arquivo e mostra um preview
+  // local; o envio acontece após o cadastro, quando já temos o id.
+  async function handlePhoto(file) {
+    if (!file) return;
+    if (!file.type?.startsWith("image/")) {
+      flash("Envie um arquivo de imagem (PNG ou JPEG).", "danger");
+      return;
+    }
+    const localPreview = URL.createObjectURL(file);
+    const editingId = editing?.id;
+    if (!editingId) {
+      // criação: só guarda o arquivo + preview local; sobe depois do create
+      setPhoto({ url: localPreview, pendingFile: file, uploading: false });
+      return;
+    }
+    setPhoto((p) => ({ ...p, url: localPreview, uploading: true }));
+    try {
+      const { photoUrl } = await uploadPersonPhoto(editingId, file);
+      setPhoto({ url: photoUrl, pendingFile: null, uploading: false });
+      flash("Foto atualizada.", "success");
+      refreshList();
+      if (detailId) refetchDetail();
+    } catch (e) {
+      setPhoto((p) => ({ ...p, uploading: false }));
+      flash(e?.message || "Não foi possível enviar a foto.", "danger");
+    }
   }
 
   // ViaCEP: com o CEP completo, preenche cidade/UF e logradouro automaticamente
@@ -212,10 +246,17 @@ export default function PeopleView({
     }
     const payload = toPersonPayload(form);
     const editingId = editing?.id;
-    const ok = await run(
-      () => (editingId ? updatePerson(editingId, payload) : createPerson(payload)),
-      editingId ? "Cadastro atualizado." : "Pessoa cadastrada com sucesso."
-    );
+    const ok = await run(async () => {
+      if (editingId) {
+        await updatePerson(editingId, payload);
+        return;
+      }
+      // cria a pessoa e, se uma foto foi escolhida antes de existir o id, sobe agora
+      const created = await createPerson(payload);
+      if (photo.pendingFile && created?.id) {
+        await uploadPersonPhoto(created.id, photo.pendingFile);
+      }
+    }, editingId ? "Cadastro atualizado." : "Pessoa cadastrada com sucesso.");
     if (ok) {
       setFormOpen(false);
       refreshList();
@@ -290,7 +331,7 @@ export default function PeopleView({
       key: "person", label: "Pessoa",
       render: (p) => (
         <div className={styles.personCell}>
-          <Avatar name={p.name} size="sm" />
+          <Avatar name={p.name} src={p.photoUrl} size="sm" />
           <div className={styles.personInfo}>
             <span className={styles.personName}>{p.name}</span>
             <span className={styles.personCpf}>{p.cpf}</span>
@@ -447,7 +488,7 @@ export default function PeopleView({
             {rows.map((p) => (
               <button key={p.id} className={styles.mobileCard} onClick={() => setDetailId(p.id)}>
                 <div className={styles.mobileCardTop}>
-                  <Avatar name={p.name} size="sm" />
+                  <Avatar name={p.name} src={p.photoUrl} size="sm" />
                   <div className={styles.personInfo}>
                     <span className={styles.personName}>{p.name}</span>
                     <span className={styles.personCpf}>{p.cpf}</span>
@@ -501,7 +542,7 @@ export default function PeopleView({
         {!detailLoading && !detailError && detail && (
           <div className={styles.detailBody}>
             <div className={styles.profileRow}>
-              <Avatar name={detail.name} size="lg" />
+              <Avatar name={detail.name} src={detail.photoUrl} size="lg" />
               <div className={styles.profileInfo}>
                 <div className={styles.rolesCell}>
                   {detail.roles.map((r) => (
@@ -759,13 +800,32 @@ export default function PeopleView({
           <section className={styles.formSection}>
             <span className={styles.sectionLabel}>Foto & observações</span>
             <label className={styles.upload}>
-              <input type="file" accept="image/*" className={styles.uploadInput} />
-              <svg viewBox="0 0 24 24" fill="none">
-                <rect x="3" y="5" width="18" height="15" rx="2.5" stroke="currentColor" strokeWidth="1.5" />
-                <circle cx="9" cy="10.5" r="1.8" stroke="currentColor" strokeWidth="1.5" />
-                <path d="m5 18 4.5-4 3.5 3 3-2.5 3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-              <span className={styles.uploadText}>Clique ou arraste a foto da pessoa</span>
+              <input
+                type="file"
+                accept="image/*"
+                className={styles.uploadInput}
+                disabled={photo.uploading}
+                onChange={(e) => {
+                  handlePhoto(e.target.files?.[0]);
+                  e.target.value = "";
+                }}
+              />
+              {photo.url ? (
+                <Avatar name={editing?.name || ""} src={photo.url} size="lg" />
+              ) : (
+                <svg viewBox="0 0 24 24" fill="none">
+                  <rect x="3" y="5" width="18" height="15" rx="2.5" stroke="currentColor" strokeWidth="1.5" />
+                  <circle cx="9" cy="10.5" r="1.8" stroke="currentColor" strokeWidth="1.5" />
+                  <path d="m5 18 4.5-4 3.5 3 3-2.5 3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              )}
+              <span className={styles.uploadText}>
+                {photo.uploading
+                  ? "Enviando foto…"
+                  : photo.url
+                    ? "Clique para trocar a foto"
+                    : "Clique ou arraste a foto da pessoa"}
+              </span>
             </label>
             <FormField label="Observações">
               <Textarea name="notes" defaultValue={editing?.notes} rows={3} placeholder="Preferências de contato, restrições, contexto…" />

@@ -5,6 +5,7 @@ import styles from "./AttachmentUploadModal.module.css";
 import Modal from "@/components/molecules/Modal/Modal";
 import Button from "@/components/atoms/Button/Button";
 import Select from "@/components/atoms/Select/Select";
+import Alert from "@/components/molecules/Alert/Alert";
 import { fileKind } from "@/components/organisms/FileViewer/FileViewer";
 
 const CATEGORIES = [
@@ -41,15 +42,19 @@ function formatSize(bytes) {
 }
 
 // Modal padrão de upload de anexos: clique ou arraste, renomeie e categorize.
-// Usar em todo lugar que aceitar anexos. onUpload recebe [{name, category, size, url}].
+// Usar em todo lugar que aceitar anexos. onUpload recebe os itens escolhidos
+// [{ file, name, category, size }] e DEVE persistir de verdade — pode ser async:
+// o modal aguarda a Promise, mantém o "Anexando…" e só fecha no sucesso (erro →
+// Alert dentro do modal, sem fechar). Quem chama faz o upload real + refetch.
 export default function AttachmentUploadModal({ open, onClose, onUpload, title = "Adicionar anexos" }) {
   const [items, setItems] = useState([]);
   const [dragOver, setDragOver] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
   const inputRef = useRef(null);
 
   useEffect(() => {
-    if (open) setItems([]);
+    if (open) { setItems([]); setError(null); }
   }, [open]);
 
   function addFiles(fileList) {
@@ -74,20 +79,24 @@ export default function AttachmentUploadModal({ open, onClose, onUpload, title =
     setItems((list) => list.filter((item) => item.id !== id));
   }
 
-  function confirm() {
+  async function confirm() {
     setSaving(true);
-    setTimeout(() => {
-      onUpload(
+    setError(null);
+    try {
+      await onUpload(
         items.map((item) => ({
+          file: item.file,
           name: `${item.baseName.trim() || "arquivo"}${item.ext}`,
           category: item.category,
           size: formatSize(item.file.size),
-          url: URL.createObjectURL(item.file),
         }))
       );
       setSaving(false);
       onClose();
-    }, 800);
+    } catch (err) {
+      setSaving(false);
+      setError(err?.message || "Não foi possível enviar os anexos. Tente novamente.");
+    }
   }
 
   return (
@@ -107,6 +116,7 @@ export default function AttachmentUploadModal({ open, onClose, onUpload, title =
       }
     >
       <div className={styles.body}>
+        {error && <Alert tone="danger">{error}</Alert>}
         <div
           className={`${styles.dropzone} ${dragOver ? styles.dropzoneActive : ""}`}
           onClick={() => inputRef.current?.click()}

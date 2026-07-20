@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import styles from "./page.module.css";
 
 import Button from "@/components/atoms/Button/Button";
@@ -25,6 +25,7 @@ import {
   activateTenant,
   deactivateTenant,
   resendTenantInvite,
+  uploadTenantLogo,
   adaptTenants,
   normalizeSubdomain,
   previewDomain,
@@ -74,6 +75,11 @@ export default function CitiesConsolePage() {
   const [query, setQuery] = useState("");
   const [creating, setCreating] = useState(false);
   const [draft, setDraft] = useState(EMPTY_DRAFT);
+  // logo: no CRIAR guardamos o arquivo (a cidade ainda não existe → sobe após o
+  // create); no EDITAR o upload é imediato (temos o id). draft.logoUrl/editDraft.logoUrl
+  // passam a guardar só a URL de PREVIEW (blob local ou url assinada) — nunca um link digitado.
+  const [logoFile, setLogoFile] = useState(null);
+  const [logoUploading, setLogoUploading] = useState(false);
   const [formError, setFormError] = useState(null);
   const [notice, setNotice] = useState(null); // { tone, message }
   const [actingId, setActingId] = useState(null);
@@ -120,12 +126,48 @@ export default function CitiesConsolePage() {
 
   function openCreate() {
     setDraft(EMPTY_DRAFT);
+    setLogoFile(null);
     setFormError(null);
     setCreating(true);
   }
 
   function set(field, value) {
     setDraft((d) => ({ ...d, [field]: value }));
+  }
+
+  // CRIAR: a cidade ainda não existe → só guarda o arquivo + preview local; o
+  // upload acontece após createTenant devolver o id (submitCreate).
+  function handleCreateLogo(file) {
+    if (!file) return;
+    if (!file.type?.startsWith("image/")) {
+      setFormError("Envie um arquivo de imagem (PNG, JPEG ou SVG).");
+      return;
+    }
+    setFormError(null);
+    setLogoFile(file);
+    set("logoUrl", URL.createObjectURL(file));
+  }
+
+  // EDITAR: a cidade já existe → sobe na hora e mostra o preview com a url assinada.
+  async function handleEditLogo(file) {
+    if (!file || !editCity) return;
+    if (!file.type?.startsWith("image/")) {
+      setEditError("Envie um arquivo de imagem (PNG, JPEG ou SVG).");
+      return;
+    }
+    setEditError(null);
+    setEdit("logoUrl", URL.createObjectURL(file)); // preview imediato
+    setLogoUploading(true);
+    try {
+      const { logoUrl } = await uploadTenantLogo(editCity.id, file);
+      setEdit("logoUrl", logoUrl);
+      await refetch();
+      flash("Logo atualizada.");
+    } catch (err) {
+      setEditError(err?.message || "Não foi possível enviar a logo.");
+    } finally {
+      setLogoUploading(false);
+    }
   }
 
   // monta o payload conforme o modo escolhido.
@@ -140,7 +182,7 @@ export default function CitiesConsolePage() {
     if (draft.mode === "completo") {
       if (draft.primaryColor) tenant.primaryColor = draft.primaryColor;
       if (draft.secondaryColor) tenant.secondaryColor = draft.secondaryColor;
-      if (draft.logoUrl.trim()) tenant.logoUrl = draft.logoUrl.trim();
+      // a logo NÃO vai no payload — é upload (após o create, com o id da cidade)
       if (draft.cnpj.trim()) tenant.cnpj = draft.cnpj.trim();
       if (draft.orgPhone.trim()) tenant.phone = draft.orgPhone.trim();
       if (draft.orgEmail.trim()) tenant.email = normalizeEmail(draft.orgEmail);
@@ -158,9 +200,24 @@ export default function CitiesConsolePage() {
     try {
       const res = await createM.mutate(buildPayload());
       const domain = res?.domain || previewDomain(draft.subdomain);
+      // se uma logo foi escolhida no modo completo, sobe agora com o id da nova cidade
+      const newId = res?.tenant?.id;
+      let logoFailed = false;
+      if (logoFile && newId) {
+        try {
+          await uploadTenantLogo(newId, logoFile);
+        } catch {
+          logoFailed = true;
+        }
+      }
+      setLogoFile(null);
       setCreating(false);
       await refetch();
-      flash(`Cidade "${draft.name.trim()}" criada — convite enviado ao admin (${domain}).`);
+      if (logoFailed) {
+        flash(`Cidade "${draft.name.trim()}" criada, mas a logo não pôde ser enviada — tente novamente na edição.`, "warning");
+      } else {
+        flash(`Cidade "${draft.name.trim()}" criada — convite enviado ao admin (${domain}).`);
+      }
     } catch (err) {
       if (err?.code === "SUBDOMAIN_IN_USE") {
         setFormError("Este subdomínio já está em uso por outra cidade. Escolha outro.");
@@ -237,10 +294,10 @@ export default function CitiesConsolePage() {
     if (name && name !== (editCity.name || "")) body.name = name;
 
     const email = editDraft.email.trim() ? normalizeEmail(editDraft.email) : "";
+    // logoUrl NÃO entra no payload — a logo é persistida no upload imediato (handleEditLogo).
     const fields = [
       ["primaryColor", editDraft.primaryColor, t.primaryColor],
       ["secondaryColor", editDraft.secondaryColor, t.secondaryColor],
-      ["logoUrl", editDraft.logoUrl.trim(), t.logoUrl],
       ["cnpj", editDraft.cnpj.trim(), t.cnpj],
       ["phone", editDraft.phone.trim(), t.phone],
       ["email", email, t.email],
@@ -623,12 +680,8 @@ export default function CitiesConsolePage() {
                   <FormField label="Cor secundária">
                     <ColorField value={draft.secondaryColor} onChange={(v) => set("secondaryColor", v)} />
                   </FormField>
-                  <FormField label="Logo (URL)" className={styles.spanTwo}>
-                    <Input
-                      placeholder="https://…/logo.png"
-                      value={draft.logoUrl}
-                      onChange={(e) => set("logoUrl", e.target.value)}
-                    />
+                  <FormField label="Logo" className={styles.spanTwo}>
+                    <LogoField value={draft.logoUrl} onFile={handleCreateLogo} uploading={false} />
                   </FormField>
                 </div>
               </div>
@@ -724,12 +777,8 @@ export default function CitiesConsolePage() {
                 <FormField label="Cor secundária">
                   <ColorField value={editDraft.secondaryColor} onChange={(v) => setEdit("secondaryColor", v)} />
                 </FormField>
-                <FormField label="Logo (URL)" className={styles.spanTwo}>
-                  <Input
-                    placeholder="https://…/logo.png"
-                    value={editDraft.logoUrl}
-                    onChange={(e) => setEdit("logoUrl", e.target.value)}
-                  />
+                <FormField label="Logo" className={styles.spanTwo}>
+                  <LogoField value={editDraft.logoUrl} onFile={handleEditLogo} uploading={logoUploading} />
                 </FormField>
               </div>
             </div>
@@ -818,6 +867,51 @@ export default function CitiesConsolePage() {
           </div>
         )}
       </Modal>
+    </div>
+  );
+}
+
+// campo de logo: UPLOAD (nunca link). Mostra o preview da logo atual/escolhida e
+// um botão "Enviar/Trocar". O envio em si é do pai (imediato na edição, adiado na
+// criação até existir o id da cidade).
+function LogoField({ value, onFile, uploading }) {
+  const inputRef = useRef(null);
+  return (
+    <div className={styles.logoField}>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/svg+xml"
+        className={styles.logoInput}
+        disabled={uploading}
+        onChange={(e) => {
+          onFile(e.target.files?.[0]);
+          e.target.value = "";
+        }}
+      />
+      <span className={styles.logoThumb}>
+        {value ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={value} alt="Logo da cidade" />
+        ) : (
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <rect x="3" y="5" width="18" height="15" rx="2.5" stroke="currentColor" strokeWidth="1.5" />
+            <circle cx="9" cy="10.5" r="1.8" stroke="currentColor" strokeWidth="1.5" />
+            <path d="m5 18 4.5-4 3.5 3 3-2.5 3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        )}
+      </span>
+      <div className={styles.logoBody}>
+        <button
+          type="button"
+          className={styles.logoBtn}
+          disabled={uploading}
+          onClick={() => inputRef.current?.click()}
+        >
+          {uploading ? "Enviando…" : value ? "Trocar logo" : "Enviar logo"}
+        </button>
+        <span className={styles.logoHint}>PNG, JPEG ou SVG · até 3 MB</span>
+      </div>
     </div>
   );
 }

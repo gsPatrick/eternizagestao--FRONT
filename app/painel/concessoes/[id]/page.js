@@ -16,12 +16,20 @@ import Modal from "@/components/molecules/Modal/Modal";
 import Alert from "@/components/molecules/Alert/Alert";
 import Skeleton from "@/components/atoms/Skeleton/Skeleton";
 import ErrorState from "@/components/molecules/ErrorState/ErrorState";
+import AttachmentList from "@/components/molecules/AttachmentList/AttachmentList";
+import AttachmentUploadModal from "@/components/molecules/AttachmentUploadModal/AttachmentUploadModal";
 
 import { api } from "@/lib/api/client";
 import { useResource, useMutation } from "@/lib/api/useResource";
 import {
   getConcession, renewConcession, transferConcession, terminateConcession,
 } from "@/lib/api/resources/concessions";
+import {
+  listAttachments,
+  uploadAttachment,
+  deleteAttachment,
+  toAttachmentView,
+} from "@/lib/api/resources/attachments";
 
 const TODAY = new Date("2026-07-16");
 
@@ -89,6 +97,19 @@ export default function ConcessionDetailPage() {
   const [transferModal, setTransferModal] = useState(false);
   const [renewModal, setRenewModal] = useState(false);
   const [endModal, setEndModal] = useState(false);
+  const [uploadModal, setUploadModal] = useState(false);
+
+  // documentos/anexos reais da concessão (attachableType = concession)
+  const {
+    data: attachmentsData,
+    loading: attachmentsLoading,
+    error: attachmentsError,
+    refetch: refetchAttachments,
+  } = useResource(({ signal }) => listAttachments({ type: "concession", id, signal }), [id]);
+  const attachments = useMemo(
+    () => (attachmentsData || []).map(toAttachmentView),
+    [attachmentsData]
+  );
 
   // transferência: busca de pessoa (endpoint compartilhado /people)
   const [personSearch, setPersonSearch] = useState("");
@@ -340,10 +361,19 @@ export default function ConcessionDetailPage() {
           <article className={styles.card}>
             <header className={styles.cardHead}>
               <h2 className={styles.cardTitle}>Documentos</h2>
+              <Button variant="ghost" size="sm" onClick={() => setUploadModal(true)}>Adicionar</Button>
             </header>
-            <p className={styles.cardSub}>
-              Nenhum documento anexado a esta concessão.
-            </p>
+            <AttachmentList
+              files={attachments}
+              loading={attachmentsLoading}
+              error={attachmentsError}
+              onRetry={refetchAttachments}
+              emptyLabel="Anexe o contrato e demais documentos desta concessão."
+              onDelete={async (file) => {
+                await deleteAttachment(file.id);
+                await refetchAttachments();
+              }}
+            />
           </article>
         </div>
 
@@ -511,6 +541,18 @@ export default function ConcessionDetailPage() {
           {terminate.error && <Alert tone="danger">{terminate.error.message}</Alert>}
         </div>
       </Modal>
+
+      <AttachmentUploadModal
+        open={uploadModal}
+        onClose={() => setUploadModal(false)}
+        title={`Documentos · ${view.contract}`}
+        onUpload={async (files) => {
+          for (const f of files) {
+            await uploadAttachment({ type: "concession", id, file: f.file, category: f.category, fileName: f.name });
+          }
+          await refetchAttachments();
+        }}
+      />
     </div>
   );
 }

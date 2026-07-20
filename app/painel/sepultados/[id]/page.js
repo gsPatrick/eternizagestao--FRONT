@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import styles from "./page.module.css";
@@ -21,7 +21,13 @@ import Skeleton from "@/components/atoms/Skeleton/Skeleton";
 import ErrorState from "@/components/molecules/ErrorState/ErrorState";
 import { maskCpf } from "@/lib/masks";
 import { useResource, useMutation } from "@/lib/api/useResource";
-import { getDeceased, updateDeceased } from "@/lib/api/resources/deceased";
+import { getDeceased, updateDeceased, uploadDeceasedPhoto } from "@/lib/api/resources/deceased";
+import {
+  listAttachments,
+  uploadAttachment,
+  deleteAttachment,
+  toAttachmentView,
+} from "@/lib/api/resources/attachments";
 
 const LOCATION_META = {
   sepultado: { label: "Sepultado", tone: "navy" },
@@ -115,20 +121,38 @@ export default function DeceasedDetailPage() {
 
   const [editModal, setEditModal] = useState(false);
   const [uploadModal, setUploadModal] = useState(false);
-  const [attachments, setAttachments] = useState([]);
   const [preview, setPreview] = useState(null);
   const [editForm, setEditForm] = useState(EMPTY_EDIT);
   const [editError, setEditError] = useState("");
+  const [photoError, setPhotoError] = useState("");
+  const photoInputRef = useRef(null);
 
-  // anexos reais que conhecemos hoje: a foto do sepultado (photoUrl)
-  useEffect(() => {
-    if (!data) return;
-    setAttachments(
-      data.photoUrl
-        ? [{ name: "foto-sepultado", category: "Foto do sepultado", url: data.photoUrl }]
-        : []
-    );
-  }, [data]);
+  // anexos reais do sepultado (attachableType = deceased) — fetch/loading/erro
+  const {
+    data: attachmentsData,
+    loading: attachmentsLoading,
+    error: attachmentsError,
+    refetch: refetchAttachments,
+  } = useResource(({ signal }) => listAttachments({ type: "deceased", id, signal }), [id]);
+  const attachments = useMemo(
+    () => (attachmentsData || []).map(toAttachmentView),
+    [attachmentsData]
+  );
+
+  // upload/troca da FOTO do sepultado (endpoint dedicado → photoUrl assinado)
+  const { mutate: submitPhoto, loading: photoSaving } = useMutation((file) => uploadDeceasedPhoto(id, file));
+  async function handlePhotoPick(e) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setPhotoError("");
+    try {
+      await submitPhoto(file);
+      refetch();
+    } catch (err) {
+      setPhotoError(err.message || "Não foi possível enviar a foto.");
+    }
+  }
 
   function openEdit() {
     setEditError("");
@@ -319,7 +343,17 @@ export default function DeceasedDetailPage() {
               <h2 className={styles.cardTitle}>Fotos e documentos</h2>
               <Button variant="ghost" size="sm" onClick={() => setUploadModal(true)}>Adicionar anexo</Button>
             </header>
-            <AttachmentList files={attachments} />
+            <AttachmentList
+              files={attachments}
+              loading={attachmentsLoading}
+              error={attachmentsError}
+              onRetry={refetchAttachments}
+              emptyLabel="Anexe fotos e documentos digitalizados deste sepultado."
+              onDelete={async (file) => {
+                await deleteAttachment(file.id);
+                await refetchAttachments();
+              }}
+            />
           </article>
         </div>
 
@@ -342,6 +376,23 @@ export default function DeceasedDetailPage() {
             <span className={styles.photoCaption}>
               {person.photoUrl ? "Foto do sepultado · clique para ampliar" : "Sem foto cadastrada"}
             </span>
+            <input
+              ref={photoInputRef}
+              type="file"
+              accept="image/*"
+              hidden
+              onChange={handlePhotoPick}
+            />
+            <Button
+              variant="secondary"
+              size="sm"
+              full
+              loading={photoSaving}
+              onClick={() => photoInputRef.current?.click()}
+            >
+              {person.photoUrl ? "Trocar foto" : "Enviar foto"}
+            </Button>
+            {photoError && <Alert tone="danger">{photoError}</Alert>}
           </article>
 
           {/* dados civis */}
@@ -445,7 +496,12 @@ export default function DeceasedDetailPage() {
         open={uploadModal}
         onClose={() => setUploadModal(false)}
         title={`Anexos de ${person.fullName}`}
-        onUpload={(files) => setAttachments((list) => [...files, ...list])}
+        onUpload={async (files) => {
+          for (const f of files) {
+            await uploadAttachment({ type: "deceased", id, file: f.file, category: f.category, fileName: f.name });
+          }
+          await refetchAttachments();
+        }}
       />
 
       <FileViewer open={Boolean(preview)} file={preview} onClose={() => setPreview(null)} />

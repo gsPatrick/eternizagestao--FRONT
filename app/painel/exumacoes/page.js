@@ -22,9 +22,14 @@ import AttachmentUploadModal from "@/components/molecules/AttachmentUploadModal/
 import Skeleton from "@/components/atoms/Skeleton/Skeleton";
 import ErrorState from "@/components/molecules/ErrorState/ErrorState";
 import EmptyState from "@/components/molecules/EmptyState/EmptyState";
-import { DEMO_CERTIDAO_PDF, DEMO_CONTRATO_PDF } from "@/lib/mock-files";
 
 import { useResource, useMutation } from "@/lib/api/useResource";
+import {
+  listAttachments,
+  uploadAttachment,
+  deleteAttachment,
+  toAttachmentView,
+} from "@/lib/api/resources/attachments";
 import {
   listExhumations,
   getExhumationStats,
@@ -81,11 +86,6 @@ const DESTINATION_META = {
 };
 const destLabel = (t) => DESTINATION_META[t] || "Outro";
 
-const PROCESS_DOCS = [
-  { name: "autorizacao-familia.pdf", category: "Autorização", size: "180 KB", url: DEMO_CONTRATO_PDF },
-  { name: "documento-solicitante.pdf", category: "Documento pessoal", size: "320 KB", url: DEMO_CERTIDAO_PDF },
-];
-
 const NICHE_META = {
   livre: { label: "Livre", tone: "success" },
   ocupado: { label: "Ocupado", tone: "navy" },
@@ -101,7 +101,6 @@ export default function ExhumationsPage() {
   const [detail, setDetail] = useState(null); // id do processo aberto
   const [niche, setNiche] = useState(null); // nicho aberto
   const [uploadOpen, setUploadOpen] = useState(false);
-  const [docs, setDocs] = useState(PROCESS_DOCS);
   const [scheduleDate, setScheduleDate] = useState("2026-08-14");
   const [destForm, setDestForm] = useState({ type: "ossario", niche: "", detail: "" });
   const [selectedOssuary, setSelectedOssuary] = useState("");
@@ -177,6 +176,19 @@ export default function ExhumationsPage() {
 
   const current = detail ? processes.find((p) => p.id === detail) : null;
   const freeNiches = niches.filter((n) => n.status === "livre");
+
+  // documentação obrigatória real do processo aberto (attachableType = exhumation)
+  const {
+    data: docsData,
+    loading: docsLoading,
+    error: docsError,
+    refetch: refetchDocs,
+  } = useResource(
+    ({ signal }) =>
+      detail ? listAttachments({ type: "exhumation", id: detail, signal }) : Promise.resolve([]),
+    [detail]
+  );
+  const docs = useMemo(() => (docsData || []).map(toAttachmentView), [docsData]);
 
   const filtered = useMemo(() => {
     return processes.filter((row) => {
@@ -565,7 +577,17 @@ export default function ExhumationsPage() {
                 <span className={styles.docsTitle}>Documentação obrigatória</span>
                 <Button variant="ghost" size="sm" onClick={() => setUploadOpen(true)}>Adicionar</Button>
               </div>
-              <AttachmentList files={docs} />
+              <AttachmentList
+                files={docs}
+                loading={docsLoading}
+                error={docsError}
+                onRetry={refetchDocs}
+                emptyLabel="Anexe as autorizações e documentos exigidos para este processo."
+                onDelete={async (file) => {
+                  await deleteAttachment(file.id);
+                  await refetchDocs();
+                }}
+              />
             </div>
           </div>
         )}
@@ -666,7 +688,13 @@ export default function ExhumationsPage() {
         open={uploadOpen}
         onClose={() => setUploadOpen(false)}
         title="Documentos do processo"
-        onUpload={(files) => setDocs((list) => [...files, ...list])}
+        onUpload={async (files) => {
+          if (!detail) return;
+          for (const f of files) {
+            await uploadAttachment({ type: "exhumation", id: detail, file: f.file, category: f.category, fileName: f.name });
+          }
+          await refetchDocs();
+        }}
       />
 
       <ExportModal

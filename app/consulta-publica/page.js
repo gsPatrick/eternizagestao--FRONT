@@ -48,7 +48,7 @@ const SITUACOES = [
   "Em perpetuidade",
 ];
 
-const EMPTY_FILTERS = { quadra: "", lote: "", jazigo: "", situacao: "" };
+const EMPTY_FILTERS = { quadra: "", lote: "", jazigo: "", situacao: "", documento: "" };
 
 // Nome da cidade para o kicker: quando há tenant, vem do TenantTheme (lista da
 // API → nome real da cidade); sem tenant, cai no rótulo institucional genérico.
@@ -67,6 +67,7 @@ function SearchContent() {
     lote: params.get("lote") || "",
     jazigo: params.get("jazigo") || "",
     situacao: params.get("situacao") || "",
+    documento: params.get("documento") || "",
   };
   const [filters, setFilters] = useState(initialFilters);
   const [appliedFilters, setAppliedFilters] = useState(initialFilters);
@@ -210,6 +211,14 @@ function SearchContent() {
                     value={filters.jazigo}
                     onChange={(e) => setFilter("jazigo", e.target.value)}
                     placeholder="Ex.: JAZ-001"
+                  />
+                </label>
+                <label className={styles.filterField}>
+                  <span>Documento</span>
+                  <input
+                    value={filters.documento}
+                    onChange={(e) => setFilter("documento", e.target.value)}
+                    placeholder="CPF, RG ou nº da certidão"
                   />
                 </label>
                 <label className={styles.filterField}>

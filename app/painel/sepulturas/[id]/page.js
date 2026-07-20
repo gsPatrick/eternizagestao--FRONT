@@ -23,9 +23,15 @@ import FileViewer from "@/components/organisms/FileViewer/FileViewer";
 import Skeleton from "@/components/atoms/Skeleton/Skeleton";
 import ErrorState from "@/components/molecules/ErrorState/ErrorState";
 import { isShapeComplete } from "@/components/organisms/MapCanvas/shape-model";
-import { DEMO_CERTIDAO_PDF, DEMO_CONTRATO_PDF, DEMO_FOTO } from "@/lib/mock-files";
+import { DEMO_CERTIDAO_PDF, DEMO_CONTRATO_PDF } from "@/lib/mock-files";
 
 import { useResource } from "@/lib/api/useResource";
+import {
+  listAttachments,
+  uploadAttachment,
+  deleteAttachment,
+  toAttachmentView,
+} from "@/lib/api/resources/attachments";
 import {
   getGraveSummary,
   getGraveTimeline,
@@ -87,12 +93,6 @@ function yearsBetween(start = "", end = "") {
 
 // financeiro-resumo vem da feature de billings (não integrada nesta tela)
 const FINANCE = [];
-
-const INITIAL_ATTACHMENTS = [
-  { name: "certidao-obito-maria.pdf", category: "Certidão de óbito", size: "240 KB", url: DEMO_CERTIDAO_PDF },
-  { name: "contrato-concessao.pdf", category: "Contrato", size: "1,2 MB", url: DEMO_CONTRATO_PDF },
-  { name: "foto-jazigo.svg", category: "Foto", size: "3,4 MB", url: DEMO_FOTO },
-];
 
 const TIMELINE_TONE = {
   pagamento: "success",
@@ -163,6 +163,18 @@ export default function GraveDetailPage() {
   );
   const { data: peopleData } = useResource(({ signal }) => listPeople({ perPage: 100 }, { signal }), []);
   const { data: deceasedData } = useResource(({ signal }) => listDeceased({ perPage: 100 }, { signal }), []);
+
+  // anexos reais do jazigo (attachableType = grave) — fetch/loading/erro via API
+  const {
+    data: attachmentsData,
+    loading: attachmentsLoading,
+    error: attachmentsError,
+    refetch: refetchAttachments,
+  } = useResource(({ signal }) => listAttachments({ type: "grave", id, signal }), [id]);
+  const attachments = useMemo(
+    () => (attachmentsData || []).map(toAttachmentView),
+    [attachmentsData]
+  );
 
   const PEOPLE = useMemo(
     () => (peopleData?.data ?? []).map((p) => ({ id: p.id, name: p.fullName, cpf: p.cpf || "" })),
@@ -302,7 +314,6 @@ export default function GraveDetailPage() {
   const [officialForm, setOfficialForm] = useState({
     tombType: "", utilizacao: "", carneiraPermission: "", notes: "",
   });
-  const [attachments, setAttachments] = useState(INITIAL_ATTACHMENTS);
   const [exhumTarget, setExhumTarget] = useState(null);
   const [saving, setSaving] = useState(false);
   const [actionError, setActionError] = useState(null);
@@ -660,7 +671,17 @@ export default function GraveDetailPage() {
                           Adicionar anexo
                         </Button>
                       </div>
-                      <AttachmentList files={attachments} />
+                      <AttachmentList
+                        files={attachments}
+                        loading={attachmentsLoading}
+                        error={attachmentsError}
+                        onRetry={refetchAttachments}
+                        emptyLabel="Anexe certidões, contratos e fotos deste jazigo."
+                        onDelete={async (file) => {
+                          await deleteAttachment(file.id);
+                          await refetchAttachments();
+                        }}
+                      />
                     </div>
                   ),
                 },
@@ -1188,7 +1209,12 @@ export default function GraveDetailPage() {
         open={uploadModal}
         onClose={() => setUploadModal(false)}
         title={`Anexos do jazigo ${GRAVE.code}`}
-        onUpload={(files) => setAttachments((list) => [...files, ...list])}
+        onUpload={async (files) => {
+          for (const f of files) {
+            await uploadAttachment({ type: "grave", id, file: f.file, category: f.category, fileName: f.name });
+          }
+          await refetchAttachments();
+        }}
       />
 
       <FileViewer open={Boolean(contractPreview)} file={contractPreview} onClose={() => setContractPreview(null)} />
