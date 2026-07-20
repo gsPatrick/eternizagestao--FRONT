@@ -13,8 +13,14 @@ import Skeleton from "@/components/atoms/Skeleton/Skeleton";
 import ErrorState from "@/components/molecules/ErrorState/ErrorState";
 import EmptyState from "@/components/molecules/EmptyState/EmptyState";
 import FileViewer from "@/components/organisms/FileViewer/FileViewer";
-import MapExplorer, { GRAVES, routeTo } from "@/components/organisms/MapExplorer/MapExplorer";
+import dynamic from "next/dynamic";
 import { useTenant } from "@/components/providers/TenantTheme/TenantTheme";
+
+// mapa real (Leaflet/OSM) — client-only
+const PublicCemeteryMap = dynamic(
+  () => import("@/components/organisms/PublicCemeteryMap/PublicCemeteryMap"),
+  { ssr: false }
+);
 import { useResource } from "@/lib/api/useResource";
 import { getGraves } from "@/lib/api/resources/portal";
 import { DEMO_CONTRATO_PDF } from "@/lib/mock-files";
@@ -93,10 +99,11 @@ export default function PortalJazigoDetailPage() {
     );
   }
 
-  // o mapa/contrato são ilustrativos (demo) — não fazem parte dos dados do portal
-  const mapGrave = GRAVES.find((item) => item.occupant) || GRAVES[0];
-  const route = routeTo(mapGrave);
   const isPending = grave.status === "pendente";
+  const hasMap = Boolean(
+    grave.cemeteryId &&
+      (grave.geoPolygon || (grave.latitude != null && grave.longitude != null))
+  );
 
   return (
     <PortalShell active="jazigos">
@@ -260,18 +267,38 @@ export default function PortalJazigoDetailPage() {
         open={mapOpen}
         onClose={() => setMapOpen(false)}
         title="Localização no cemitério"
-        subtitle={`Rota da entrada · ${route.meters} m · ~${route.minutes} min a pé`}
+        subtitle={grave.trail || grave.cemetery}
         width={620}
       >
-        <MapExplorer
-          layers={{ quadras: true, ruas: true, lotes: true, sepulturas: true, caminhos: true }}
-          selectedId={mapGrave.id}
-          route={route}
-          height={360}
-        />
-        <p className={styles.mapHint}>
-          Localização ilustrativa. No local, siga a rota guiada a partir do portão principal.
-        </p>
+        {hasMap ? (
+          <>
+            <PublicCemeteryMap
+              cemeteryId={grave.cemeteryId}
+              tenant={sub}
+              focusGraveId={grave.id}
+              grave={{
+                graveId: grave.id,
+                code: grave.code,
+                block: grave.mapLocation?.block,
+                street: grave.mapLocation?.street,
+                lot: grave.mapLocation?.lot,
+                geoPolygon: grave.geoPolygon,
+                latitude: grave.latitude,
+                longitude: grave.longitude,
+              }}
+              height={360}
+            />
+            <p className={styles.mapHint}>
+              Rota a partir da entrada do cemitério até o jazigo. No local, siga a
+              rota guiada pelo caminho destacado.
+            </p>
+          </>
+        ) : (
+          <EmptyState
+            title="Localização ainda não disponível"
+            message="Este jazigo ainda não foi demarcado no mapa do cemitério. Assim que a administração concluir a demarcação, a localização aparecerá aqui."
+          />
+        )}
       </Modal>
 
       {/* ---------- contrato ---------- */}

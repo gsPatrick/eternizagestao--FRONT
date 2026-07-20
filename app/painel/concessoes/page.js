@@ -21,7 +21,9 @@ import ErrorState from "@/components/molecules/ErrorState/ErrorState";
 import EmptyState from "@/components/molecules/EmptyState/EmptyState";
 
 import { useResource } from "@/lib/api/useResource";
-import { listConcessions, getConcessionsSummary } from "@/lib/api/resources/concessions";
+import { listConcessions, getConcessionsSummary, issueConcession } from "@/lib/api/resources/concessions";
+import { listGraves } from "@/lib/api/resources/graves";
+import { listPeople } from "@/lib/api/resources/people";
 
 const TODAY = new Date("2026-07-16");
 
@@ -62,6 +64,7 @@ function toRow(c) {
     contract: c.contractNumber || `#${String(c.id).slice(0, 8)}`,
     owner: c.person?.fullName || "—",
     cpf: c.person?.cpf || "",
+    responsible: c.responsible?.fullName || null,
     grave: c.grave?.code || "—",
     graveId: c.grave?.id || c.graveId,
     type: c.concessionType,
@@ -93,6 +96,55 @@ export default function ConcessionsListPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [newType, setNewType] = useState("perpetua");
+  // formulário de emissão de concessão (proprietário + responsável legal)
+  const emptyForm = {
+    graveId: "",
+    personId: "",
+    responsiblePersonId: "",
+    startDate: "2026-07-16",
+    endDate: "",
+    value: "",
+    contractNumber: "",
+  };
+  const [form, setForm] = useState(emptyForm);
+  const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState(null);
+  const setF = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
+  // fontes dos pickers (jazigos e pessoas do tenant)
+  const gravesRes = useResource(({ signal }) => listGraves({ perPage: 500 }, { signal }), []);
+  const peopleRes = useResource(({ signal }) => listPeople({ perPage: 500 }, { signal }), []);
+  const graveOptions = useMemo(() => gravesRes.data?.data ?? [], [gravesRes.data]);
+  const peopleOptions = useMemo(() => peopleRes.data?.data ?? [], [peopleRes.data]);
+
+  async function submitConcession() {
+    if (!form.graveId || !form.personId) {
+      setFormError("Selecione o jazigo e o concessionário (proprietário).");
+      return;
+    }
+    setSubmitting(true);
+    setFormError(null);
+    try {
+      const rawValue = String(form.value || "").replace(/[^\d.,]/g, "").replace(/\.(?=\d{3})/g, "").replace(",", ".");
+      await issueConcession(form.graveId, {
+        personId: form.personId,
+        responsiblePersonId: form.responsiblePersonId || undefined,
+        concessionType: newType,
+        startDate: form.startDate || undefined,
+        endDate: newType === "temporaria" ? form.endDate || undefined : undefined,
+        value: rawValue ? Number(rawValue) : undefined,
+        contractNumber: form.contractNumber || undefined,
+      });
+      setModalOpen(false);
+      setForm(emptyForm);
+      refetch();
+      summaryRes.refetch();
+    } catch (e) {
+      setFormError(e?.message || "Não foi possível emitir a concessão.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   // debounce da busca (evita um request por tecla)
   useEffect(() => {
@@ -167,7 +219,9 @@ export default function ConcessionsListPage() {
                 <Avatar name={row.owner} size="sm" />
                 <span className={styles.personInfo}>
                   <span className={styles.personName}>{row.owner}</span>
-                  <span className={styles.personCpf}>{row.cpf}</span>
+                  <span className={styles.personCpf}>
+                    {row.responsible ? `resp.: ${row.responsible}` : row.cpf}
+                  </span>
                 </span>
               </span>
             ),
@@ -345,20 +399,64 @@ export default function ConcessionsListPage() {
         footer={
           <>
             <Button variant="ghost" onClick={() => setModalOpen(false)}>Cancelar</Button>
-            <Button disabled onClick={() => setModalOpen(false)}>Emitir concessão</Button>
+            <Button
+              loading={submitting}
+              disabled={!form.graveId || !form.personId}
+              onClick={submitConcession}
+            >
+              Emitir concessão
+            </Button>
           </>
         }
       >
-        <form className={styles.form} onSubmit={(e) => e.preventDefault()}>
+        <form className={styles.form} onSubmit={(e) => { e.preventDefault(); submitConcession(); }}>
           <div className={styles.formGrid}>
-            <FormField label="Jazigo" required hint="Apenas unidades sem concessão ativa">
-              <Select defaultValue="" disabled>
-                <option value="" disabled>Selecione a unidade…</option>
+            <FormField label="Jazigo" required hint="A unidade não pode ter concessão ativa">
+              <Select
+                value={form.graveId}
+                onChange={(e) => setF("graveId", e.target.value)}
+                disabled={gravesRes.loading}
+              >
+                <option value="" disabled>
+                  {gravesRes.loading ? "Carregando jazigos…" : "Selecione a unidade…"}
+                </option>
+                {graveOptions.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.code}{g.status?.name ? ` · ${g.status.name}` : ""}
+                  </option>
+                ))}
               </Select>
             </FormField>
-            <FormField label="Concessionário" required hint="Responsável legal pela unidade">
-              <Select defaultValue="" disabled>
-                <option value="" disabled>Selecione a pessoa…</option>
+            <FormField label="Concessionário (proprietário)" required hint="Titular legal da concessão">
+              <Select
+                value={form.personId}
+                onChange={(e) => setF("personId", e.target.value)}
+                disabled={peopleRes.loading}
+              >
+                <option value="" disabled>
+                  {peopleRes.loading ? "Carregando pessoas…" : "Selecione a pessoa…"}
+                </option>
+                {peopleOptions.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.fullName}{p.cpf ? ` · ${p.cpf}` : ""}
+                  </option>
+                ))}
+              </Select>
+            </FormField>
+            <FormField label="Responsável legal" hint="Opcional — quem responde pelo jazigo (pode diferir do proprietário)">
+              <Select
+                value={form.responsiblePersonId}
+                onChange={(e) => setF("responsiblePersonId", e.target.value)}
+                disabled={peopleRes.loading}
+              >
+                <option value="">Sem responsável distinto</option>
+                {peopleOptions
+                  .filter((p) => p.id !== form.personId)
+                  .map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.fullName}{p.cpf ? ` · ${p.cpf}` : ""}
+                    </option>
+                  ))}
               </Select>
             </FormField>
             <FormField label="Tipo de concessão" required>
@@ -368,21 +466,30 @@ export default function ConcessionsListPage() {
               </Select>
             </FormField>
             <FormField label="Início da vigência" required>
-              <Input type="date" defaultValue="2026-07-16" />
+              <Input type="date" value={form.startDate} onChange={(e) => setF("startDate", e.target.value)} />
             </FormField>
             {newType === "temporaria" && (
               <FormField label="Fim da vigência" required hint="Validade da concessão temporária">
-                <Input type="date" defaultValue="2031-07-16" />
+                <Input type="date" value={form.endDate} onChange={(e) => setF("endDate", e.target.value)} />
               </FormField>
             )}
+            <FormField label="Nº do contrato" hint="Opcional">
+              <Input
+                placeholder="CON-2026-0001"
+                value={form.contractNumber}
+                onChange={(e) => setF("contractNumber", e.target.value)}
+              />
+            </FormField>
             <FormField label="Valor da concessão">
-              <Input placeholder="R$ 0,00" inputMode="decimal" />
+              <Input
+                placeholder="R$ 0,00"
+                inputMode="decimal"
+                value={form.value}
+                onChange={(e) => setF("value", e.target.value)}
+              />
             </FormField>
           </div>
-          <Alert tone="info">
-            A emissão de concessões (seleção de jazigo livre e titular) será
-            habilitada junto da integração das telas de jazigos e pessoas.
-          </Alert>
+          {formError && <Alert tone="danger">{formError}</Alert>}
         </form>
       </Modal>
 

@@ -191,6 +191,8 @@ export default function ConcessionDetailPage() {
       cpf: c.person?.cpf || "—",
       phone: c.person?.phonePrimary || c.person?.whatsapp || "—",
       email: c.person?.email || "—",
+      responsible: c.responsible?.fullName || null,
+      responsibleId: c.responsible?.id || null,
       value: formatBRL(c.value),
       acquisition: ACQUISITION_LABEL[c.acquisitionMethod] || "—",
     };
@@ -393,6 +395,10 @@ export default function ConcessionDetailPage() {
             <dl className={styles.detailList}>
               <div className={styles.detailRow}><dt>Telefone</dt><dd>{view.phone}</dd></div>
               <div className={styles.detailRow}><dt>E-mail</dt><dd className={styles.small}>{view.email}</dd></div>
+              <div className={styles.detailRow}>
+                <dt>Responsável legal</dt>
+                <dd>{view.responsible || "— (mesmo que o titular)"}</dd>
+              </div>
               <div className={styles.detailRow}><dt>Valor pago</dt><dd>{view.value}</dd></div>
             </dl>
           </article>

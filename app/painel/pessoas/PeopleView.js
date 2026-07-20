@@ -196,6 +196,28 @@ export default function PeopleView({
     }
   }
 
+  // Upload da foto DIRETO no modal de detalhe (sem abrir o form de edição).
+  // Sobe na hora para o id em detalhe, atualiza o preview, a lista e o detalhe.
+  const [detailPhotoUploading, setDetailPhotoUploading] = useState(false);
+  async function handleDetailPhoto(file) {
+    if (!file || !detailId) return;
+    if (!file.type?.startsWith("image/")) {
+      flash("Envie um arquivo de imagem (PNG ou JPEG).", "danger");
+      return;
+    }
+    setDetailPhotoUploading(true);
+    try {
+      await uploadPersonPhoto(detailId, file);
+      flash("Foto atualizada.", "success");
+      refetchDetail();
+      refreshList();
+    } catch (e) {
+      flash(e?.message || "Não foi possível enviar a foto.", "danger");
+    } finally {
+      setDetailPhotoUploading(false);
+    }
+  }
+
   // ViaCEP: com o CEP completo, preenche cidade/UF e logradouro automaticamente
   async function handleCep(raw) {
     const zip = maskCep(raw);
@@ -542,7 +564,28 @@ export default function PeopleView({
         {!detailLoading && !detailError && detail && (
           <div className={styles.detailBody}>
             <div className={styles.profileRow}>
-              <Avatar name={detail.name} src={detail.photoUrl} size="lg" />
+              <label className={styles.detailAvatar} title="Clique para enviar ou trocar a foto">
+                <input
+                  type="file"
+                  accept="image/*"
+                  className={styles.uploadInput}
+                  disabled={detailPhotoUploading}
+                  onChange={(e) => {
+                    handleDetailPhoto(e.target.files?.[0]);
+                    e.target.value = "";
+                  }}
+                />
+                <Avatar name={detail.name} src={detail.photoUrl} size="lg" />
+                <span className={styles.avatarEditBadge} aria-hidden="true">
+                  {detailPhotoUploading ? (
+                    <span className={styles.avatarSpinner} />
+                  ) : (
+                    <svg viewBox="0 0 16 16" fill="none">
+                      <path d="M4 12.5V10l6.2-6.2a1.4 1.4 0 0 1 2 2L6 12H4Z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+                    </svg>
+                  )}
+                </span>
+              </label>
               <div className={styles.profileInfo}>
                 <div className={styles.rolesCell}>
                   {detail.roles.map((r) => (
@@ -606,6 +649,34 @@ export default function PeopleView({
                 <p className={styles.emptyNote}>Nenhuma concessão em nome desta pessoa.</p>
               )}
             </section>
+
+            {detail.responsibleFor?.length > 0 && (
+              <section className={styles.detailSection}>
+                <span className={styles.sectionLabel}>
+                  Responsável por ({detail.responsibleFor.length})
+                </span>
+                <ul className={styles.linkList}>
+                  {detail.responsibleFor.map((c) => (
+                    <li key={c.id} className={styles.linkRow}>
+                      <span className={styles.linkRowIcon}>
+                        <svg viewBox="0 0 16 16" fill="none">
+                          <path d="M8 2.5 3 5.2v3.1c0 3 2.2 4.6 5 5.7 2.8-1.1 5-2.7 5-5.7V5.2L8 2.5Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+                        </svg>
+                      </span>
+                      <div className={styles.linkRowInfo}>
+                        <span className={styles.linkRowTitle}>Jazigo {c.grave}</span>
+                        <span className={styles.linkRowMeta}>
+                          Proprietário: {c.owner} · concessão {c.type.toLowerCase()} · {c.status}
+                        </span>
+                      </div>
+                      <Link href={`/painel/concessoes/${c.id}`} className={styles.linkRowAction}>
+                        Ver concessão →
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
 
             <section className={styles.detailSection}>
               <div className={styles.sectionHead}>

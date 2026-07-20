@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import styles from "./page.module.css";
 
 import Button from "@/components/atoms/Button/Button";
@@ -16,7 +17,6 @@ import Alert from "@/components/molecules/Alert/Alert";
 import Pagination from "@/components/molecules/Pagination/Pagination";
 import DataTable from "@/components/organisms/DataTable/DataTable";
 import ExportModal from "@/components/molecules/ExportModal/ExportModal";
-import MapStudio from "@/components/organisms/MapStudio/MapStudio";
 import Skeleton from "@/components/atoms/Skeleton/Skeleton";
 import ErrorState from "@/components/molecules/ErrorState/ErrorState";
 import EmptyState from "@/components/molecules/EmptyState/EmptyState";
@@ -27,6 +27,7 @@ import {
   getGraveStatusCounts,
   listCemeteries,
   listBlocks,
+  createGrave,
   adaptGraveRow,
   normalizeStatusSlug,
   frontStatusToApiSlug,
@@ -34,6 +35,7 @@ import {
   TOMB_TYPE_OPTIONS,
   UTILIZACAO_OPTIONS,
 } from "@/lib/api/resources/graves";
+import { getStructure } from "@/lib/api/resources/cemeteries";
 
 const STATUS_META = {
   livre: { label: "Livre", tone: "success" },
@@ -58,12 +60,29 @@ export default function GravesListPage() {
   const [page, setPage] = useState(1);
   const [modalOpen, setModalOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
-  const [studioOpen, setStudioOpen] = useState(false);
   const [newType, setNewType] = useState("jazigo");
   const [saving, setSaving] = useState(false);
+  const [createError, setCreateError] = useState(null);
   // Campos oficiais dos modelos de documento (certidão/autorização).
   const [tombType, setTombType] = useState(TOMB_TYPE_OPTIONS[0]);
   const [tombTypeFree, setTombTypeFree] = useState("");
+  const router = useRouter();
+
+  // formulário real de nova sepultura (vínculo à estrutura + campos oficiais)
+  const emptyGrave = {
+    blockId: "",
+    streetId: "",
+    lotId: "",
+    code: "",
+    capacity: "",
+    statusSlug: "livre",
+    parentGraveId: "",
+    utilizacao: UTILIZACAO_OPTIONS[0],
+    carneiraPermission: "",
+    notes: "",
+  };
+  const [gForm, setGForm] = useState(emptyGrave);
+  const setG = (k, v) => setGForm((f) => ({ ...f, [k]: v }));
 
   // ---- dados da API ----
   const listParams = useMemo(
@@ -116,22 +135,68 @@ export default function GravesListPage() {
   );
   const blocks = blocksData ?? [];
 
+  // estrutura completa (quadra→rua→lote) para os selects em cascata do create
+  const { data: structData } = useResource(
+    ({ signal }) => (cemetery ? getStructure(cemetery.id, { signal }) : Promise.resolve(null)),
+    [cemetery?.id]
+  );
+  const structBlocks = structData?.blocks ?? [];
+  const streetOptions = useMemo(() => {
+    const b = structBlocks.find((x) => x.id === gForm.blockId);
+    return b?.streets ?? [];
+  }, [structBlocks, gForm.blockId]);
+  const lotOptions = useMemo(() => {
+    const s = streetOptions.find((x) => x.id === gForm.streetId);
+    return s?.lots ?? [];
+  }, [streetOptions, gForm.streetId]);
+  // jazigos/túmulos existentes = pais possíveis para gaveta
+  const parentOptions = useMemo(
+    () => rows.filter((r) => ["jazigo", "tumulo"].includes(labelToUnitType(r.type) || r.unitType)),
+    [rows]
+  );
+
   function openModal() {
+    setGForm(emptyGrave);
+    setNewType("jazigo");
+    setTombType(TOMB_TYPE_OPTIONS[0]);
+    setTombTypeFree("");
+    setCreateError(null);
     setModalOpen(true);
   }
 
-  function goToMap() {
-    setModalOpen(false);
-    setStudioOpen(true);
-  }
-
-  function fakeCreate() {
+  // Cria a sepultura de verdade. "demarcar" → abre o detalhe (mapa real) após criar.
+  async function submitGrave({ demarcate = false } = {}) {
+    if (!gForm.lotId || !gForm.code.trim()) {
+      setCreateError("Informe a quadra/rua/lote e o código da unidade.");
+      return;
+    }
     setSaving(true);
-    setTimeout(() => {
-      setSaving(false);
+    setCreateError(null);
+    try {
+      const body = {
+        lotId: gForm.lotId,
+        code: gForm.code.trim(),
+        unitType: newType,
+        capacity: gForm.capacity ? Number(gForm.capacity) : undefined,
+        parentGraveId: newType === "gaveta" ? gForm.parentGraveId || undefined : undefined,
+        tombType: tombType === "__free" ? tombTypeFree || undefined : tombType || undefined,
+        utilizacao: gForm.utilizacao || undefined,
+        carneiraPermission: gForm.carneiraPermission || undefined,
+        notes: gForm.notes || undefined,
+      };
+      const created = await createGrave(body);
       setModalOpen(false);
-      setStudioOpen(false);
-    }, 1000);
+      setGForm(emptyGrave);
+      refetch();
+      const newId = created?.id || created?.data?.id;
+      if (demarcate && newId) {
+        router.push(`/painel/sepulturas/${newId}`);
+      }
+    } catch (e) {
+      setCreateError(e?.message || "Não foi possível cadastrar a sepultura.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   const totalPages = meta?.totalPages ?? 1;
@@ -335,49 +400,77 @@ export default function GravesListPage() {
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         title="Nova sepultura"
-        subtitle="Passo 1 de 2 · Dados e vínculo à estrutura do cemitério"
+        subtitle="Dados e vínculo à estrutura do cemitério"
         width={620}
         footer={
           <>
             <Button variant="ghost" onClick={() => setModalOpen(false)}>Cancelar</Button>
-            <Button onClick={goToMap}>Continuar para o mapa</Button>
+            <Button
+              variant="secondary"
+              loading={saving}
+              disabled={!gForm.lotId || !gForm.code.trim()}
+              onClick={() => submitGrave({ demarcate: false })}
+            >
+              Cadastrar
+            </Button>
+            <Button
+              loading={saving}
+              disabled={!gForm.lotId || !gForm.code.trim()}
+              onClick={() => submitGrave({ demarcate: true })}
+            >
+              Cadastrar e demarcar
+            </Button>
           </>
         }
       >
-        <form className={styles.form} onSubmit={(e) => e.preventDefault()}>
+        <form className={styles.form} onSubmit={(e) => { e.preventDefault(); submitGrave({ demarcate: false }); }}>
           <div className={styles.formGrid}>
-            <FormField label="Cemitério" required>
-              <Select defaultValue="municipal">
-                <option value="municipal">Cemitério Municipal</option>
-                <option value="jardim">Cemitério Jardim da Paz</option>
+            <FormField label="Cemitério">
+              <Select value={cemetery?.id || ""} disabled>
+                <option value={cemetery?.id || ""}>{cemetery?.name || "Cemitério"}</option>
               </Select>
             </FormField>
             <FormField label="Quadra" required>
-              <Select defaultValue="">
+              <Select
+                value={gForm.blockId}
+                onChange={(e) => setGForm((f) => ({ ...f, blockId: e.target.value, streetId: "", lotId: "" }))}
+              >
                 <option value="" disabled>Selecione…</option>
-                {["A", "B", "C", "D", "E", "F"].map((b) => (
-                  <option key={b} value={b}>Quadra {b}</option>
+                {structBlocks.map((b) => (
+                  <option key={b.id} value={b.id}>Quadra {b.name || b.code}</option>
                 ))}
               </Select>
             </FormField>
             <FormField label="Rua" required>
-              <Select defaultValue="">
-                <option value="" disabled>Selecione…</option>
-                <option value="r1">Rua 1</option>
-                <option value="r2">Rua 2</option>
-                <option value="r3">Rua 3</option>
+              <Select
+                value={gForm.streetId}
+                onChange={(e) => setGForm((f) => ({ ...f, streetId: e.target.value, lotId: "" }))}
+                disabled={!gForm.blockId}
+              >
+                <option value="" disabled>{gForm.blockId ? "Selecione…" : "Escolha a quadra"}</option>
+                {streetOptions.map((s) => (
+                  <option key={s.id} value={s.id}>Rua {s.name || s.code}</option>
+                ))}
               </Select>
             </FormField>
             <FormField label="Lote" required>
-              <Select defaultValue="">
-                <option value="" disabled>Selecione…</option>
-                <option value="l1">Lote 01</option>
-                <option value="l2">Lote 02</option>
-                <option value="l3">Lote 03</option>
+              <Select
+                value={gForm.lotId}
+                onChange={(e) => setG("lotId", e.target.value)}
+                disabled={!gForm.streetId}
+              >
+                <option value="" disabled>{gForm.streetId ? "Selecione…" : "Escolha a rua"}</option>
+                {lotOptions.map((l) => (
+                  <option key={l.id} value={l.id}>Lote {l.code || l.name}</option>
+                ))}
               </Select>
             </FormField>
             <FormField label="Código da unidade" required hint="Único por cemitério">
-              <Input placeholder="Ex.: A-R1-L2-004" />
+              <Input
+                placeholder="Ex.: A-R1-L2-004"
+                value={gForm.code}
+                onChange={(e) => setG("code", e.target.value)}
+              />
             </FormField>
             <FormField label="Tipo" required>
               <Select value={newType} onChange={(e) => setNewType(e.target.value)}>
@@ -389,22 +482,22 @@ export default function GravesListPage() {
             </FormField>
             {newType === "gaveta" && (
               <FormField label="Jazigo pai" required>
-                <Select defaultValue="">
+                <Select value={gForm.parentGraveId} onChange={(e) => setG("parentGraveId", e.target.value)}>
                   <option value="" disabled>Selecione o jazigo…</option>
-                  <option value="1">A-R1-L1-001</option>
-                  <option value="6">B-R2-L4-011</option>
+                  {parentOptions.map((p) => (
+                    <option key={p.id} value={p.id}>{p.code}</option>
+                  ))}
                 </Select>
               </FormField>
             )}
             <FormField label="Capacidade" hint="Nº de gavetas/vagas">
-              <Input type="number" min="1" defaultValue={newType === "jazigo" ? 4 : 1} />
-            </FormField>
-            <FormField label="Situação inicial">
-              <Select defaultValue="livre">
-                {Object.entries(STATUS_META).map(([key, meta]) => (
-                  <option key={key} value={key}>{meta.label}</option>
-                ))}
-              </Select>
+              <Input
+                type="number"
+                min="1"
+                placeholder={newType === "jazigo" ? "4" : "1"}
+                value={gForm.capacity}
+                onChange={(e) => setG("capacity", e.target.value)}
+              />
             </FormField>
             {/* Campos oficiais exigidos pelos modelos de documento do cliente */}
             <FormField label="Tipo do túmulo" hint="usado na certidão/autorização">
@@ -425,44 +518,36 @@ export default function GravesListPage() {
               </FormField>
             )}
             <FormField label="Utilização">
-              <Select defaultValue={UTILIZACAO_OPTIONS[0]}>
+              <Select value={gForm.utilizacao} onChange={(e) => setG("utilizacao", e.target.value)}>
                 {UTILIZACAO_OPTIONS.map((u) => (
                   <option key={u} value={u}>{u}</option>
                 ))}
               </Select>
             </FormField>
             <FormField label="Permissão de carneira">
-              <Select defaultValue="">
+              <Select value={gForm.carneiraPermission} onChange={(e) => setG("carneiraPermission", e.target.value)}>
                 <option value="">Não informado</option>
                 <option value="Sim">Sim</option>
                 <option value="Não">Não</option>
               </Select>
             </FormField>
             <FormField label="Observação" className={styles.spanTwo}>
-              <Textarea rows={2} placeholder="Observações da sepultura (opcional)" />
+              <Textarea
+                rows={2}
+                placeholder="Observações da sepultura (opcional)"
+                value={gForm.notes}
+                onChange={(e) => setG("notes", e.target.value)}
+              />
             </FormField>
           </div>
-          <Alert tone="info" title="Vínculo ao mapa">
-            No próximo passo o mapa abre em tela cheia: aproxime até o lote e
-            demarque o quadradinho da unidade ligando os pontos na imagem.
+          {createError && <Alert tone="danger">{createError}</Alert>}
+          <Alert tone="info" title="Demarcação no mapa">
+            Após cadastrar, use <strong>Cadastrar e demarcar</strong> para abrir a
+            sepultura e desenhar o contorno sobre a ortofoto real do cemitério.
           </Alert>
         </form>
       </Modal>
 
-      <MapStudio
-        open={studioOpen}
-        onClose={() => {
-          setStudioOpen(false);
-          setModalOpen(true);
-        }}
-        title="Nova sepultura · Demarcação"
-        subtitle="Passo 2 de 2 · aproxime até o lote e ligue os pontos da unidade"
-        onSave={fakeCreate}
-        saveLabel="Criar com demarcação"
-        onSkip={fakeCreate}
-        skipLabel="Criar sem demarcar"
-        saving={saving}
-      />
       <ExportModal
         open={exportOpen}
         onClose={() => setExportOpen(false)}

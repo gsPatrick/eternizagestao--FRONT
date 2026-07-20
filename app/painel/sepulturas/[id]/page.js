@@ -15,14 +15,12 @@ import FormField from "@/components/molecules/FormField/FormField";
 import Modal from "@/components/molecules/Modal/Modal";
 import Alert from "@/components/molecules/Alert/Alert";
 import Tabs from "@/components/molecules/Tabs/Tabs";
-import MapCanvas from "@/components/organisms/MapCanvas/MapCanvas";
-import MapStudio from "@/components/organisms/MapStudio/MapStudio";
+import GraveMap from "@/components/organisms/GraveMap/GraveMap";
 import AttachmentList from "@/components/molecules/AttachmentList/AttachmentList";
 import AttachmentUploadModal from "@/components/molecules/AttachmentUploadModal/AttachmentUploadModal";
 import FileViewer from "@/components/organisms/FileViewer/FileViewer";
 import Skeleton from "@/components/atoms/Skeleton/Skeleton";
 import ErrorState from "@/components/molecules/ErrorState/ErrorState";
-import { isShapeComplete } from "@/components/organisms/MapCanvas/shape-model";
 import { DEMO_CERTIDAO_PDF, DEMO_CONTRATO_PDF } from "@/lib/mock-files";
 
 import { useResource } from "@/lib/api/useResource";
@@ -245,13 +243,19 @@ export default function GraveDetailPage() {
         code: g.code,
         type: unitTypeLabel(g.unitType),
         cemetery: g.cemetery?.name || "—",
+        cemeteryId: g.cemetery?.id || null,
         block: g.lot?.street?.block ? `Quadra ${g.lot.street.block.name || g.lot.street.block.code}` : "—",
         street: g.lot?.street?.name || g.lot?.street?.code || "—",
         lot: g.lot?.code ? `Lote ${g.lot.code}` : "—",
         capacity: g.capacity || 0,
         areaM2: g.areaM2 ? `${Number(g.areaM2).toLocaleString("pt-BR", { minimumFractionDigits: 2 })} m²` : "—",
         createdAt: formatDate(g.createdAt),
-        shape: g.geoPolygon || null,
+        cemeteryId: g.cemetery?.id || null,
+        statusSlug: g.status?.slug || null,
+        occupant: g.owner?.person?.fullName || g.owner?.fullName || null,
+        geoPolygon: g.geoPolygon || null,
+        latitude: g.latitude ?? null,
+        longitude: g.longitude ?? null,
         // Campos oficiais dos modelos de documento (certidão/autorização).
         tombType: g.tombType || "",
         utilizacao: g.utilizacao || "",
@@ -301,7 +305,6 @@ export default function GraveDetailPage() {
   );
 
   // ---- estado local (modais, formulários, feedback) ----
-  const [demarcating, setDemarcating] = useState(false);
   const [statusModal, setStatusModal] = useState(false);
   const [blockModal, setBlockModal] = useState(false);
   const [burialModal, setBurialModal] = useState(false);
@@ -357,8 +360,9 @@ export default function GraveDetailPage() {
   const concession = view.concession;
   const drawers = view.drawers;
   const occupants = view.occupants;
-  const shape = GRAVE.shape;
-  const mapped = isShapeComplete(shape);
+  const mapped =
+    Boolean(GRAVE.geoPolygon) ||
+    (GRAVE.latitude != null && GRAVE.longitude != null);
   const freeDrawers = drawers.filter((d) => !d.occupant);
   const isFull = freeDrawers.length === 0;
 
@@ -492,10 +496,6 @@ export default function GraveDetailPage() {
     }
   }
 
-  function saveDemarcation(nextShape) {
-    runAction(() => updateGrave(id, { geoPolygon: nextShape }), { closeAll: () => setDemarcating(false) });
-  }
-
   // Abre o modal dos campos oficiais pré-preenchido com os valores atuais.
   function openOfficialEdit() {
     setOfficialForm({
@@ -572,22 +572,22 @@ export default function GraveDetailPage() {
                 <h2 className={styles.cardTitle}>Localização no mapa</h2>
                 <p className={styles.cardSub}>Demarcação sobre a ortofoto do cemitério</p>
               </div>
-              <Button variant="secondary" size="sm" onClick={() => setDemarcating(true)}>
-                {mapped ? "Editar demarcação" : "Demarcar no mapa"}
-              </Button>
             </header>
-            {mapped ? (
-              <MapCanvas shape={shape} mode="view" height={300} />
-            ) : (
-              <div className={styles.mapEmpty}>
-                <svg viewBox="0 0 24 24" fill="none">
-                  <path d="M12 21s6-5.5 6-10a6 6 0 10-12 0c0 4.5 6 10 6 10z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
-                  <circle cx="12" cy="10.6" r="2.2" stroke="currentColor" strokeWidth="1.4" />
-                </svg>
-                <p>Esta sepultura ainda não foi demarcada na ortofoto.</p>
-                <Button size="sm" onClick={() => setDemarcating(true)}>Demarcar agora</Button>
-              </div>
-            )}
+            <GraveMap
+              cemeteryId={GRAVE.cemeteryId}
+              grave={{
+                id: id,
+                code: GRAVE.code,
+                status: GRAVE.statusSlug,
+                occupant: GRAVE.occupant,
+                geoPolygon: GRAVE.geoPolygon,
+                latitude: GRAVE.latitude,
+                longitude: GRAVE.longitude,
+              }}
+              editable
+              height={320}
+              onSaved={refetch}
+            />
           </article>
 
           <article className={styles.card}>
@@ -788,17 +788,6 @@ export default function GraveDetailPage() {
           </article>
         </div>
       </div>
-
-      {/* ---- estúdio de demarcação (tela cheia) ---- */}
-      <MapStudio
-        open={demarcating}
-        onClose={() => setDemarcating(false)}
-        title="Demarcação no mapa"
-        subtitle={`${GRAVE.code} · aproxime até o lote e ajuste a forma da unidade`}
-        initial={shape}
-        onSave={saveDemarcation}
-        saving={saving}
-      />
 
       {/* ---- mudar situação ---- */}
       <Modal

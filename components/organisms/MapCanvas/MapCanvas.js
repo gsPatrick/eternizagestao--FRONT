@@ -50,7 +50,7 @@ function clampView(vb) {
 }
 
 const MapCanvas = forwardRef(function MapCanvas(
-  { shape: shapeProp = null, onChange, mode = "view", tool = "hand", height = 340, marker = null, onPick },
+  { shape: shapeProp = null, onChange, mode = "view", tool = "hand", height = 340, marker = null, onPick, imageUrl = null },
   apiRef
 ) {
   const svgRef = useRef(null);
@@ -396,25 +396,40 @@ const MapCanvas = forwardRef(function MapCanvas(
           </pattern>
         </defs>
 
-        {/* fundo/ortofoto: nunca captura eventos — arrastar sempre navega */}
+        {/* fundo/ortofoto: nunca captura eventos — arrastar sempre navega.
+            Com imageUrl (ortofoto REAL do cemitério), exibimos a imagem; sem
+            ortofoto ainda, cai no placeholder ilustrativo de quadras. */}
         <g className={styles.bg}>
-          <rect width="800" height="500" fill="url(#grass)" />
-          <rect x="0" y="215" width="800" height="34" rx="4" fill="#f2f3ef" />
-          <rect x="272" y="0" width="20" height="500" fill="#f2f3ef" />
-          <rect x="512" y="0" width="20" height="500" fill="#f2f3ef" />
-          <line x1="0" y1="232" x2="800" y2="232" stroke="#d8dcd2" strokeWidth="1.5" strokeDasharray="10 8" vectorEffect="non-scaling-stroke" />
-          {BLOCKS.map((block) => (
-            <g key={block.label}>
-              <rect x={block.x} y={block.y} width={block.w} height={block.h} rx="8" fill="#dfe5da" stroke="#cbd3c4" strokeWidth="1" vectorEffect="non-scaling-stroke" />
-              <text x={block.x + 12} y={block.y + 19} className={styles.blockLabel}>QUADRA {block.label}</text>
-              {lotsFor(block).map((lot, index) => (
-                <rect key={index} x={lot.x} y={lot.y} width={lot.w} height={lot.h} rx="2.5" fill="#eef1ea" stroke="#d4dacb" strokeWidth="0.8" vectorEffect="non-scaling-stroke" />
+          {imageUrl ? (
+            <image
+              href={imageUrl}
+              x="0"
+              y="0"
+              width="800"
+              height="500"
+              preserveAspectRatio="xMidYMid slice"
+            />
+          ) : (
+            <>
+              <rect width="800" height="500" fill="url(#grass)" />
+              <rect x="0" y="215" width="800" height="34" rx="4" fill="#f2f3ef" />
+              <rect x="272" y="0" width="20" height="500" fill="#f2f3ef" />
+              <rect x="512" y="0" width="20" height="500" fill="#f2f3ef" />
+              <line x1="0" y1="232" x2="800" y2="232" stroke="#d8dcd2" strokeWidth="1.5" strokeDasharray="10 8" vectorEffect="non-scaling-stroke" />
+              {BLOCKS.map((block) => (
+                <g key={block.label}>
+                  <rect x={block.x} y={block.y} width={block.w} height={block.h} rx="8" fill="#dfe5da" stroke="#cbd3c4" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+                  <text x={block.x + 12} y={block.y + 19} className={styles.blockLabel}>QUADRA {block.label}</text>
+                  {lotsFor(block).map((lot, index) => (
+                    <rect key={index} x={lot.x} y={lot.y} width={lot.w} height={lot.h} rx="2.5" fill="#eef1ea" stroke="#d4dacb" strokeWidth="0.8" vectorEffect="non-scaling-stroke" />
+                  ))}
+                </g>
               ))}
-            </g>
-          ))}
-          {[[30, 30], [770, 40], [40, 470], [760, 470], [285, 470], [530, 30]].map(([x, y], i) => (
-            <circle key={i} cx={x} cy={y} r="11" fill="#c9d4bf" opacity="0.85" />
-          ))}
+              {[[30, 30], [770, 40], [40, 470], [760, 470], [285, 470], [530, 30]].map(([x, y], i) => (
+                <circle key={i} cx={x} cy={y} r="11" fill="#c9d4bf" opacity="0.85" />
+              ))}
+            </>
+          )}
         </g>
 
         {/* ---- forma da sepultura ---- */}
@@ -520,7 +535,9 @@ const MapCanvas = forwardRef(function MapCanvas(
       </div>
 
       {scale > 1.05 && <span className={styles.zoomBadge}>{Math.round(scale * 100)}%</span>}
-      <span className={styles.credit}>Ortofoto ilustrativa · aguardando imagem oficial do cemitério</span>
+      <span className={styles.credit}>
+        {imageUrl ? "Ortofoto oficial do cemitério" : "Ortofoto ilustrativa · aguardando imagem oficial do cemitério"}
+      </span>
     </div>
   );
 });

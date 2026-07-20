@@ -16,7 +16,13 @@ import EmptyState from "@/components/molecules/EmptyState/EmptyState";
 
 import { useResource, useMutation } from "@/lib/api/useResource";
 import { getUser } from "@/lib/api/session";
-import { listCemeteries, adaptCemetery } from "@/lib/api/resources/cemeteries";
+import {
+  listCemeteries,
+  adaptCemetery,
+  getStructure,
+  setStructureGeometry,
+  flattenStructure,
+} from "@/lib/api/resources/cemeteries";
 import {
   listOrthophotos,
   uploadOrthophoto,
@@ -87,6 +93,12 @@ export default function MapPage() {
   const [demarcTarget, setDemarcTarget] = useState(null);
   const [drawing, setDrawing] = useState(false);
   const [demarcMsg, setDemarcMsg] = useState(null);
+  // desenho: 'grave' (sepultura) | 'layer' (quadra/rua/lote)
+  const [drawMode, setDrawMode] = useState(null);
+
+  // camadas (quadra/rua/lote)
+  const [layerTarget, setLayerTarget] = useState(null);
+  const [layerMsg, setLayerMsg] = useState(null);
 
   // seleção / foco
   const [selectedGrave, setSelectedGrave] = useState(null);
@@ -148,9 +160,21 @@ export default function MapPage() {
     return list.map(adaptMapGrave);
   }, [gravesState.data]);
 
+  // estrutura (quadras/ruas/lotes) — para demarcar as camadas de navegação
+  const structState = useResource(
+    ({ signal }) =>
+      cemetery ? getStructure(cemetery, { signal }) : Promise.resolve(null),
+    [cemetery]
+  );
+  const structureFeatures = useMemo(
+    () => flattenStructure(structState.data),
+    [structState.data]
+  );
+
   const { mutate: doUpload, loading: uploading } = useMutation(uploadOrthophoto);
   const { mutate: doSaveOrtho, loading: savingOrtho } = useMutation(updateOrthophoto);
   const { mutate: doSetGeometry, loading: savingGeometry } = useMutation(setGraveGeometry);
+  const { mutate: doSetLayerGeometry, loading: savingLayer } = useMutation(setStructureGeometry);
 
   const cem = cemeteries.find((c) => c.id === cemetery);
 
@@ -168,7 +192,10 @@ export default function MapPage() {
   useEffect(() => {
     setPositioning(false);
     setDrawing(false);
+    setDrawMode(null);
     setDemarcTarget(null);
+    setLayerTarget(null);
+    setLayerMsg(null);
     setSelectedGrave(null);
     setFocusGrave(null);
     setDraftCorners(null);
@@ -302,12 +329,46 @@ export default function MapPage() {
   function startDemarcation() {
     if (!demarcTarget) return;
     setPositioning(false);
+    setLayerTarget(null);
     setDemarcMsg(null);
+    setDrawMode("grave");
     setDrawing(true);
   }
 
+  function startLayerDemarcation() {
+    if (!layerTarget) return;
+    setPositioning(false);
+    setDemarcTarget(null);
+    setLayerMsg(null);
+    setDrawMode("layer");
+    setDrawing(true);
+  }
+
+  function cancelDrawing() {
+    setDrawing(false);
+    setDrawMode(null);
+  }
+
+  // callback único de polígono: decide entre sepultura e camada pelo drawMode
   async function onGravePolygon({ geoPolygon, latitude, longitude }) {
     setDrawing(false);
+    const mode = drawMode;
+    setDrawMode(null);
+
+    if (mode === "layer") {
+      if (!layerTarget) return;
+      setLayerMsg(null);
+      try {
+        await doSetLayerGeometry(layerTarget.kind, layerTarget.id, geoPolygon);
+        await Promise.all([structState.refetch(), ctxState.refetch()]);
+        setLayerMsg({ tone: "success", text: `${layerTarget.label} demarcada no mapa.` });
+        setLayerTarget(null);
+      } catch (err) {
+        setLayerMsg({ tone: "danger", text: err?.message || "Não foi possível salvar a camada." });
+      }
+      return;
+    }
+
     if (!demarcTarget) return;
     setDemarcMsg(null);
     try {
@@ -600,8 +661,8 @@ export default function MapPage() {
                   </p>
                 )}
                 {demarcTarget &&
-                  (drawing ? (
-                    <Button variant="ghost" size="sm" onClick={() => setDrawing(false)}>
+                  (drawing && drawMode === "grave" ? (
+                    <Button variant="ghost" size="sm" onClick={cancelDrawing}>
                       Cancelar desenho
                     </Button>
                   ) : (
@@ -627,6 +688,62 @@ export default function MapPage() {
                 <p className={styles.mappedInfo}>
                   {mappedCount} de {graves.length} sepulturas demarcadas
                 </p>
+              </section>
+            )}
+
+            {/* camadas (quadra/rua/lote) */}
+            {canEdit && (
+              <section className={styles.panelSection}>
+                <span className={styles.panelLabel}>Camadas (quadra/rua/lote)</span>
+                <p className={styles.hint}>
+                  Desenhe o contorno das quadras, ruas e lotes para as camadas de
+                  navegação e organização do cemitério.
+                </p>
+                <div className={styles.cemeterySelect}>
+                  <Select
+                    value={layerTarget?.id || ""}
+                    onChange={(e) => {
+                      const f = structureFeatures.find((x) => x.id === e.target.value);
+                      setLayerTarget(f || null);
+                      setLayerMsg(null);
+                    }}
+                    aria-label="Quadra, rua ou lote"
+                    disabled={structState.loading || !structureFeatures.length}
+                  >
+                    <option value="">
+                      {structState.loading
+                        ? "Carregando estrutura…"
+                        : !structureFeatures.length
+                        ? "Nenhuma quadra/rua/lote cadastrada"
+                        : "Selecione quadra/rua/lote…"}
+                    </option>
+                    {structureFeatures.map((f) => (
+                      <option key={`${f.kind}-${f.id}`} value={f.id}>
+                        {f.label}
+                        {f.hasGeo ? " · demarcada" : ""}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+                {layerTarget &&
+                  (drawing && drawMode === "layer" ? (
+                    <Button variant="ghost" size="sm" onClick={cancelDrawing}>
+                      Cancelar desenho
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      onClick={startLayerDemarcation}
+                      loading={savingLayer}
+                    >
+                      {layerTarget.hasGeo ? "Redesenhar contorno" : "Desenhar contorno"}
+                    </Button>
+                  ))}
+                {layerMsg && (
+                  <div className={styles.msg}>
+                    <Alert tone={layerMsg.tone}>{layerMsg.text}</Alert>
+                  </div>
+                )}
               </section>
             )}
 
@@ -685,11 +802,15 @@ export default function MapPage() {
             {drawing && (
               <div className={styles.banner}>
                 <span className={styles.bannerText}>
-                  <strong>Demarcando {demarcTarget?.code}</strong> — clique para adicionar
-                  vértices e finalize no primeiro ponto
+                  <strong>
+                    {drawMode === "layer"
+                      ? `Demarcando ${layerTarget?.label}`
+                      : `Demarcando ${demarcTarget?.code}`}
+                  </strong>{" "}
+                  — clique para adicionar vértices e finalize no primeiro ponto
                 </span>
                 <div className={styles.bannerActions}>
-                  <Button variant="ghost" size="sm" onClick={() => setDrawing(false)}>
+                  <Button variant="ghost" size="sm" onClick={cancelDrawing}>
                     Cancelar
                   </Button>
                 </div>

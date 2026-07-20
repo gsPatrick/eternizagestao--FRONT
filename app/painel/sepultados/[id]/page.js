@@ -16,7 +16,7 @@ import Alert from "@/components/molecules/Alert/Alert";
 import AttachmentList from "@/components/molecules/AttachmentList/AttachmentList";
 import AttachmentUploadModal from "@/components/molecules/AttachmentUploadModal/AttachmentUploadModal";
 import FileViewer from "@/components/organisms/FileViewer/FileViewer";
-import MapCanvas from "@/components/organisms/MapCanvas/MapCanvas";
+import GraveMap from "@/components/organisms/GraveMap/GraveMap";
 import Skeleton from "@/components/atoms/Skeleton/Skeleton";
 import ErrorState from "@/components/molecules/ErrorState/ErrorState";
 import { maskCpf } from "@/lib/masks";
@@ -245,7 +245,11 @@ export default function DeceasedDetailPage() {
         code: g.parentGrave?.code || g.code,
         drawer: g.parentGrave ? g.code : g.unitType === "gaveta" ? g.code : null,
         trail: graveTrail(g),
-        shape: g.geoPolygon || null,
+        cemeteryId: g.cemeteryId || g.parentGrave?.cemeteryId || null,
+        statusSlug: g.status?.slug || null,
+        geoPolygon: g.geoPolygon || g.parentGrave?.geoPolygon || null,
+        latitude: g.latitude ?? g.parentGrave?.latitude ?? null,
+        longitude: g.longitude ?? g.parentGrave?.longitude ?? null,
       }
     : null;
 
@@ -302,7 +306,22 @@ export default function DeceasedDetailPage() {
                 </code>
               )}
             </header>
-            <MapCanvas shape={grave?.shape || null} mode="view" height={240} />
+            <GraveMap
+              cemeteryId={grave?.cemeteryId}
+              grave={
+                grave
+                  ? {
+                      id: grave.id,
+                      code: grave.code,
+                      status: grave.statusSlug,
+                      geoPolygon: grave.geoPolygon,
+                      latitude: grave.latitude,
+                      longitude: grave.longitude,
+                    }
+                  : null
+              }
+              height={240}
+            />
             <div className={styles.locationFoot}>
               <span>
                 Sepultado em <strong>{lastBurial}</strong>

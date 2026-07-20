@@ -19,7 +19,7 @@ import EmptyState from "@/components/molecules/EmptyState/EmptyState";
 import ErrorState from "@/components/molecules/ErrorState/ErrorState";
 import DataTable from "@/components/organisms/DataTable/DataTable";
 import ExportModal from "@/components/molecules/ExportModal/ExportModal";
-import MapCanvas from "@/components/organisms/MapCanvas/MapCanvas";
+import GraveMap from "@/components/organisms/GraveMap/GraveMap";
 import FileViewer from "@/components/organisms/FileViewer/FileViewer";
 import { DEMO_CERTIDAO_PDF } from "@/lib/mock-files";
 
@@ -431,7 +431,18 @@ export default function BurialsListPage() {
       >
         {detail && (
           <div className={styles.detailBody}>
-            <MapCanvas shape={detail.shape} mode="view" height={220} />
+            <GraveMap
+              cemeteryId={detail.cemeteryId}
+              grave={{
+                id: detail.graveId,
+                code: detail.grave,
+                status: detail.graveStatusSlug,
+                geoPolygon: detail.geoPolygon,
+                latitude: detail.latitude,
+                longitude: detail.longitude,
+              }}
+              height={220}
+            />
             <dl className={styles.detailGrid}>
               <div><dt>Sepultado</dt><dd>{detail.deceased}</dd></div>
               <div><dt>Data e hora</dt><dd>{detail.date} · {detail.time}</dd></div>

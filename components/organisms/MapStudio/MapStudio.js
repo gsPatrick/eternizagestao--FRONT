@@ -33,6 +33,7 @@ export default function MapStudio({
   onSkip,
   skipLabel = "Criar sem demarcar",
   saving = false,
+  imageUrl = null, // ortofoto REAL do cemitério (fundo do desenho)
 }) {
   const [mounted, setMounted] = useState(false);
   const [draft, setDraft] = useState(normalizeShape(initial));
@@ -97,7 +98,7 @@ export default function MapStudio({
       </header>
 
       <div className={styles.mapArea}>
-        <MapCanvas ref={canvasRef} shape={draft} onChange={setDraft} mode="draw" tool={tool} height="100%" />
+        <MapCanvas ref={canvasRef} shape={draft} onChange={setDraft} mode="draw" tool={tool} height="100%" imageUrl={imageUrl} />
         <div className={styles.hint}>
           <svg viewBox="0 0 16 16" fill="none">
             <circle cx="8" cy="8" r="6.4" stroke="currentColor" strokeWidth="1.3" />
