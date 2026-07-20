@@ -1,0 +1,219 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(20px, 3vw, 30px);
+  animation: pageIn 0.5s var(--ease-out) both;
+}
+
+@keyframes pageIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ---------- cabeçalho ---------- */
+.head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: clamp(1.8rem, 3.4vw, 2.6rem);
+  letter-spacing: -0.025em;
+  color: var(--color-ink);
+}
+
+.subtitle {
+  font-size: 15px;
+  color: var(--color-slate);
+}
+
+/* ---------- cartão de perfil ---------- */
+.profileCard {
+  display: flex;
+  align-items: center;
+  gap: clamp(16px, 3vw, 22px);
+  padding: clamp(18px, 2.6vw, 26px);
+  border-radius: 18px;
+  background: linear-gradient(160deg, var(--color-navy-deep), var(--color-navy));
+  color: #fff;
+}
+
+.profileInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.profileName {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: clamp(1.3rem, 2.4vw, 1.7rem);
+  letter-spacing: -0.02em;
+}
+
+.profileCpf {
+  font-size: 13.5px;
+  opacity: 0.82;
+}
+
+.profileBadges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+/* ---------- seções ---------- */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sectionHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 34px;
+}
+
+.sectionTitle {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  color: var(--color-ink);
+}
+
+.card {
+  padding: clamp(16px, 2.2vw, 22px);
+  border-radius: 16px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-mist);
+  box-shadow: var(--shadow-xs);
+}
+
+/* ---------- visualização (linhas) ---------- */
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 0;
+}
+
+.row + .row {
+  border-top: 1px solid var(--color-mist-soft);
+}
+
+.rowIcon {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  background: rgba(var(--color-navy-rgb), 0.08);
+  color: var(--color-navy);
+}
+
+.rowIcon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.rowText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.rowLabel {
+  font-size: 12.5px;
+  color: var(--color-slate);
+}
+
+.rowValue {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-ink);
+  letter-spacing: -0.01em;
+  word-break: break-word;
+}
+
+/* ---------- formulário de edição ---------- */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.formField {
+  width: 100%;
+}
+
+.formActions {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.formActions > * {
+  flex: 1;
+}
+
+/* ---------- segurança ---------- */
+.securityRow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.securityRow .rowText {
+  flex: 1;
+  min-width: 180px;
+}
+
+.divider {
+  height: 1px;
+  background: var(--color-mist-soft);
+  margin: 16px 0;
+}
+
+/* ---------- rodapé / sair ---------- */
+.logout {
+  margin-top: 4px;
+}
+
+/* ---------- modal ---------- */
+.footSpacer {
+  flex: 1;
+}
+
+/* ---------- responsivo ---------- */
+@media (max-width: 768px) {
+  .profileCard {
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .formActions {
+    flex-direction: column;
+  }
+
+  .securityRow > :global(button),
+  .securityRow .formActions {
+    width: 100%;
+  }
+}

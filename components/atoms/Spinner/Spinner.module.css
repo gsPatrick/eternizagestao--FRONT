@@ -1,0 +1,19 @@
+.spinner {
+  display: inline-block;
+  border-radius: 50%;
+  border: 2px solid var(--color-navy-soft);
+  border-top-color: var(--color-navy);
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+.light {
+  border-color: rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

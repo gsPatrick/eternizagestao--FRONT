@@ -1,0 +1,371 @@
+/* Canvas bone — nunca branco puro (regra do skill) */
+.section {
+  position: relative;
+  z-index: 1;
+  background: #f7f7f4;
+  padding: clamp(96px, 13vw, 210px) 0;
+  overflow: hidden;
+}
+
+.inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 clamp(20px, 3.4vw, 48px);
+}
+
+.kicker {
+  display: inline-flex;
+  align-items: center;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 12px;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  color: var(--color-navy);
+  background-color: rgba(3, 46, 89, 0.07);
+  padding: 8px 14px;
+  border-radius: 9999px;
+}
+
+/* ---------- statement com revelação por palavra ---------- */
+.statement {
+  margin-top: clamp(28px, 4vw, 48px);
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: clamp(1.9rem, 4.4vw, 3.9rem);
+  line-height: 1.14;
+  letter-spacing: -0.025em;
+  color: var(--color-ink);
+  max-width: 21ch;
+  text-wrap: pretty;
+}
+
+.word {
+  opacity: 0.14;
+  filter: blur(7px);
+  display: inline;
+  transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+    filter 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.wordOn {
+  opacity: 1;
+  filter: blur(0);
+}
+
+/* ---------- prova assimétrica ---------- */
+.proof {
+  margin-top: clamp(64px, 8vw, 120px);
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  gap: clamp(48px, 6vw, 110px);
+  align-items: center;
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity 0.9s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.proofVisible {
+  opacity: 1;
+  transform: none;
+}
+
+/* palco da composição */
+.stage {
+  position: relative;
+  padding: 34px 10px;
+}
+
+.mapCard {
+  border-radius: 20px;
+  overflow: hidden;
+  border: 1px solid rgba(3, 46, 89, 0.1);
+  box-shadow: 0 40px 80px -40px rgba(3, 46, 89, 0.35);
+  background: #e7ebe4;
+}
+
+.mapSvg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.mapLabel {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  fill: #97a28d;
+}
+
+.mapRoute {
+  stroke: var(--color-navy);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 7 6;
+  animation: routeFlow 1.4s linear infinite;
+}
+
+@keyframes routeFlow {
+  to {
+    stroke-dashoffset: -13;
+  }
+}
+
+/* cartões flutuantes */
+.floatCard {
+  position: absolute;
+  background: #fff;
+  border: 1px solid rgba(3, 46, 89, 0.08);
+  box-shadow: 0 24px 50px -22px rgba(3, 46, 89, 0.4);
+  animation: floaty 6s ease-in-out infinite alternate;
+}
+
+@keyframes floaty {
+  from {
+    transform: translateY(0) rotate(var(--tilt, 0deg));
+  }
+  to {
+    transform: translateY(-9px) rotate(var(--tilt, 0deg));
+  }
+}
+
+.revenueCard {
+  --tilt: 2deg;
+  top: 0;
+  right: -6px;
+  width: 178px;
+  border-radius: 16px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.floatLabel {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--color-slate);
+}
+
+.revenueValue {
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--color-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.revenueBars {
+  display: flex;
+  align-items: flex-end;
+  gap: 5px;
+  height: 34px;
+  margin-top: 6px;
+}
+
+.revenueBars span {
+  flex: 1;
+  border-radius: 3px 3px 0 0;
+  background: linear-gradient(180deg, #0a4a8c, var(--color-navy));
+  opacity: 0.85;
+}
+
+.revenueBars span:last-child {
+  opacity: 1;
+}
+
+/* bolha WhatsApp */
+.waCard {
+  --tilt: -2deg;
+  bottom: 2px;
+  left: -10px;
+  width: 236px;
+  background: #e7f8ee;
+  border-color: rgba(37, 148, 92, 0.18);
+  border-radius: 16px 16px 16px 4px;
+  padding: 13px 15px 9px;
+  animation-delay: 1.6s;
+}
+
+.waText {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: #1d3a2c;
+}
+
+.waText strong {
+  font-weight: 700;
+}
+
+.waLink {
+  color: #0b6e8e;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.waMeta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  margin-top: 4px;
+  font-size: 10.5px;
+  color: rgba(29, 58, 44, 0.55);
+}
+
+.waChecks {
+  width: 15px;
+  height: 10px;
+  color: #34b7f1;
+}
+
+/* pill de rota */
+.routePill {
+  --tilt: 0deg;
+  top: 44%;
+  right: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 14px;
+  border-radius: 9999px;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-navy);
+  animation-delay: 3s;
+}
+
+.routePill svg {
+  width: 13px;
+  height: 13px;
+}
+
+/* ---------- linhas numeradas (sem grid de ícones) ---------- */
+.rows {
+  display: flex;
+  flex-direction: column;
+}
+
+.row {
+  display: flex;
+  gap: clamp(18px, 2.4vw, 34px);
+  padding: clamp(20px, 2.6vw, 30px) 0;
+  border-top: 1px solid rgba(3, 46, 89, 0.12);
+}
+
+.rowNum {
+  flex: 0 0 auto;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-slate);
+  padding-top: 5px;
+}
+
+.rowBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.rowTitle {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: clamp(19px, 2vw, 24px);
+  letter-spacing: -0.015em;
+  color: var(--color-ink);
+}
+
+.rowText {
+  margin-top: 6px;
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: var(--color-slate);
+  max-width: 42ch;
+}
+
+.rowsCta {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: clamp(22px, 3vw, 34px);
+  align-self: flex-start;
+  height: 52px;
+  padding: 0 26px;
+  border-radius: 12px;
+  background: var(--color-navy);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  transition: background 0.3s ease, transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.rowsCta:hover {
+  background: #0a4a8c;
+  transform: translateX(3px);
+}
+
+.rowsCta svg {
+  width: 17px;
+  height: 17px;
+}
+
+/* ---------- responsivo ---------- */
+@media (max-width: 1024px) {
+  .proof {
+    grid-template-columns: 1fr;
+    gap: 72px;
+  }
+
+  .statement {
+    max-width: 26ch;
+  }
+}
+
+@media (max-width: 560px) {
+  .stage {
+    padding: 28px 0;
+  }
+
+  .revenueCard {
+    right: -4px;
+    width: 152px;
+    padding: 13px 14px;
+  }
+
+  .revenueValue {
+    font-size: 18px;
+  }
+
+  .waCard {
+    left: -4px;
+    width: 208px;
+  }
+
+  .routePill {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .word {
+    transition: opacity 0.3s ease;
+    filter: none;
+  }
+
+  .floatCard,
+  .mapRoute {
+    animation: none;
+  }
+
+  .proof {
+    transition: opacity 0.4s ease;
+    transform: none;
+  }
+}

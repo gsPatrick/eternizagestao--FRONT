@@ -1,0 +1,70 @@
+.section {
+  position: relative;
+  z-index: 1;
+  padding: clamp(90px, 12vw, 180px) 0;
+}
+
+.white {
+  background: #ffffff;
+}
+
+.bone {
+  background: #f7f7f4;
+}
+
+.inner {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 0 clamp(20px, 3.4vw, 48px);
+}
+
+.kicker {
+  display: inline-flex;
+  align-items: center;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 12px;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  color: var(--color-navy);
+  background-color: rgba(var(--color-navy-rgb), 0.07);
+  padding: 8px 14px;
+  border-radius: 9999px;
+  margin-bottom: clamp(24px, 3.4vw, 40px);
+}
+
+.statement {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: clamp(1.9rem, 4.4vw, 3.7rem);
+  line-height: 1.14;
+  letter-spacing: -0.025em;
+  color: var(--color-ink);
+  max-width: 20ch;
+  text-wrap: pretty;
+}
+
+.word {
+  opacity: 0.13;
+  filter: blur(7px);
+  display: inline;
+  transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+    filter 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.wordOn {
+  opacity: 1;
+  filter: blur(0);
+}
+
+/* palavra de destaque ganha a cor do tenant quando revelada */
+.wordHi.wordOn {
+  color: var(--color-navy);
+  font-style: italic;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .word {
+    filter: none;
+    transition: opacity 0.3s ease;
+  }
+}

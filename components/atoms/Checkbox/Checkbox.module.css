@@ -1,0 +1,68 @@
+.wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+  user-select: none;
+}
+
+.disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.native {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.box {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: 1.5px solid var(--color-mist);
+  border-radius: 6px;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-xs);
+  transition:
+    background var(--speed-fast) var(--ease-out),
+    border-color var(--speed-fast) var(--ease-out),
+    box-shadow var(--speed-base) var(--ease-out);
+}
+
+.box svg {
+  width: 12px;
+  height: 12px;
+  opacity: 0;
+  transform: scale(0.6);
+  transition:
+    opacity var(--speed-fast) var(--ease-out),
+    transform var(--speed-base) var(--ease-out);
+}
+
+.wrap:hover:not(.disabled) .box {
+  border-color: var(--color-navy);
+}
+
+.native:focus-visible + .box {
+  box-shadow: var(--ring-focus);
+}
+
+.native:checked + .box {
+  background: var(--color-navy);
+  border-color: var(--color-navy);
+}
+
+.native:checked + .box svg {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.label {
+  font-size: var(--text-body);
+  color: var(--color-ink);
+}

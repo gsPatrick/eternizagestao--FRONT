@@ -1,0 +1,136 @@
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap");
+
+:root {
+  /* ---- cores: 1 canvas + 1 superfície + 1 tinta + 1 acento + neutros ---- */
+  --color-canvas: #f4f6f9;
+  --color-surface: #ffffff;
+  --color-ink: #0e1c2f;
+  /* Acento da marca — temável por tenant (white label). O navy é o DEFAULT:
+     a landing institucional nunca sobrescreve, então fica sempre navy; só as
+     telas do sistema recebem a cor do cliente via TenantTheme. */
+  --color-navy: #032e59;
+  --color-navy-rgb: 3, 46, 89;
+  --color-navy-bright: #0a4a8c;
+  --color-navy-deep: #02223f;
+  --color-navy-soft: #e8eef6;
+  --color-navy-ghost: #f2f6fa;
+  --color-slate: #5a6b80;
+  --color-mist: #dde3eb;
+  --color-mist-soft: #ecf0f5;
+
+  /* funcionais — usadas SOMENTE em status/feedback, nunca no chrome */
+  --color-success: #1a7f5c;
+  --color-success-soft: #e6f4ee;
+  --color-warning: #9a6b15;
+  --color-warning-soft: #faf1de;
+  --color-danger: #b03535;
+  --color-danger-soft: #fbeaea;
+
+  /* ---- tipografia ---- */
+  --font-display: "Fraunces", Georgia, serif;
+  --font-body: "Inter", system-ui, -apple-system, sans-serif;
+
+  --text-caption: 0.8125rem;
+  --text-body: 0.9375rem;
+  --text-body-lg: 1.0625rem;
+  --text-heading-sm: clamp(1.25rem, 1.6vw, 1.5rem);
+  --text-heading: clamp(1.75rem, 3vw, 2.5rem);
+  --text-display: clamp(2.5rem, 5.5vw, 4.25rem);
+
+  /* ---- espaçamento ---- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+  --space-9: 96px;
+  --space-section: clamp(64px, 9vw, 140px);
+
+  /* ---- forma ---- */
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-pill: 999px;
+
+  /* ---- profundidade ---- */
+  --shadow-xs: 0 1px 2px rgba(3, 46, 89, 0.06);
+  --shadow-sm: 0 1px 3px rgba(3, 46, 89, 0.07), 0 4px 12px rgba(3, 46, 89, 0.05);
+  --shadow-md: 0 2px 6px rgba(3, 46, 89, 0.06), 0 12px 32px rgba(3, 46, 89, 0.09);
+  --shadow-lg: 0 8px 24px rgba(3, 46, 89, 0.1), 0 24px 64px rgba(3, 46, 89, 0.12);
+  --ring-focus: 0 0 0 3px rgba(3, 46, 89, 0.16);
+
+  /* ---- movimento ---- */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --speed-fast: 160ms;
+  --speed-base: 240ms;
+  --speed-slow: 480ms;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  overflow-x: clip;
+  scroll-behavior: smooth;
+}
+
+body {
+  overflow-x: clip;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  font-size: var(--text-body);
+  line-height: 1.6;
+  letter-spacing: -0.01em;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-display);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font-family: inherit;
+}
+
+img,
+video {
+  max-width: 100%;
+  display: block;
+}
+
+::selection {
+  background: var(--color-navy);
+  color: #fff;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

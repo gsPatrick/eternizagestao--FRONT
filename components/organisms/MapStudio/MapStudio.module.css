@@ -1,0 +1,233 @@
+.studio {
+  position: fixed;
+  inset: 0;
+  z-index: 220;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-canvas);
+  animation: studioIn 0.4s var(--ease-out);
+}
+
+@keyframes studioIn {
+  from {
+    opacity: 0;
+    transform: scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-5);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-mist);
+  flex-shrink: 0;
+}
+
+.back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--color-mist);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-slate);
+  cursor: pointer;
+  transition:
+    color var(--speed-fast) var(--ease-out),
+    border-color var(--speed-fast) var(--ease-out);
+}
+
+.back:hover {
+  color: var(--color-navy);
+  border-color: var(--color-navy);
+}
+
+.back svg {
+  width: 15px;
+  height: 15px;
+}
+
+.headText {
+  min-width: 0;
+  flex: 1;
+}
+
+.title {
+  font-family: var(--font-body);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  color: var(--color-ink);
+}
+
+.subtitle {
+  font-size: 12px;
+  color: var(--color-slate);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.counter {
+  flex-shrink: 0;
+  padding: 5px 12px;
+  border-radius: var(--radius-pill);
+  background: var(--color-navy-soft);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-navy);
+  font-variant-numeric: tabular-nums;
+}
+
+.mapArea {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  padding: var(--space-4);
+  display: flex;
+}
+
+.mapArea > :first-child {
+  flex: 1;
+}
+
+.hint {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--space-4) + 12px);
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: min(92%, 560px);
+  padding: 8px 14px;
+  border-radius: var(--radius-pill);
+  background: rgba(14, 28, 47, 0.88);
+  backdrop-filter: blur(8px);
+  color: #fff;
+  font-size: 12px;
+  line-height: 1.45;
+  box-shadow: var(--shadow-md);
+  pointer-events: none;
+}
+
+.hint svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  opacity: 0.8;
+}
+
+.hint strong {
+  font-weight: 700;
+}
+
+.foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-5) calc(var(--space-3) + env(safe-area-inset-bottom));
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-mist);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.footLeft,
+.footRight {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+/* ---------- seletor de ferramenta ---------- */
+.toolGroup {
+  display: inline-flex;
+  gap: 3px;
+  padding: 3px;
+  background: var(--color-mist-soft);
+  border-radius: var(--radius-md);
+}
+
+.toolBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 34px;
+  padding: 0 var(--space-3);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--color-slate);
+  cursor: pointer;
+  transition:
+    background var(--speed-fast) var(--ease-out),
+    color var(--speed-fast) var(--ease-out),
+    box-shadow var(--speed-base) var(--ease-out);
+}
+
+.toolBtn:hover:not(.toolActive):not(:disabled) {
+  color: var(--color-ink);
+}
+
+.toolBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.toolBtn svg {
+  width: 15px;
+  height: 15px;
+}
+
+.toolActive {
+  background: var(--color-navy);
+  color: #fff;
+  box-shadow: var(--shadow-sm);
+}
+
+.footDivider {
+  width: 1px;
+  height: 22px;
+  background: var(--color-mist);
+  margin: 0 var(--space-1);
+}
+
+@media (max-width: 640px) {
+  .head {
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .subtitle {
+    display: none;
+  }
+
+  .mapArea {
+    padding: var(--space-2);
+  }
+
+  .foot {
+    padding-left: var(--space-4);
+    padding-right: var(--space-4);
+  }
+
+  .footRight {
+    width: 100%;
+  }
+
+  .footRight > * {
+    flex: 1;
+  }
+}

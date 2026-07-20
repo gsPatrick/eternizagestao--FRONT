@@ -1,0 +1,181 @@
+.shell {
+  min-height: 100dvh;
+  background: var(--color-canvas);
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------- top bar ---------- */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: rgba(255, 255, 255, 0.85);
+  border-bottom: 1px solid var(--color-mist);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+}
+
+.topInner {
+  max-width: 960px;
+  margin: 0 auto;
+  height: 64px;
+  padding: 0 clamp(16px, 3vw, 28px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.brandTag {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-slate);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  padding-left: 12px;
+  border-left: 1px solid var(--color-mist);
+}
+
+.desktopNav {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+  margin-right: 8px;
+}
+
+.navLink {
+  padding: 8px 14px;
+  border-radius: 9px;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--color-slate);
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.navLink:hover {
+  background: rgba(var(--color-navy-rgb), 0.06);
+  color: var(--color-navy);
+}
+
+.navLinkActive {
+  background: rgba(var(--color-navy-rgb), 0.09);
+  color: var(--color-navy);
+}
+
+.exit {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--color-slate);
+  padding: 8px 10px;
+  border-radius: 9px;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.exit:hover {
+  background: rgba(var(--color-navy-rgb), 0.06);
+  color: var(--color-navy);
+}
+
+.exit svg {
+  width: 17px;
+  height: 17px;
+}
+
+/* ---------- conteúdo ---------- */
+.content {
+  flex: 1;
+  width: 100%;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: clamp(20px, 3vw, 36px) clamp(16px, 3vw, 28px) clamp(36px, 5vw, 56px);
+}
+
+/* ---------- bottom tab bar (mobile app) ---------- */
+.tabbar {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .topbar {
+    /* no mobile a top bar vira só a marca — a navegação vai para baixo */
+  }
+
+  .brandTag,
+  .desktopNav {
+    display: none;
+  }
+
+  .content {
+    padding-bottom: calc(72px + env(safe-area-inset-bottom) + 16px);
+  }
+
+  .tabbar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 50;
+    display: flex;
+    align-items: stretch;
+    background: rgba(255, 255, 255, 0.92);
+    border-top: 1px solid var(--color-mist);
+    padding-bottom: env(safe-area-inset-bottom);
+    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
+  }
+
+  .tab {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    height: 64px;
+    color: var(--color-slate);
+    transition: color 0.2s ease;
+  }
+
+  .tabActive {
+    color: var(--color-navy);
+  }
+
+  .tabIcon {
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+  }
+
+  .tabIcon svg {
+    width: 23px;
+    height: 23px;
+  }
+
+  .tabActive .tabIcon {
+    transform: translateY(-1px);
+  }
+
+  .tabLabel {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+}

@@ -1,0 +1,771 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  animation: pageIn 0.5s var(--ease-out) both;
+  min-height: calc(100vh - 64px - 48px);
+}
+
+@keyframes pageIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ---------- topo ---------- */
+.top {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.title {
+  font-family: var(--font-body);
+  font-size: var(--text-title);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--color-ink);
+}
+
+.subtitle {
+  margin-top: 2px;
+  font-size: var(--text-body);
+  color: var(--color-slate);
+}
+
+.actions {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* ---------- workspace ---------- */
+.workspace {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: var(--space-4);
+  align-items: stretch;
+  min-height: 520px;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-mist);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
+  align-self: flex-start;
+}
+
+/* busca */
+.searchWrap {
+  position: relative;
+}
+
+.searchBox {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.searchBox svg {
+  position: absolute;
+  left: 12px;
+  width: 15px;
+  height: 15px;
+  color: var(--color-slate);
+  pointer-events: none;
+}
+
+.searchBox input {
+  width: 100%;
+  height: 40px;
+  padding: 0 14px 0 36px;
+  border: 1px solid var(--color-mist);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--color-ink);
+  transition: border-color 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out);
+}
+
+.searchBox input::placeholder {
+  color: var(--color-slate);
+}
+
+.searchBox input:focus {
+  outline: none;
+  border-color: var(--color-navy);
+  box-shadow: 0 0 0 3px rgba(var(--color-navy-rgb), 0.1);
+}
+
+.results {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 30;
+  list-style: none;
+  background: var(--color-surface);
+  border: 1px solid var(--color-mist);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+}
+
+.resultRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s var(--ease-out);
+}
+
+.resultRow:hover {
+  background: var(--color-canvas);
+}
+
+.results li + li .resultRow {
+  border-top: 1px solid var(--color-mist-soft);
+}
+
+.resultDot {
+  flex: 0 0 auto;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+.resultInfo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.resultCode {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--color-ink);
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+.resultMeta {
+  font-size: 11.5px;
+  color: var(--color-slate);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.resultChevron {
+  width: 13px;
+  height: 13px;
+  color: var(--color-slate);
+  flex: 0 0 auto;
+}
+
+/* seções do painel */
+.panelSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-mist-soft);
+}
+
+.panelLabel {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-slate);
+}
+
+.layerList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.layerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+/* legenda */
+.legend {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.legendRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: 7px 8px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s var(--ease-out), opacity 0.2s var(--ease-out);
+}
+
+.legendRow:hover {
+  background: var(--color-canvas);
+}
+
+.legendActive {
+  background: rgba(var(--color-navy-rgb), 0.07);
+}
+
+.legendMuted {
+  opacity: 0.4;
+}
+
+.legendDot {
+  flex: 0 0 auto;
+  width: 11px;
+  height: 11px;
+  border-radius: 3px;
+}
+
+.legendLabel {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.legendCount {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-slate);
+  font-variant-numeric: tabular-nums;
+}
+
+.clearFilter {
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  cursor: pointer;
+  align-self: flex-start;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-navy);
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+}
+
+.clearFilter:hover {
+  background: rgba(var(--color-navy-rgb), 0.06);
+}
+
+.cemInfo {
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--color-slate);
+}
+
+.cemInfo strong {
+  color: var(--color-ink);
+}
+
+/* ---------- área do mapa ---------- */
+.mapArea {
+  position: relative;
+  min-height: 520px;
+  display: flex;
+}
+
+.mapArea > :first-child {
+  flex: 1;
+}
+
+/* card da sepultura */
+.graveCard {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 20;
+  width: 290px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-mist);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  animation: cardIn 0.3s var(--ease-out) both;
+}
+
+@keyframes cardIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.graveCardHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  padding-bottom: var(--space-3);
+}
+
+.graveCode {
+  display: block;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-ink);
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+.graveTrail {
+  display: block;
+  margin-top: 2px;
+  font-size: 11.5px;
+  color: var(--color-slate);
+}
+
+.closeCard {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-slate);
+  cursor: pointer;
+  transition: background 0.15s var(--ease-out), color 0.15s var(--ease-out);
+}
+
+.closeCard:hover {
+  background: var(--color-canvas);
+  color: var(--color-ink);
+}
+
+.closeCard svg {
+  width: 13px;
+  height: 13px;
+}
+
+.graveCardBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: 0 var(--space-4) var(--space-3);
+}
+
+.graveStatusRow {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.graveOccupant {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.graveOccupant svg {
+  width: 15px;
+  height: 15px;
+  color: var(--color-slate);
+}
+
+.routeInfo {
+  font-size: 12.5px;
+  color: var(--color-slate);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--color-canvas);
+}
+
+.routeInfo strong {
+  color: var(--color-navy);
+}
+
+.graveCardFoot {
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--color-mist-soft);
+  background: var(--color-canvas);
+}
+
+.graveCardLink {
+  display: flex;
+}
+
+/* ---------- modal importar ---------- */
+.modalBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+.upload {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  border: 1.5px dashed var(--color-mist);
+  border-radius: var(--radius-md);
+  color: var(--color-slate);
+  cursor: pointer;
+  transition: border-color 0.2s var(--ease-out), background 0.2s var(--ease-out);
+}
+
+.upload:hover {
+  border-color: var(--color-navy);
+  background: var(--color-canvas);
+}
+
+.upload svg {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  color: var(--color-navy);
+}
+
+.uploadInput {
+  display: none;
+}
+
+.uploadText {
+  font-size: var(--text-caption);
+  line-height: 1.5;
+}
+
+/* ---------- responsivo ---------- */
+@media (max-width: 1000px) {
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .panel {
+    order: 2;
+    align-self: stretch;
+  }
+
+  .mapArea {
+    order: 1;
+    min-height: 420px;
+  }
+}
+
+@media (max-width: 768px) {
+  .page {
+    min-height: 0;
+  }
+
+  .actions {
+    width: 100%;
+  }
+
+  .actions > * {
+    flex: 1;
+  }
+
+  .mapArea {
+    min-height: 380px;
+  }
+
+  /* card vira bottom sheet dentro da área do mapa */
+  .graveCard {
+    top: auto;
+    right: 10px;
+    left: 10px;
+    bottom: 10px;
+    width: auto;
+    animation: sheetIn 0.3s var(--ease-out) both;
+  }
+
+  @keyframes sheetIn {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  .graveCardFoot > * {
+    flex: 1;
+  }
+
+  .graveCardFoot :global(button) {
+    width: 100%;
+  }
+
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- caminhos GPS no painel ---------- */
+.pathHint {
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--color-slate);
+}
+
+.pathList {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pathRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+}
+
+.pathRow:hover {
+  background: var(--color-canvas);
+}
+
+.pathDot {
+  flex: 0 0 auto;
+  width: 10px;
+  height: 4px;
+  border-radius: var(--radius-pill);
+  background: #6f8f5c;
+}
+
+.pathName {
+  flex: 1;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--color-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.pathRemove {
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-slate);
+  cursor: pointer;
+  transition: background 0.15s var(--ease-out), color 0.15s var(--ease-out);
+}
+
+.pathRemove:hover {
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+}
+
+.pathRemove svg {
+  width: 11px;
+  height: 11px;
+}
+
+/* ---------- banner de traçado ---------- */
+.drawBanner {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 25;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  max-width: calc(100% - 28px);
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-mist);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-lg);
+  animation: cardIn 0.3s var(--ease-out) both;
+}
+
+.drawBannerText {
+  font-size: 13px;
+  color: var(--color-slate);
+  white-space: nowrap;
+}
+
+.drawBannerText strong {
+  color: var(--color-ink);
+}
+
+.drawCount {
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  margin-left: 8px;
+  padding: 0 6px;
+  border-radius: var(--radius-pill);
+  background: var(--color-navy);
+  color: #fff;
+  font-size: 11.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.drawBannerActions {
+  display: flex;
+  gap: var(--space-1);
+  align-items: center;
+}
+
+@media (max-width: 768px) {
+  .drawBanner {
+    left: 10px;
+    right: 10px;
+    transform: none;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-2);
+    border-radius: var(--radius-lg);
+    padding: var(--space-3);
+  }
+
+  .drawBannerText {
+    white-space: normal;
+    text-align: center;
+  }
+
+  .drawBannerActions {
+    justify-content: center;
+  }
+}
+
+/* ---------- select de cemitério ao lado do importar ---------- */
+.cemeterySelect {
+  width: 250px;
+  flex: 0 0 auto;
+}
+
+@media (min-width: 769px) {
+  .actions {
+    flex-wrap: nowrap;
+  }
+}
+
+@media (max-width: 768px) {
+  .cemeterySelect {
+    width: 100%;
+  }
+}
+
+/* ---------- guia de importação ---------- */
+.guide {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-canvas);
+  border: 1px solid var(--color-mist);
+}
+
+.guideTitle {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-slate);
+}
+
+.guideList {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.guideStep {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+}
+
+.guideNum {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--color-navy);
+  color: #fff;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.guideText {
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--color-slate);
+}
+
+.guideText strong {
+  color: var(--color-ink);
+}
+
+.uploadFormats {
+  display: block;
+  margin-top: 3px;
+  font-style: normal;
+  font-size: 11.5px;
+  color: var(--color-slate);
+}

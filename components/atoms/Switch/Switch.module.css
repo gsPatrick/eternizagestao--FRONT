@@ -1,0 +1,56 @@
+.wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+  user-select: none;
+}
+
+.disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.native {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.track {
+  display: inline-flex;
+  align-items: center;
+  width: 40px;
+  height: 23px;
+  padding: 2px;
+  border-radius: var(--radius-pill);
+  background: var(--color-mist);
+  transition: background var(--speed-base) var(--ease-out);
+}
+
+.thumb {
+  width: 19px;
+  height: 19px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(var(--color-navy-rgb), 0.25);
+  transition: transform var(--speed-base) var(--ease-out);
+}
+
+.native:focus-visible + .track {
+  box-shadow: var(--ring-focus);
+}
+
+.native:checked + .track {
+  background: var(--color-navy);
+}
+
+.native:checked + .track .thumb {
+  transform: translateX(17px);
+}
+
+.label {
+  font-size: var(--text-body);
+  color: var(--color-ink);
+}

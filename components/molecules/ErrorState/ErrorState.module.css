@@ -1,0 +1,48 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--space-3);
+  padding: var(--space-8) var(--space-5);
+  background: var(--color-surface);
+  border: 1px solid var(--color-mist);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
+}
+
+.emblem {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  margin-bottom: var(--space-1);
+  border-radius: var(--radius-pill);
+  color: var(--color-danger);
+  background: var(--color-danger-soft);
+  box-shadow: inset 0 0 0 1px rgba(176, 53, 53, 0.12);
+}
+
+.emblem svg {
+  width: 30px;
+  height: 30px;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: var(--text-heading-sm);
+  font-weight: 500;
+  color: var(--color-ink);
+}
+
+.message {
+  max-width: 42ch;
+  font-size: var(--text-body);
+  line-height: 1.6;
+  color: var(--color-slate);
+}
+
+.action {
+  margin-top: var(--space-3);
+}

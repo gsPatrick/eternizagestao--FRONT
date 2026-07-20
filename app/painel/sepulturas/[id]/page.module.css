@@ -1,0 +1,688 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  animation: pageIn 0.5s var(--ease-out) both;
+}
+
+@keyframes pageIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  padding: 6px 10px 6px 6px;
+  margin: -4px 0 -8px -6px;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-caption);
+  font-weight: 600;
+  color: var(--color-slate);
+  transition:
+    color var(--speed-fast) var(--ease-out),
+    background var(--speed-fast) var(--ease-out);
+}
+
+.back:hover {
+  color: var(--color-navy);
+  background: var(--color-navy-soft);
+}
+
+.back svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* ---------- cabeçalho ---------- */
+.head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.headTitleRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.title {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: clamp(1.25rem, 2vw, 1.5rem);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--color-ink);
+}
+
+.trail {
+  margin-top: 6px;
+  font-size: var(--text-caption);
+  color: var(--color-slate);
+}
+
+.trail em {
+  font-style: normal;
+  color: var(--color-mist);
+  margin: 0 4px;
+}
+
+.headActions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+/* ---------- grid ---------- */
+.grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.mainCol,
+.sideCol {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-mist);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
+  padding: var(--space-5);
+}
+
+.cardHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.cardTitle {
+  font-family: var(--font-body);
+  font-size: var(--text-body);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--color-ink);
+}
+
+.cardSub {
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--color-slate);
+}
+
+/* ---------- mapa vazio ---------- */
+.mapEmpty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-7) var(--space-5);
+  border: 1.5px dashed var(--color-mist);
+  border-radius: var(--radius-lg);
+  color: var(--color-slate);
+  text-align: center;
+}
+
+.mapEmpty svg {
+  width: 34px;
+  height: 34px;
+  color: #9aa8b8;
+}
+
+.mapEmpty p {
+  font-size: var(--text-caption);
+  max-width: 34ch;
+}
+
+/* ---------- listas das abas ---------- */
+.list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+}
+
+.listItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+}
+
+.listItem + .listItem {
+  border-top: 1px solid var(--color-mist-soft);
+}
+
+.listBody {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.listTitle {
+  font-size: var(--text-caption);
+  font-weight: 600;
+  color: var(--color-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.listMeta {
+  font-size: 12px;
+  color: var(--color-slate);
+}
+
+.financeYear {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-navy);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+  width: 44px;
+}
+
+.financeAmount {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.fileIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  background: var(--color-navy-soft);
+  color: var(--color-navy);
+  flex-shrink: 0;
+}
+
+.fileIcon svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* ---------- timeline ---------- */
+.timeline {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  padding-left: 4px;
+}
+
+.timelineItem {
+  position: relative;
+  display: flex;
+  gap: var(--space-3);
+  padding: var(--space-3) 0 var(--space-3) var(--space-4);
+}
+
+.timelineItem::before {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 0;
+  bottom: 0;
+  width: 1.5px;
+  background: var(--color-mist-soft);
+}
+
+.timelineItem:first-child::before {
+  top: 50%;
+}
+
+.timelineItem:last-child::before {
+  bottom: 50%;
+}
+
+.timelineDot {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 2px solid var(--color-surface);
+  box-shadow: 0 0 0 1.5px currentColor;
+}
+
+.tl_success { color: var(--color-success); background: var(--color-success); }
+.tl_navy { color: var(--color-navy); background: var(--color-navy); }
+.tl_warning { color: var(--color-warning); background: var(--color-warning); }
+
+.timelineBody {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.timelineText {
+  font-size: var(--text-caption);
+  color: var(--color-ink);
+  line-height: 1.5;
+}
+
+.timelineDate {
+  font-size: 11.5px;
+  color: var(--color-slate);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- concessão ---------- */
+.ownerBox {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-navy-ghost);
+  margin-bottom: var(--space-4);
+}
+
+.ownerName {
+  display: block;
+  font-size: var(--text-body);
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.ownerDoc {
+  display: block;
+  font-size: 12px;
+  color: var(--color-slate);
+  font-variant-numeric: tabular-nums;
+}
+
+.detailList {
+  display: flex;
+  flex-direction: column;
+}
+
+.detailRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 9px 0;
+}
+
+.detailRow + .detailRow {
+  border-top: 1px solid var(--color-mist-soft);
+}
+
+.detailRow dt {
+  font-size: 12.5px;
+  color: var(--color-slate);
+}
+
+.detailRow dd {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.cardFootActions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+/* ---------- certidão de perpetuidade ---------- */
+.certBox {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-navy-ghost);
+  border: 1px dashed var(--color-mist);
+}
+
+.certInfo {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.certLabel {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #8b99ab;
+}
+
+.certNumber {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-navy);
+  font-variant-numeric: tabular-nums;
+}
+
+.certActions {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+/* ---------- ocupação / gavetas ---------- */
+.occupancyBig {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--color-navy);
+  font-variant-numeric: tabular-nums;
+}
+
+.drawerGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+}
+
+.drawer {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-mist-soft);
+}
+
+.drawerBusy {
+  background: var(--color-navy-ghost);
+}
+
+.drawerFree {
+  background: var(--color-success-soft);
+  border-color: #cfe8dd;
+}
+
+.drawerCode {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--color-slate);
+}
+
+.drawerFree .drawerCode {
+  color: var(--color-success);
+}
+
+.drawerName {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--color-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.drawerFree .drawerName {
+  color: var(--color-success);
+}
+
+/* ---------- aba anexos ---------- */
+.attachTab {
+  display: flex;
+  flex-direction: column;
+}
+
+.attachActions {
+  display: flex;
+  justify-content: flex-end;
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--color-mist-soft);
+}
+
+/* ---------- modais ---------- */
+.modalForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+/* ---------- histórico de proprietários (auditoria) ---------- */
+.histStats {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-5);
+}
+
+.histStat {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  background: var(--color-navy-ghost);
+  border: 1px solid var(--color-mist-soft);
+  font-size: 12.5px;
+  color: var(--color-slate);
+}
+
+.histStat strong {
+  color: var(--color-navy);
+  font-variant-numeric: tabular-nums;
+}
+
+.histTimeline {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  position: relative;
+  padding-left: 22px;
+}
+
+.histTimeline::before {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: 14px;
+  bottom: 14px;
+  width: 1.5px;
+  background: var(--color-mist);
+}
+
+.histEntry {
+  position: relative;
+}
+
+.histDot {
+  position: absolute;
+  left: -22px;
+  top: 22px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--color-mist);
+  border: 2.5px solid var(--color-surface);
+  box-shadow: 0 0 0 1.5px var(--color-mist);
+}
+
+.histDotCurrent {
+  background: var(--color-success);
+  box-shadow: 0 0 0 1.5px var(--color-success), 0 0 0 5px var(--color-success-soft);
+}
+
+.histCard {
+  background: var(--color-surface);
+  border: 1px solid var(--color-mist);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+}
+
+.histCardCurrent {
+  border-color: #cfe0d8;
+  background: linear-gradient(180deg, #fbfdfc 0%, var(--color-surface) 100%);
+}
+
+.histCardHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.histOwner {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.histOwnerName {
+  font-size: var(--text-body);
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.histOwnerDoc {
+  font-size: 12px;
+  color: var(--color-slate);
+  font-variant-numeric: tabular-nums;
+}
+
+.histGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--space-3) var(--space-4);
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-mist-soft);
+}
+
+.histGrid dt {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #8b99ab;
+}
+
+.histGrid dd {
+  margin-top: 3px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.histTransfer {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-navy-soft);
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--color-navy);
+}
+
+.histTransfer svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.histTransfer span {
+  flex: 1;
+  min-width: 0;
+}
+
+.histCardFoot {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--space-3);
+}
+
+/* ---------- responsivo ---------- */
+@media (max-width: 1100px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .sideCol {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    align-items: start;
+  }
+}
+
+@media (max-width: 640px) {
+  /* ações empilhadas em largura total (UX de app) */
+  .headActions {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .headActions > * {
+    width: 100%;
+  }
+
+  /* itens das abas quebram linha em vez de espremer */
+  .listItem {
+    flex-wrap: wrap;
+  }
+
+  .listItem .listBody {
+    flex: 1 1 55%;
+  }
+
+  .card {
+    padding: var(--space-4);
+  }
+
+  .sideCol {
+    grid-template-columns: 1fr;
+  }
+
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .cardFootActions {
+    gap: var(--space-3);
+  }
+}

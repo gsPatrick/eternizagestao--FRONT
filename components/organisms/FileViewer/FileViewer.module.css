@@ -1,0 +1,230 @@
+.viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 240;
+  display: flex;
+  flex-direction: column;
+  background: rgba(8, 16, 28, 0.92);
+  backdrop-filter: blur(10px);
+  animation: viewerIn 0.3s var(--ease-out);
+}
+
+@keyframes viewerIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-5);
+  flex-shrink: 0;
+}
+
+.headInfo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.fileIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.fileIcon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.headText {
+  min-width: 0;
+}
+
+.fileName {
+  font-family: var(--font-body);
+  font-size: var(--text-body);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fileMeta {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.headActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+.downloadLink {
+  display: inline-flex;
+}
+
+.close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  cursor: pointer;
+  transition: background var(--speed-fast) var(--ease-out);
+}
+
+.close:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.close svg {
+  width: 15px;
+  height: 15px;
+}
+
+/* ---------- corpo ---------- */
+.body {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  overflow: auto;
+}
+
+.loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.image {
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: var(--radius-md);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5);
+  cursor: zoom-in;
+  animation: contentIn 0.35s var(--ease-out);
+}
+
+.imageZoomed {
+  max-width: none;
+  max-height: none;
+  width: min(160%, 2000px);
+  cursor: zoom-out;
+}
+
+.frame {
+  width: min(1100px, 100%);
+  height: 100%;
+  border: none;
+  border-radius: var(--radius-md);
+  background: #fff;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5);
+  animation: contentIn 0.35s var(--ease-out);
+}
+
+@keyframes contentIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ---------- fallback ---------- */
+.fallback {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  max-width: 380px;
+  padding: var(--space-7) var(--space-5);
+  text-align: center;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-xl);
+}
+
+.fallbackIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 60px;
+  height: 60px;
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.fallbackIcon svg {
+  width: 28px;
+  height: 28px;
+}
+
+.fallbackTitle {
+  font-family: var(--font-body);
+  font-size: var(--text-body-lg);
+  font-weight: 600;
+  color: #fff;
+}
+
+.fallbackText {
+  font-size: var(--text-caption);
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.footHint {
+  padding: var(--space-2) var(--space-4) calc(var(--space-3) + env(safe-area-inset-bottom));
+  text-align: center;
+  font-size: 11.5px;
+  color: rgba(255, 255, 255, 0.45);
+  flex-shrink: 0;
+}
+
+@media (max-width: 640px) {
+  .head {
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .body {
+    padding: var(--space-2);
+  }
+
+  .frame {
+    width: 100%;
+    border-radius: var(--radius-sm);
+  }
+}

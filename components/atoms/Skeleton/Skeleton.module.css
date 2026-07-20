@@ -1,0 +1,65 @@
+.skeleton {
+  display: block;
+  position: relative;
+  overflow: hidden;
+  background: var(--color-navy-soft);
+  border-radius: var(--radius-sm);
+}
+
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    rgba(var(--color-navy-rgb), 0) 0%,
+    rgba(var(--color-navy-rgb), 0.08) 50%,
+    rgba(var(--color-navy-rgb), 0) 100%
+  );
+  animation: shimmer 1.4s var(--ease-out) infinite;
+}
+
+/* ---- variantes ---- */
+.line {
+  height: 0.85em;
+  border-radius: var(--radius-pill);
+}
+
+.block {
+  height: 120px;
+  border-radius: var(--radius-md);
+}
+
+.card {
+  height: 160px;
+  border-radius: var(--radius-lg);
+}
+
+.row {
+  height: 52px;
+  border-radius: var(--radius-md);
+}
+
+.circle {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-pill);
+}
+
+/* múltiplos blocos empilhados respiram entre si */
+.skeleton + .skeleton {
+  margin-top: var(--space-2);
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton::after {
+    animation: none;
+  }
+}

@@ -1,0 +1,384 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  animation: pageIn 0.5s var(--ease-out) both;
+}
+
+@keyframes pageIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.top {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.title {
+  font-family: var(--font-body);
+  font-size: clamp(1.375rem, 2vw, 1.625rem);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  color: var(--color-ink);
+}
+
+.subtitle {
+  margin-top: 4px;
+  font-size: var(--text-body);
+  color: var(--color-slate);
+}
+
+.actions {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+/* ---------- chips de status ---------- */
+.statusChips {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--color-mist);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--color-slate);
+  cursor: pointer;
+  transition:
+    border-color var(--speed-fast) var(--ease-out),
+    background var(--speed-fast) var(--ease-out),
+    color var(--speed-fast) var(--ease-out);
+}
+
+.chip:hover:not(.chipActive) {
+  border-color: var(--color-navy);
+  color: var(--color-navy);
+}
+
+.chipActive {
+  background: var(--color-navy);
+  border-color: var(--color-navy);
+  color: #fff;
+  cursor: default;
+}
+
+.chipActive:hover {
+  background: var(--color-navy);
+  color: #fff;
+}
+
+.chipActive .chipCount {
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+}
+
+.chipDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.dot_livre { background: #1a7f5c; }
+.dot_ocupada { background: var(--color-navy); }
+.dot_reservada { background: #c98a1b; }
+.dot_manutencao { background: #8b99ab; }
+.dot_interditada { background: #b03535; }
+.dot_perpetuidade { background: #5b8ac2; }
+
+.chipActive .chipDot {
+  background: #fff;
+}
+
+.chipCount {
+  padding: 1px 7px;
+  border-radius: var(--radius-pill);
+  background: var(--color-mist-soft);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- toolbar ---------- */
+.toolbar {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.searchBox {
+  flex: 1;
+  min-width: 260px;
+}
+
+.filters {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.filters > * {
+  width: 180px;
+}
+
+/* ---------- células ---------- */
+.codeCell {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.code {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 12.5px;
+  background: var(--color-navy-soft);
+  color: var(--color-navy);
+  padding: 3px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.unmapped {
+  display: inline-flex;
+  color: var(--color-warning);
+}
+
+.unmapped svg {
+  width: 14px;
+  height: 14px;
+}
+
+.location {
+  font-size: 13px;
+  color: var(--color-ink);
+  white-space: nowrap;
+}
+
+.location em {
+  font-style: normal;
+  color: var(--color-mist);
+  margin: 0 3px;
+}
+
+.ownerCell {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  white-space: nowrap;
+}
+
+.noOwner {
+  font-size: 12.5px;
+  color: #9aa8b8;
+  font-style: italic;
+}
+
+.detailLink {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--color-navy);
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  transition: background var(--speed-fast) var(--ease-out);
+  white-space: nowrap;
+}
+
+.detailLink:hover {
+  background: var(--color-navy-soft);
+}
+
+/* ---------- modal (wizard) ---------- */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.formHidden {
+  display: none;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+.spanTwo {
+  grid-column: 1 / -1;
+}
+
+.demarcation {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.drawToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.drawHint {
+  font-size: var(--text-caption);
+  font-weight: 600;
+  color: var(--color-slate);
+}
+
+.drawActions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+/* ---------- lista mobile (cards tocáveis) ---------- */
+.mobileList {
+  display: none;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.mobileCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  position: relative;
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-mist);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
+  -webkit-tap-highlight-color: transparent;
+  transition: transform var(--speed-fast) var(--ease-out);
+}
+
+.mobileCard:active {
+  transform: scale(0.985);
+}
+
+.mobileCardTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.mobileCardBody {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mobileCardLocation {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.mobileCardOwner {
+  font-size: 12.5px;
+  color: var(--color-slate);
+}
+
+.mobileCardMeta {
+  position: absolute;
+  right: var(--space-4);
+  bottom: var(--space-4);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.mobileCardOccupancy {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-navy);
+  font-variant-numeric: tabular-nums;
+  background: var(--color-navy-soft);
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+}
+
+.mobileCardChevron {
+  width: 15px;
+  height: 15px;
+  color: #9aa8b8;
+}
+
+.mobileCount {
+  text-align: center;
+  font-size: var(--text-caption);
+  color: var(--color-slate);
+  padding: var(--space-2) 0;
+}
+
+/* ---------- responsivo ---------- */
+@media (max-width: 900px) {
+  .filters {
+    width: 100%;
+  }
+
+  .filters > * {
+    flex: 1;
+    width: auto;
+  }
+}
+
+/* tabela vira cards no mobile — sem scroll horizontal para achar ações */
+@media (max-width: 768px) {
+  .desktopTable {
+    display: none;
+  }
+
+  .mobileList {
+    display: flex;
+  }
+}
+
+@media (max-width: 640px) {
+  .actions {
+    width: 100%;
+  }
+
+  .actions > * {
+    flex: 1;
+  }
+
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .statusChips {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+  }
+
+  .statusChips::-webkit-scrollbar {
+    display: none;
+  }
+
+  .chip {
+    flex-shrink: 0;
+  }
+}

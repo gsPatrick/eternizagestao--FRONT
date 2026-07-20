@@ -1,0 +1,164 @@
+/* ---------- estado vazio: chamada para abrir o mapa ---------- */
+.empty {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-4);
+  border: 1px dashed var(--color-mist);
+  border-radius: var(--radius-md);
+  background: var(--color-canvas);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  color: var(--color-slate);
+  transition: border-color 0.2s var(--ease-out), background 0.2s var(--ease-out), color 0.2s var(--ease-out);
+}
+
+.empty:hover {
+  border-color: var(--color-navy);
+  color: var(--color-navy);
+  background: var(--color-surface);
+}
+
+.empty svg {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+}
+
+.empty span {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.empty strong {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-ink);
+}
+
+.empty:hover strong {
+  color: var(--color-navy);
+}
+
+.empty em {
+  font-style: normal;
+  font-size: 12px;
+}
+
+/* ---------- estado selecionado ---------- */
+.selected {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-mist);
+  border-radius: var(--radius-md);
+  background: var(--color-canvas);
+}
+
+.pinIcon {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-sm);
+  display: grid;
+  place-items: center;
+  background: rgba(var(--color-navy-rgb), 0.08);
+  color: var(--color-navy);
+}
+
+.pinIcon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.selectedInfo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.selectedTitle {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-ink);
+}
+
+.selectedCoords {
+  font-size: 12px;
+  color: var(--color-slate);
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+.changeBtn {
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  cursor: pointer;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--color-navy);
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  transition: background 0.15s var(--ease-out);
+}
+
+.changeBtn:hover {
+  background: rgba(var(--color-navy-rgb), 0.06);
+}
+
+/* ---------- corpo do modal ---------- */
+.pickerBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.coordsBar {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-canvas);
+  border: 1px solid var(--color-mist);
+}
+
+.coordsLabel {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-slate);
+}
+
+.coordsValue {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--color-ink);
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+.coordsHint {
+  font-size: 12px;
+  color: var(--color-slate);
+  margin-left: auto;
+}
+
+@media (max-width: 640px) {
+  .coordsHint {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .selected {
+    flex-wrap: wrap;
+  }
+}

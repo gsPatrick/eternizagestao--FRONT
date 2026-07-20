@@ -1,0 +1,398 @@
+.section {
+  position: relative;
+  z-index: 1;
+  background: #f7f7f4;
+  padding: clamp(72px, 9vw, 140px) 0 clamp(80px, 10vw, 150px);
+  overflow: hidden;
+}
+
+.inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 clamp(20px, 3.4vw, 48px);
+}
+
+/* ---------- cabeçalho ---------- */
+.head {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.kicker {
+  display: inline-flex;
+  align-items: center;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 12px;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  color: var(--color-navy);
+  background-color: rgba(3, 46, 89, 0.07);
+  padding: 8px 14px;
+  border-radius: 9999px;
+}
+
+.title {
+  margin-top: clamp(20px, 2.6vw, 30px);
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: clamp(2rem, 4.2vw, 3.4rem);
+  line-height: 1.08;
+  letter-spacing: -0.025em;
+  color: var(--color-ink);
+  max-width: 24ch;
+  text-wrap: balance;
+}
+
+.sub {
+  margin-top: 16px;
+  max-width: 58ch;
+  font-size: 16px;
+  line-height: 1.65;
+  color: var(--color-slate);
+  text-wrap: pretty;
+}
+
+/* ---------- palco do produto (estilo Linear) ---------- */
+.stage {
+  position: relative;
+  margin-top: clamp(40px, 5vw, 64px);
+}
+
+.glow {
+  position: absolute;
+  inset: -8% -6% auto;
+  height: 70%;
+  background: radial-gradient(52% 60% at 50% 42%, rgba(3, 46, 89, 0.16), transparent 70%);
+  filter: blur(18px);
+  pointer-events: none;
+}
+
+.browser {
+  position: relative;
+  border-radius: 18px;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid rgba(3, 46, 89, 0.12);
+  box-shadow:
+    0 1px 2px rgba(3, 46, 89, 0.06),
+    0 30px 70px -30px rgba(3, 46, 89, 0.4),
+    0 80px 130px -60px rgba(3, 46, 89, 0.28);
+}
+
+.browserBar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 46px;
+  background: #fbfbf9;
+  border-bottom: 1px solid rgba(3, 46, 89, 0.08);
+}
+
+.dots {
+  position: absolute;
+  left: 18px;
+  display: inline-flex;
+  gap: 7px;
+}
+
+.dots i {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+}
+
+.dots i:first-child {
+  background: #f2b8b5;
+}
+
+.dots i:nth-child(2) {
+  background: #f2dcb0;
+}
+
+.dots i:last-child {
+  background: #bcdfc4;
+}
+
+.urlPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 28px;
+  padding: 0 14px;
+  border-radius: 8px;
+  background: rgba(3, 46, 89, 0.05);
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 11.5px;
+  color: var(--color-slate);
+}
+
+.urlPill svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* viewport: a réplica renderiza em tamanho real e é escalada */
+.viewport {
+  position: relative;
+  overflow: hidden;
+  background: var(--color-canvas);
+}
+
+/* ---------- réplica: o painel real, escalado ---------- */
+.replica {
+  transform-origin: top left;
+  overflow: hidden;
+  background: var(--color-canvas);
+  pointer-events: none; /* vitrine — sem interação */
+  user-select: none;
+}
+
+/* o shell real usa 100dvh; dentro da réplica, ocupa a caixa de 880px */
+.replica > * {
+  height: 100%;
+  min-height: 100% !important;
+  overflow: hidden;
+}
+
+.replica aside {
+  height: 100% !important;
+}
+
+/* ---------- CTAs ---------- */
+.actions {
+  margin-top: clamp(32px, 4vw, 48px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.ctaPrimary {
+  display: inline-flex;
+  align-items: center;
+  height: 54px;
+  padding: 0 28px;
+  border-radius: 12px;
+  background: var(--color-navy);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  transition: background 0.3s ease, transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ctaPrimary:hover {
+  background: #0a4a8c;
+  transform: translateY(-2px);
+}
+
+.ctaGhost {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  height: 54px;
+  padding: 0 22px;
+  border-radius: 12px;
+  color: var(--color-navy);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  transition: background 0.25s ease;
+}
+
+.ctaGhost:hover {
+  background: rgba(3, 46, 89, 0.06);
+}
+
+.ctaGhost svg {
+  width: 16px;
+  height: 16px;
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.ctaGhost:hover svg {
+  transform: translateX(3px);
+}
+
+/* ---------- responsivo ---------- */
+@media (max-width: 640px) {
+  .browserBar {
+    height: 42px;
+  }
+
+  .urlPill {
+    font-size: 10.5px;
+  }
+
+  .actions {
+    flex-direction: column;
+  }
+
+  .ctaPrimary,
+  .ctaGhost {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* ---------- carrossel white label ---------- */
+.accentBar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  z-index: 3;
+  transition: background 0.4s var(--ease-out);
+}
+
+/* crossfade rápido do painel enquanto o tema troca */
+.viewport {
+  transition: opacity 0.24s var(--ease-out), transform 0.24s var(--ease-out);
+}
+
+.swapping {
+  opacity: 0.25;
+  transform: scale(0.99);
+}
+
+.urlPill {
+  transition: opacity 0.2s var(--ease-out);
+}
+
+.urlSwapping {
+  opacity: 0.4;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .viewport,
+  .accentBar,
+  .cityLabel {
+    transition: none;
+  }
+}
+
+/* ---------- nome grande da cidade + setas ---------- */
+.cityLabel {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: clamp(36px, 5vw, 60px);
+  margin-bottom: clamp(18px, 2.4vw, 28px);
+  transition: opacity 0.24s var(--ease-out), transform 0.24s var(--ease-out);
+}
+
+.citySwapping {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.cityDot {
+  align-self: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+}
+
+.cityName {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: clamp(2rem, 5vw, 4rem);
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+.citySub {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: clamp(12px, 1.4vw, 15px);
+  color: var(--color-slate);
+}
+
+/* linha: painel à esquerda, setas fora à direita */
+.stageRow {
+  display: flex;
+  align-items: center;
+  gap: clamp(14px, 2vw, 28px);
+}
+
+.stageRow .stage {
+  flex: 1;
+  min-width: 0;
+  margin-top: 0;
+}
+
+.arrows {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.arrowBtn {
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--color-mist);
+  border-radius: 50%;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.2s var(--ease-out), color 0.2s var(--ease-out), transform 0.2s var(--ease-out);
+}
+
+.arrowBtn:hover {
+  border-color: var(--acc);
+  color: var(--acc);
+  transform: scale(1.06);
+}
+
+.arrowBtn svg {
+  width: 20px;
+  height: 20px;
+}
+
+.arrowCount {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.arrowCount em {
+  font-style: normal;
+  color: var(--color-slate);
+  margin-left: 2px;
+}
+
+@media (max-width: 760px) {
+  .stageRow {
+    flex-direction: column;
+  }
+  .arrows {
+    flex-direction: row;
+    justify-content: center;
+  }
+  .cityName {
+    font-size: clamp(1.9rem, 9vw, 3rem);
+  }
+}
+
+.ctaPrimary {
+  gap: 10px;
+}
+
+.waIcon {
+  width: 19px;
+  height: 19px;
+}

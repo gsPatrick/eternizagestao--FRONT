@@ -1,0 +1,117 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background var(--speed-fast) var(--ease-out),
+    border-color var(--speed-fast) var(--ease-out),
+    color var(--speed-fast) var(--ease-out),
+    box-shadow var(--speed-base) var(--ease-out),
+    transform var(--speed-fast) var(--ease-out);
+}
+
+.button:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
+}
+
+.button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+/* ---- tamanhos ---- */
+.sm {
+  height: 34px;
+  padding: 0 var(--space-3);
+  font-size: var(--text-caption);
+}
+
+.md {
+  height: 42px;
+  padding: 0 var(--space-4);
+  font-size: var(--text-body);
+}
+
+.lg {
+  height: 50px;
+  padding: 0 var(--space-5);
+  font-size: var(--text-body-lg);
+}
+
+.full {
+  width: 100%;
+}
+
+/* ---- variantes ---- */
+.primary {
+  background: linear-gradient(180deg, var(--color-navy-bright) 0%, var(--color-navy) 55%, var(--color-navy-deep) 100%);
+  color: #fff;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    var(--shadow-sm);
+}
+
+.primary:hover:not(:disabled) {
+  background: linear-gradient(180deg, var(--color-navy-bright) 0%, var(--color-navy) 55%, var(--color-navy-deep) 100%);
+  filter: brightness(1.1);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    var(--shadow-md);
+}
+
+.secondary {
+  background: var(--color-surface);
+  border-color: var(--color-mist);
+  color: var(--color-navy);
+  box-shadow: var(--shadow-xs);
+}
+
+.secondary:hover:not(:disabled) {
+  border-color: var(--color-navy);
+  background: var(--color-navy-ghost);
+}
+
+.ghost {
+  background: transparent;
+  color: var(--color-navy);
+}
+
+.ghost:hover:not(:disabled) {
+  background: var(--color-navy-soft);
+}
+
+.danger {
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+}
+
+.danger:hover:not(:disabled) {
+  background: #f6dcdc;
+}
+
+.icon {
+  display: inline-flex;
+  align-items: center;
+}
+
+.icon svg {
+  width: 1em;
+  height: 1em;
+}
+
+.label {
+  display: inline-flex;
+  align-items: center;
+}

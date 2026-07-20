@@ -1,0 +1,745 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  animation: pageIn 0.5s var(--ease-out) both;
+}
+
+@keyframes pageIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.top {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.title {
+  font-family: var(--font-body);
+  font-size: clamp(1.375rem, 2vw, 1.625rem);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  color: var(--color-ink);
+}
+
+.subtitle {
+  margin-top: 4px;
+  font-size: var(--text-body);
+  color: var(--color-slate);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.viewToggle {
+  display: inline-flex;
+  gap: 3px;
+  padding: 3px;
+  background: var(--color-mist-soft);
+  border-radius: var(--radius-md);
+}
+
+.viewBtn {
+  height: 34px;
+  padding: 0 var(--space-4);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--color-slate);
+  cursor: pointer;
+  transition: all var(--speed-fast) var(--ease-out);
+}
+
+.viewBtnActive {
+  background: var(--color-surface);
+  color: var(--color-navy);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ---------- toolbar ---------- */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.navGroup {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.navBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--color-mist);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-slate);
+  cursor: pointer;
+  transition: all var(--speed-fast) var(--ease-out);
+}
+
+.navBtn:hover {
+  color: var(--color-navy);
+  border-color: var(--color-navy);
+}
+
+.navBtn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.legendRow {
+  display: flex;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-slate);
+}
+
+.legendDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+.ev_velorio_dot { background: var(--color-navy); }
+.ev_sepultamento_dot { background: #1a7f5c; }
+.ev_exumacao_dot { background: #c98a1b; }
+.ev_outro_dot { background: var(--color-slate); }
+
+.placeFilter {
+  width: 190px;
+}
+
+/* ---------- vista Mês ---------- */
+.monthGrid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 1px;
+  background: var(--color-mist);
+  border: 1px solid var(--color-mist);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-xs);
+}
+
+.monthDow {
+  padding: var(--space-2);
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-slate);
+  background: var(--color-navy-ghost);
+}
+
+.monthCell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-height: 96px;
+  padding: var(--space-2);
+  border: none;
+  background: var(--color-surface);
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  transition: background var(--speed-fast) var(--ease-out);
+}
+
+.monthCell:hover {
+  background: var(--color-navy-ghost);
+}
+
+.monthCellMuted {
+  background: var(--color-canvas);
+  cursor: default;
+}
+
+.monthCellMuted .monthDay {
+  color: #b6c0cc;
+}
+
+.monthDay {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--color-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.monthCellToday .monthDay {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--color-navy);
+  color: #fff;
+}
+
+.monthEvents {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+  min-width: 0;
+}
+
+.monthPill {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 5px;
+  border-left: 2.5px solid;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.monthMore {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--color-slate);
+}
+
+/* ---------- vista Agenda (lista) ---------- */
+.agendaList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.agendaDay {
+  background: var(--color-surface);
+  border: 1px solid var(--color-mist);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
+  overflow: hidden;
+}
+
+.agendaDayHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-mist-soft);
+  background: var(--color-navy-ghost);
+}
+
+.agendaDayHeadToday {
+  background: var(--color-navy-soft);
+}
+
+.agendaDayNum {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--color-surface);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-ink);
+  font-variant-numeric: tabular-nums;
+  box-shadow: var(--shadow-xs);
+}
+
+.agendaDayHeadToday .agendaDayNum {
+  background: var(--color-navy);
+  color: #fff;
+}
+
+.agendaDayLabel {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--color-slate);
+}
+
+.agendaItems {
+  list-style: none;
+}
+
+.agendaItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border: none;
+  border-top: 1px solid var(--color-mist-soft);
+  background: transparent;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--speed-fast) var(--ease-out);
+}
+
+.agendaItems > li:first-child .agendaItem {
+  border-top: none;
+}
+
+.agendaItem:hover {
+  background: var(--color-navy-ghost);
+}
+
+.agendaTime {
+  display: flex;
+  flex-direction: column;
+  width: 48px;
+  flex-shrink: 0;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--color-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.agendaTime em {
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-slate);
+}
+
+.agendaBar {
+  width: 4px;
+  align-self: stretch;
+  border-radius: var(--radius-pill);
+  flex-shrink: 0;
+}
+
+.agendaBody {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.agendaTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agendaMeta {
+  font-size: 12px;
+  color: var(--color-slate);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------- chips de dia (vista Dia) ---------- */
+.dayChips {
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+}
+
+.dayChips::-webkit-scrollbar {
+  display: none;
+}
+
+.dayChip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  min-width: 60px;
+  padding: 8px 10px;
+  border: 1px solid var(--color-mist);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all var(--speed-fast) var(--ease-out);
+}
+
+.dayChipLabel {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-slate);
+}
+
+.dayChipDate {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.dayChipToday .dayChipDate {
+  color: var(--color-navy);
+}
+
+.dayChipActive {
+  background: var(--color-navy);
+  border-color: var(--color-navy);
+}
+
+.dayChipActive .dayChipLabel,
+.dayChipActive .dayChipDate {
+  color: #fff;
+}
+
+/* ---------- calendário ---------- */
+/* sem overflow interno: a agenda ocupa a altura toda e o scroll é da página */
+.calendar {
+  background: var(--color-surface);
+  border: 1px solid var(--color-mist);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
+}
+
+/* cabeçalho gruda logo abaixo do header do painel no scroll da página */
+.headRow {
+  display: grid;
+  position: sticky;
+  top: 64px;
+  z-index: 20;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-mist);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+.dayHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 6px;
+  padding: var(--space-3) 0;
+  border-left: 1px solid var(--color-mist-soft);
+}
+
+.dayHeadLabel {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-slate);
+}
+
+.dayHeadDate {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.dayHeadToday {
+  background: var(--color-navy-ghost);
+}
+
+.dayHeadToday .dayHeadDate {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--color-navy);
+  color: #fff;
+  font-size: 14px;
+}
+
+.bodyScroll {
+  /* altura natural — quem rola é a página */
+  padding-bottom: 22px;
+}
+
+.bodyRow {
+  display: grid;
+  position: relative;
+}
+
+.timeGutter {
+  position: relative;
+}
+
+/* rótulo dentro do próprio slot (logo abaixo da linha) — nunca corta */
+.timeLabel {
+  position: absolute;
+  right: 8px;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #9aa8b8;
+  font-variant-numeric: tabular-nums;
+}
+
+.dayCol {
+  position: relative;
+  border-left: 1px solid var(--color-mist-soft);
+}
+
+.dayColToday {
+  background: rgba(var(--color-navy-rgb), 0.02);
+}
+
+.hourLine {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--color-mist-soft);
+}
+
+/* linha do agora */
+.nowLine {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--color-danger);
+  z-index: 3;
+  pointer-events: none;
+}
+
+.nowDot {
+  position: absolute;
+  left: -4px;
+  top: -3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-danger);
+}
+
+/* ---------- eventos ---------- */
+.event {
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 5px 8px;
+  border: none;
+  border-left: 3px solid;
+  border-radius: 7px;
+  text-align: left;
+  font-family: inherit;
+  cursor: pointer;
+  overflow: hidden;
+  z-index: 2;
+  box-shadow: var(--shadow-xs);
+  transition:
+    transform var(--speed-fast) var(--ease-out),
+    box-shadow var(--speed-base) var(--ease-out);
+}
+
+.event:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+  z-index: 4;
+}
+
+.eventTime {
+  font-size: 10px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.75;
+}
+
+.eventTitle {
+  font-size: 11.5px;
+  font-weight: 700;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.eventPlace {
+  font-size: 10px;
+  font-weight: 600;
+  opacity: 0.7;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ev_velorio {
+  background: var(--color-navy-soft);
+  border-left-color: var(--color-navy);
+  color: var(--color-navy);
+}
+
+.ev_sepultamento {
+  background: var(--color-success-soft);
+  border-left-color: var(--color-success);
+  color: var(--color-success);
+}
+
+.ev_exumacao {
+  background: var(--color-warning-soft);
+  border-left-color: var(--color-warning);
+  color: var(--color-warning);
+}
+
+.ev_outro {
+  background: var(--color-navy-ghost);
+  border-left-color: var(--color-slate);
+  color: var(--color-slate);
+}
+
+.eventDone {
+  opacity: 0.55;
+}
+
+.eventDone .eventTitle {
+  text-decoration: line-through;
+}
+
+/* ---------- modais ---------- */
+.detailBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.detailBadges {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.detailGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--space-3) var(--space-4);
+}
+
+.detailGrid dt {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #8b99ab;
+}
+
+.detailGrid dd {
+  margin-top: 3px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+.conflictLine {
+  display: block;
+  font-weight: 600;
+}
+
+.footSpacer {
+  flex: 1;
+}
+
+/* ---------- responsivo ---------- */
+@media (max-width: 768px) {
+  .actions {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .viewToggle {
+    display: flex;
+  }
+
+  .viewBtn {
+    flex: 1;
+  }
+
+  .toolbar {
+    gap: var(--space-3);
+  }
+
+  .placeFilter {
+    flex: 1;
+    width: auto;
+    min-width: 150px;
+  }
+
+  .legendRow {
+    order: 3;
+    width: 100%;
+  }
+
+  .monthCell {
+    min-height: 60px;
+    padding: 4px 5px;
+  }
+
+  /* no mobile os eventos viram pontinhos coloridos */
+  .monthEvents {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 3px;
+  }
+
+  .monthPill {
+    font-size: 0;
+    width: 7px;
+    height: 7px;
+    padding: 0;
+    border-radius: 50%;
+    border-left: none;
+    border: 1.5px solid currentColor;
+  }
+
+  .monthMore {
+    font-size: 9px;
+  }
+}
+
+@media (max-width: 640px) {
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+}

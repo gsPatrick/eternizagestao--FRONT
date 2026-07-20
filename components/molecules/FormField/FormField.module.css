@@ -1,0 +1,29 @@
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.label {
+  font-size: var(--text-caption);
+  font-weight: 600;
+  color: var(--color-ink);
+  letter-spacing: -0.005em;
+}
+
+.required {
+  color: var(--color-danger);
+  margin-left: 3px;
+}
+
+.hint {
+  font-size: var(--text-caption);
+  color: var(--color-slate);
+}
+
+.error {
+  font-size: var(--text-caption);
+  font-weight: 500;
+  color: var(--color-danger);
+}

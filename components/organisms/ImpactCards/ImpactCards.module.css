@@ -1,0 +1,300 @@
+/* runway alto: o scroll vertical vira o movimento horizontal dos cards */
+.section {
+  position: relative;
+  z-index: 1;
+  height: 320vh;
+  background: var(--color-surface);
+}
+
+.sticky {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: clamp(30px, 4.5vh, 52px);
+  overflow: hidden;
+  padding: clamp(24px, 4vh, 48px) 0;
+}
+
+/* ---------- frase de impacto ---------- */
+.headline {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 clamp(20px, 3.4vw, 48px);
+  width: 100%;
+  will-change: opacity, transform;
+}
+
+.phrase {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: clamp(2rem, 4.8vw, 4.2rem);
+  line-height: 1.06;
+  letter-spacing: -0.028em;
+  color: var(--color-ink);
+  text-wrap: balance;
+}
+
+.phrase em {
+  font-style: italic;
+  color: var(--color-navy);
+}
+
+/* ---------- trilho de cards ---------- */
+.trackWrap {
+  width: 100%;
+  overflow: hidden;
+}
+
+.track {
+  display: flex;
+  gap: clamp(16px, 2vw, 26px);
+  padding: 8px max(calc((100vw - 1280px) / 2 + clamp(20px, 3.4vw, 48px)), clamp(20px, 3.4vw, 48px));
+  width: max-content;
+  will-change: transform;
+}
+
+.card {
+  flex: 0 0 auto;
+  width: min(430px, 78vw);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: clamp(26px, 2.6vw, 36px);
+  border-radius: 22px;
+  background: #f7f7f4;
+  border: 1px solid rgba(3, 46, 89, 0.1);
+  box-shadow: 0 24px 50px -30px rgba(3, 46, 89, 0.25);
+}
+
+/* o último card é o de marca — vira navy, o acento da dobra */
+.card:last-child {
+  background: linear-gradient(160deg, #06264a 0%, var(--color-navy) 70%);
+  border-color: transparent;
+  color: #fff;
+}
+
+.card:last-child .cardTitle {
+  color: #fff;
+}
+
+.card:last-child .cardText {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.card:last-child .cardNum {
+  color: rgba(255, 255, 255, 0.55);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.cardNum {
+  align-self: flex-start;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-slate);
+  border: 1px solid rgba(3, 46, 89, 0.18);
+  border-radius: 9999px;
+  padding: 7px 12px;
+}
+
+.cardTitle {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: clamp(22px, 2.2vw, 28px);
+  letter-spacing: -0.02em;
+  color: var(--color-ink);
+}
+
+.cardText {
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: var(--color-slate);
+  max-width: 44ch;
+}
+
+.cardArtifact {
+  margin-top: auto;
+  padding-top: 18px;
+}
+
+/* ---------- artefatos ---------- */
+.artImport {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid var(--color-mist);
+}
+
+.artImportHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 11px;
+  color: var(--color-slate);
+}
+
+.artImportHead strong {
+  color: var(--color-ink);
+}
+
+.artImportTrack {
+  height: 6px;
+  border-radius: 9999px;
+  background: var(--color-mist-soft);
+  overflow: hidden;
+}
+
+.artImportFill {
+  width: 92%;
+  height: 100%;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, #0a4a8c, var(--color-navy));
+}
+
+.artImportNote {
+  font-size: 11px;
+  color: var(--color-slate);
+}
+
+.artRoles {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.artRole,
+.artRoleNavy {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 8px 14px;
+  border-radius: 9999px;
+  background: #fff;
+  border: 1px solid var(--color-mist);
+  color: var(--color-slate);
+}
+
+.artRoleNavy {
+  background: var(--color-navy);
+  border-color: var(--color-navy);
+  color: #fff;
+}
+
+.artRoute {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 9999px;
+  background: #fff;
+  border: 1px solid var(--color-mist);
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--color-navy);
+}
+
+.artRoute svg {
+  width: 14px;
+  height: 14px;
+}
+
+.artBrand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.artSwatches {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.artSwatches i {
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  border: 2px solid rgba(255, 255, 255, 0.75);
+}
+
+.artUrl {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 8px 14px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #fff;
+}
+
+/* ---------- progresso ---------- */
+.meter {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 clamp(20px, 3.4vw, 48px);
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.meterCount {
+  flex: 0 0 auto;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-ink);
+}
+
+.meterCount em {
+  font-style: normal;
+  color: var(--color-slate);
+  margin-left: 4px;
+}
+
+.meterTrack {
+  flex: 1;
+  height: 2px;
+  background: rgba(3, 46, 89, 0.12);
+  overflow: hidden;
+}
+
+.meterFill {
+  height: 100%;
+  width: 100%;
+  background: var(--color-navy);
+  transform-origin: left center;
+}
+
+/* ---------- reduced motion: trilho vira scroll nativo ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .section {
+    height: auto;
+  }
+
+  .sticky {
+    position: static;
+    height: auto;
+  }
+
+  .trackWrap {
+    overflow-x: auto;
+  }
+
+  .track {
+    transform: none !important;
+  }
+
+  .headline {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}

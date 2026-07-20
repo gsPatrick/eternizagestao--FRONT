@@ -1,0 +1,218 @@
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* ---------- zona de soltar ---------- */
+.dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-6) var(--space-4);
+  border: 1.5px dashed var(--color-mist);
+  border-radius: var(--radius-lg);
+  background: var(--color-navy-ghost);
+  text-align: center;
+  cursor: pointer;
+  transition:
+    border-color var(--speed-fast) var(--ease-out),
+    background var(--speed-base) var(--ease-out),
+    transform var(--speed-fast) var(--ease-out);
+}
+
+.dropzone:hover {
+  border-color: var(--color-navy);
+}
+
+.dropzoneActive {
+  border-color: var(--color-navy);
+  background: var(--color-navy-soft);
+  transform: scale(1.01);
+}
+
+.input {
+  display: none;
+}
+
+.dropIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-navy);
+  box-shadow: var(--shadow-xs);
+}
+
+.dropIcon svg {
+  width: 22px;
+  height: 22px;
+}
+
+.dropTitle {
+  font-size: var(--text-body);
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.dropHint {
+  font-size: 12px;
+  color: var(--color-slate);
+}
+
+/* ---------- lista de arquivos ---------- */
+.fileList {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.fileRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--color-mist);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  animation: rowIn 0.3s var(--ease-out);
+}
+
+@keyframes rowIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fileBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+}
+
+.pdf { background: var(--color-danger-soft); color: var(--color-danger); }
+.image { background: var(--color-success-soft); color: var(--color-success); }
+.office { background: var(--color-navy-soft); color: var(--color-navy); }
+.other { background: var(--color-mist-soft); color: var(--color-slate); }
+
+.fileFields {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.nameWrap {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.nameInput {
+  flex: 1;
+  min-width: 0;
+  height: 34px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-mist);
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: var(--text-caption);
+  font-weight: 600;
+  color: var(--color-ink);
+  background: var(--color-surface);
+  transition:
+    border-color var(--speed-fast) var(--ease-out),
+    box-shadow var(--speed-base) var(--ease-out);
+}
+
+.nameInput:focus {
+  outline: none;
+  border-color: var(--color-navy);
+  box-shadow: var(--ring-focus);
+}
+
+.ext {
+  font-size: var(--text-caption);
+  font-weight: 600;
+  color: var(--color-slate);
+  padding: 0 6px;
+  flex-shrink: 0;
+}
+
+.metaRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.categorySelect {
+  max-width: 220px;
+}
+
+.categorySelect select {
+  height: 34px;
+  font-size: 12.5px;
+}
+
+.size {
+  font-size: 12px;
+  color: var(--color-slate);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-slate);
+  cursor: pointer;
+  transition:
+    background var(--speed-fast) var(--ease-out),
+    color var(--speed-fast) var(--ease-out);
+}
+
+.remove:hover {
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+}
+
+.remove svg {
+  width: 13px;
+  height: 13px;
+}
+
+@media (max-width: 640px) {
+  .metaRow {
+    flex-wrap: wrap;
+  }
+
+  .categorySelect {
+    max-width: none;
+    width: 100%;
+  }
+}

@@ -1,0 +1,296 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(24px, 3.5vw, 36px);
+  animation: pageIn 0.5s var(--ease-out) both;
+}
+
+@keyframes pageIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ---------- hero ---------- */
+.hero {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.eyebrow {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-slate);
+}
+
+.greet {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: clamp(1.8rem, 3.4vw, 2.6rem);
+  letter-spacing: -0.025em;
+  color: var(--color-ink);
+}
+
+.greetSub {
+  font-size: 15px;
+  color: var(--color-slate);
+}
+
+/* ---------- alerta de pendência ---------- */
+.alertCard {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: clamp(18px, 2.4vw, 24px);
+  border-radius: 18px;
+  flex-wrap: wrap;
+}
+
+.alertDanger {
+  background: linear-gradient(160deg, var(--color-navy-deep), var(--color-navy));
+  color: #fff;
+}
+
+.alertOk {
+  background: var(--color-success-soft);
+  border: 1px solid rgba(46, 158, 107, 0.25);
+}
+
+.alertBody {
+  flex: 1;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.alertLabel {
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.85;
+}
+
+.alertOk .alertLabel {
+  color: var(--color-success);
+}
+
+.alertTitle {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.alertOk .alertTitle {
+  color: var(--color-ink);
+}
+
+.alertMeta {
+  font-size: 13px;
+  opacity: 0.82;
+}
+
+.alertCta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 46px;
+  padding: 0 20px;
+  border-radius: 11px;
+  background: #fff;
+  color: var(--color-navy);
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.alertCta:hover {
+  transform: translateX(3px);
+}
+
+.alertCta svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* ---------- seções ---------- */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.sectionHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.sectionTitle {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  color: var(--color-ink);
+}
+
+.sectionLink {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--color-navy);
+}
+
+.sectionLink:hover {
+  text-decoration: underline;
+}
+
+/* jazigos */
+.graveGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+}
+
+.graveCard {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 20px;
+  border-radius: 16px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-mist);
+  box-shadow: var(--shadow-xs);
+  transition: border-color 0.2s ease, transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.graveCard:hover {
+  border-color: rgba(var(--color-navy-rgb), 0.3);
+  transform: translateY(-2px);
+}
+
+.graveTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.graveIcon {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  background: rgba(var(--color-navy-rgb), 0.08);
+  color: var(--color-navy);
+}
+
+.graveIcon svg {
+  width: 21px;
+  height: 21px;
+}
+
+.graveLabel {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--color-ink);
+}
+
+.graveTrail {
+  font-size: 12.5px;
+  color: var(--color-slate);
+}
+
+.graveMeta {
+  font-size: 12.5px;
+  color: var(--color-slate);
+}
+
+.graveGo {
+  margin-top: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-navy);
+}
+
+.graveGo svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* atalhos */
+.shortcuts {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.shortcut {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+  border-radius: 14px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-mist);
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.shortcut:hover {
+  border-color: rgba(var(--color-navy-rgb), 0.3);
+  background: var(--color-canvas);
+}
+
+.shortcutIcon {
+  flex: 0 0 auto;
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: rgba(var(--color-navy-rgb), 0.08);
+  color: var(--color-navy);
+}
+
+.shortcutIcon svg {
+  width: 21px;
+  height: 21px;
+}
+
+.shortcutBody {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12.5px;
+  color: var(--color-slate);
+}
+
+.shortcutBody strong {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-ink);
+  letter-spacing: -0.01em;
+}
+
+/* ---------- responsivo ---------- */
+@media (max-width: 768px) {
+  .graveGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .shortcuts {
+    grid-template-columns: 1fr;
+  }
+
+  .alertCta {
+    width: 100%;
+    justify-content: center;
+  }
+}

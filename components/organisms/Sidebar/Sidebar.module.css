@@ -1,0 +1,312 @@
+.sidebar {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  width: 228px;
+  height: 100dvh;
+  flex-shrink: 0;
+  background: var(--color-surface);
+  border-right: 1px solid var(--color-mist);
+  transition: width 0.45s var(--ease-out);
+  overflow: visible;
+  z-index: 40;
+}
+
+.collapsed {
+  width: 64px;
+}
+
+/* mobile/tablet usa a footer bar (MobileTabBar) no lugar da sidebar */
+@media (max-width: 900px) {
+  .sidebar {
+    display: none;
+  }
+}
+
+/* ---------- botão retrair/expandir (borda direita) ---------- */
+.toggle {
+  position: absolute;
+  right: -12px;
+  top: 25px;
+  z-index: 50;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--color-mist);
+  border-radius: 50%;
+  background: var(--color-surface);
+  color: var(--color-slate);
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition:
+    color var(--speed-fast) var(--ease-out),
+    border-color var(--speed-fast) var(--ease-out),
+    box-shadow var(--speed-base) var(--ease-out),
+    transform var(--speed-fast) var(--ease-out);
+}
+
+.toggle:hover {
+  color: var(--color-navy);
+  border-color: var(--color-navy);
+  box-shadow: var(--shadow-md);
+  transform: scale(1.08);
+}
+
+.toggle svg {
+  width: 11px;
+  height: 11px;
+  transition: transform 0.45s var(--ease-out);
+}
+
+.collapsed .toggle svg {
+  transform: rotate(180deg);
+}
+
+/* ---------- marca ---------- */
+.brand {
+  display: flex;
+  align-items: center;
+  height: 64px;
+  padding: 0 var(--space-4);
+  border-bottom: 1px solid var(--color-mist-soft);
+  flex-shrink: 0;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.collapsed .brand {
+  justify-content: center;
+  padding: 0;
+}
+
+.brandSymbol {
+  display: inline-flex;
+  color: var(--color-navy);
+}
+
+.brandSymbol svg {
+  width: 24px;
+  height: 24px;
+}
+
+/* ---------- navegação ---------- */
+.nav {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: var(--space-2) 10px var(--space-3);
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+.nav:hover {
+  scrollbar-color: var(--color-mist) transparent;
+}
+
+.nav::-webkit-scrollbar {
+  width: 4px;
+}
+
+.nav::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.nav::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: var(--radius-pill);
+}
+
+.nav:hover::-webkit-scrollbar-thumb {
+  background: var(--color-mist);
+}
+
+.nav:hover::-webkit-scrollbar-thumb:hover {
+  background: #c3cdd9;
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding-top: var(--space-2);
+}
+
+.group + .group {
+  margin-top: var(--space-3);
+  border-top: 1px solid var(--color-mist-soft);
+  padding-top: var(--space-3);
+}
+
+.groupLabel {
+  padding: 0 var(--space-2) 6px;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: #8b99ab;
+  white-space: nowrap;
+}
+
+
+.item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 33px;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+  color: var(--color-slate);
+  font-size: var(--text-caption);
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background var(--speed-fast) var(--ease-out),
+    color var(--speed-fast) var(--ease-out);
+}
+
+.item:hover {
+  background: var(--color-navy-ghost);
+  color: var(--color-navy);
+}
+
+.active {
+  background: var(--color-navy-soft);
+  color: var(--color-navy);
+  font-weight: 600;
+}
+
+.active::before {
+  content: "";
+  position: absolute;
+  left: -10px;
+  top: 7px;
+  bottom: 7px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--color-navy);
+}
+
+.icon {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.icon svg {
+  width: 17px;
+  height: 17px;
+}
+
+.label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  opacity: 1;
+  transition: opacity 0.25s var(--ease-out);
+}
+
+/* min-width: 0 vence o "min-width: auto" de flex items — sem isso o label
+   invisível continua ocupando espaço e desalinha os ícones à esquerda */
+.collapsed .label {
+  opacity: 0;
+  width: 0;
+  min-width: 0;
+  flex: 0 0 0;
+  pointer-events: none;
+}
+
+.collapsed .item {
+  justify-content: center;
+  gap: 0;
+  padding: 0;
+}
+
+/* ---------- tooltip flutuante (sidebar retraída) ---------- */
+/* position: fixed — renderizado fora do container de scroll, sobrepõe o conteúdo */
+.floatingTip {
+  position: fixed;
+  left: 76px;
+  transform: translateY(-50%);
+  padding: 6px 11px;
+  border-radius: var(--radius-sm);
+  background: var(--color-ink);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: var(--shadow-md);
+  z-index: 90;
+  animation: tipIn 0.18s var(--ease-out) both;
+}
+
+.floatingTip::before {
+  content: "";
+  position: absolute;
+  left: -4px;
+  top: 50%;
+  transform: translateY(-50%) rotate(45deg);
+  width: 8px;
+  height: 8px;
+  background: var(--color-ink);
+  border-radius: 1px;
+}
+
+@keyframes tipIn {
+  from {
+    opacity: 0;
+    transform: translateY(-50%) translateX(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
+  }
+}
+
+/* ---------- rodapé (tenant) ---------- */
+.footer {
+  padding: var(--space-2) 10px;
+  border-top: 1px solid var(--color-mist-soft);
+  flex-shrink: 0;
+}
+
+.tenant {
+  height: auto;
+  padding: 6px var(--space-2);
+}
+
+.tenant:hover {
+  background: var(--color-navy-ghost);
+  color: inherit;
+}
+
+.tenantDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-success);
+  box-shadow: 0 0 0 3px var(--color-success-soft);
+  flex-shrink: 0;
+}
+
+.tenantName {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.tenantSub {
+  display: block;
+  font-size: 10.5px;
+  color: var(--color-slate);
+}
+
+.collapsed .tenant {
+  justify-content: center;
+  padding: 6px 0;
+}

@@ -1,0 +1,26 @@
+.clock {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-body);
+  color: var(--color-slate);
+  min-height: 1.5em;
+}
+
+.sep {
+  color: var(--color-mist);
+}
+
+.time {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 600;
+  color: var(--color-navy);
+  font-variant-numeric: tabular-nums;
+}
+
+.time svg {
+  width: 13px;
+  height: 13px;
+}

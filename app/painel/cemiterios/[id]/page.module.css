@@ -1,0 +1,493 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  animation: pageIn 0.5s var(--ease-out) both;
+}
+
+@keyframes pageIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ---------- voltar ---------- */
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  padding: 6px 10px 6px 6px;
+  margin: -4px 0 -8px -6px;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-caption);
+  font-weight: 600;
+  color: var(--color-slate);
+  transition: background 0.15s var(--ease-out), color 0.15s var(--ease-out);
+}
+
+.back:hover {
+  background: var(--color-mist-soft);
+  color: var(--color-ink);
+}
+
+.back svg {
+  width: 14px;
+  height: 14px;
+}
+
+.title {
+  font-family: var(--font-body);
+  font-size: var(--text-title);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--color-ink);
+}
+
+/* ---------- hero do cemitério ---------- */
+.hero {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding: var(--space-6);
+  background: var(--color-surface);
+  border: 1px solid var(--color-mist);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
+  overflow: hidden;
+}
+
+.heroBar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+}
+
+.heroMain {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+
+.heroLogo {
+  flex: 0 0 auto;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-md);
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 600;
+}
+
+.heroInfo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.heroTitleRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.heroMeta {
+  font-size: 13px;
+  color: var(--color-slate);
+}
+
+.heroMetaSub {
+  font-size: 12px;
+  color: var(--color-slate);
+}
+
+.heroActions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.heroStats {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-mist-soft);
+}
+
+.heroStat {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.heroStatValue {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--color-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.heroStatLabel {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-slate);
+}
+
+/* ---------- explorador da hierarquia ---------- */
+.explorer {
+  background: var(--color-surface);
+  border: 1px solid var(--color-mist);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.explorerHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.explorerTitle {
+  font-family: var(--font-body);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--color-ink);
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+
+.crumb {
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-slate);
+  transition: background 0.15s var(--ease-out), color 0.15s var(--ease-out);
+}
+
+.crumb:hover:not(.crumbCurrent) {
+  background: var(--color-mist-soft);
+  color: var(--color-ink);
+}
+
+.crumbCurrent {
+  color: var(--color-navy);
+  cursor: default;
+}
+
+.crumbSep {
+  color: var(--color-mist);
+  font-size: 14px;
+}
+
+.levelGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--space-3);
+}
+
+.levelCard {
+  border: 1px solid var(--color-mist);
+  background: var(--color-canvas);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  transition: border-color 0.2s var(--ease-out), background 0.2s var(--ease-out), transform 0.2s var(--ease-out);
+}
+
+.levelCard:hover {
+  border-color: rgba(var(--color-navy-rgb), 0.3);
+  background: var(--color-surface);
+  transform: translateY(-1px);
+}
+
+.levelCode {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-sm);
+  display: grid;
+  place-items: center;
+  background: rgba(var(--color-navy-rgb), 0.08);
+  color: var(--color-navy);
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.levelName {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--color-ink);
+}
+
+.levelMeta {
+  font-size: 12px;
+  color: var(--color-slate);
+  font-variant-numeric: tabular-nums;
+}
+
+.emptyLevel {
+  padding: var(--space-6);
+  text-align: center;
+  font-size: 13px;
+  color: var(--color-slate);
+  border: 1px dashed var(--color-mist);
+  border-radius: var(--radius-md);
+}
+
+/* lote (não navega, mostra ocupação) */
+.lotCard {
+  cursor: default;
+}
+
+.lotCard:hover {
+  transform: none;
+}
+
+.occupancyTrack {
+  width: 100%;
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--color-mist-soft);
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.occupancyFill {
+  height: 100%;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(90deg, var(--color-navy-bright), var(--color-navy));
+  transition: width 0.6s var(--ease-out);
+}
+
+.occupancyLabel {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--color-slate);
+  font-variant-numeric: tabular-nums;
+}
+
+.lotLink {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--color-navy);
+}
+
+.lotLink:hover {
+  text-decoration: underline;
+}
+
+/* ---------- modais ---------- */
+.modalBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-4);
+}
+
+.spanTwo {
+  grid-column: span 2;
+}
+
+.sectionLabel {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-slate);
+}
+
+.identityRow {
+  display: flex;
+  gap: var(--space-4);
+  align-items: flex-start;
+}
+
+.logoUpload {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border: 1px dashed var(--color-mist);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: border-color 0.2s var(--ease-out), background 0.2s var(--ease-out);
+}
+
+.logoUpload:hover {
+  border-color: var(--color-navy);
+  background: var(--color-canvas);
+}
+
+.hiddenInput {
+  display: none;
+}
+
+.logoPreview {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-md);
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.logoHint {
+  font-size: 11.5px;
+  font-weight: 600;
+  text-align: center;
+  color: var(--color-slate);
+  line-height: 1.4;
+}
+
+.logoHint em {
+  font-style: normal;
+  font-weight: 400;
+}
+
+.colorFields {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+.colorRow {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.colorInput {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid var(--color-mist);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  cursor: pointer;
+}
+
+/* ---------- responsivo ---------- */
+@media (max-width: 900px) {
+  .heroStats {
+    grid-template-columns: repeat(3, 1fr);
+    row-gap: var(--space-5);
+  }
+}
+
+@media (max-width: 768px) {
+  .heroMain {
+    flex-wrap: wrap;
+  }
+
+  .heroActions {
+    width: 100%;
+  }
+
+  .heroActions > * {
+    flex: 1;
+  }
+
+  .heroActions a {
+    display: flex;
+  }
+
+  .heroActions a > * {
+    width: 100%;
+  }
+
+  .explorerHead {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .explorerHead > :last-child {
+    width: 100%;
+  }
+
+  .levelGrid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  }
+
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .spanTwo {
+    grid-column: span 1;
+  }
+
+  .identityRow {
+    flex-direction: column;
+  }
+
+  .logoUpload {
+    width: 100%;
+    flex-direction: row;
+    justify-content: center;
+  }
+
+  .colorFields {
+    width: 100%;
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 520px) {
+  .heroStats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

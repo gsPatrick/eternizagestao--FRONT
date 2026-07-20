@@ -1,0 +1,357 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(20px, 3vw, 30px);
+  animation: pageIn 0.5s var(--ease-out) both;
+}
+
+@keyframes pageIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ---------- voltar ---------- */
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--color-slate);
+  transition: color 0.2s ease;
+}
+
+.back:hover {
+  color: var(--color-navy);
+}
+
+.back svg {
+  width: 15px;
+  height: 15px;
+}
+
+/* ---------- hero ---------- */
+.hero {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: clamp(20px, 3vw, 28px);
+  border-radius: 20px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-mist);
+  box-shadow: var(--shadow-xs);
+}
+
+.heroHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.heroIcon {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: rgba(var(--color-navy-rgb), 0.08);
+  color: var(--color-navy);
+}
+
+.heroIcon svg {
+  width: 25px;
+  height: 25px;
+}
+
+.heroTitle {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: clamp(1.7rem, 3.4vw, 2.4rem);
+  letter-spacing: -0.025em;
+  color: var(--color-ink);
+}
+
+.heroTrail {
+  font-size: 14px;
+  color: var(--color-slate);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: var(--radius-pill);
+  background: var(--color-canvas);
+  border: 1px solid var(--color-mist);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.chipLabel {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-slate);
+}
+
+.heroActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+/* ---------- pendência ---------- */
+.pending {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: clamp(16px, 2.4vw, 22px);
+  border-radius: 18px;
+  background: linear-gradient(160deg, var(--color-navy-deep), var(--color-navy));
+  color: #fff;
+  flex-wrap: wrap;
+}
+
+.pendingIcon {
+  flex: 0 0 auto;
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+}
+
+.pendingIcon svg {
+  width: 22px;
+  height: 22px;
+}
+
+.pendingBody {
+  flex: 1;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.pendingTitle {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.pendingText {
+  font-size: 13px;
+  opacity: 0.82;
+}
+
+.pendingCta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 18px;
+  border-radius: 11px;
+  background: #fff;
+  color: var(--color-navy);
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.pendingCta:hover {
+  transform: translateX(3px);
+}
+
+.pendingCta svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* ---------- seções ---------- */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.sectionTitle {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  color: var(--color-ink);
+}
+
+/* ---------- sepultados ---------- */
+.people {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+}
+
+.personCard {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 18px;
+  border-radius: 16px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-mist);
+  box-shadow: var(--shadow-xs);
+}
+
+.avatar {
+  flex: 0 0 auto;
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-pill);
+  background: rgba(var(--color-navy-rgb), 0.08);
+  color: var(--color-navy);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.personBody {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.personName {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--color-ink);
+}
+
+.personRole {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--color-navy);
+}
+
+.personDates {
+  margin-top: 5px;
+  font-size: 13px;
+  color: var(--color-ink);
+}
+
+.personBuried {
+  font-size: 12.5px;
+  color: var(--color-slate);
+}
+
+/* ---------- histórico ---------- */
+.timeline {
+  list-style: none;
+  position: relative;
+  margin: 0;
+  padding: 4px 0 4px 6px;
+}
+
+.timeline::before {
+  content: "";
+  position: absolute;
+  top: 12px;
+  bottom: 12px;
+  left: 12px;
+  width: 2px;
+  background: var(--color-mist);
+}
+
+.event {
+  position: relative;
+  display: flex;
+  gap: 18px;
+  padding: 0 0 22px 0;
+}
+
+.event:last-child {
+  padding-bottom: 0;
+}
+
+.eventDot {
+  position: relative;
+  z-index: 1;
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+  margin-top: 3px;
+  border-radius: var(--radius-pill);
+  border: 3px solid var(--color-canvas);
+  box-shadow: 0 0 0 1px var(--color-mist);
+}
+
+.dot_sepultamento {
+  background: var(--color-navy);
+}
+
+.dot_manutencao {
+  background: var(--color-warning, #c98a2b);
+}
+
+.dot_concessao {
+  background: var(--color-success, #2e9e6b);
+}
+
+.eventBody {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 1px;
+}
+
+.eventHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.eventDate {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--color-slate);
+}
+
+.eventText {
+  font-size: 14px;
+  color: var(--color-ink);
+}
+
+/* ---------- mapa ---------- */
+.mapHint {
+  margin-top: 12px;
+  font-size: 12.5px;
+  color: var(--color-slate);
+}
+
+/* ---------- responsivo ---------- */
+@media (max-width: 768px) {
+  .people {
+    grid-template-columns: 1fr;
+  }
+
+  .pendingCta {
+    width: 100%;
+    justify-content: center;
+  }
+}

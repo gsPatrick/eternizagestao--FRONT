@@ -1,0 +1,224 @@
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  height: 64px;
+  padding: 0 var(--space-5);
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--color-mist-soft);
+}
+
+.left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.crumb {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.crumbRoot {
+  font-size: var(--text-caption);
+  font-weight: 600;
+  color: var(--color-slate);
+}
+
+.crumbSep {
+  color: var(--color-mist);
+}
+
+.crumbCurrent {
+  font-size: var(--text-body);
+  font-weight: 600;
+  color: var(--color-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---------- usuário ---------- */
+.right {
+  position: relative;
+}
+
+.user {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 6px 10px 6px 6px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  cursor: pointer;
+  transition:
+    background var(--speed-fast) var(--ease-out),
+    border-color var(--speed-fast) var(--ease-out),
+    box-shadow var(--speed-base) var(--ease-out);
+}
+
+.user:hover,
+.userOpen {
+  background: var(--color-surface);
+  border-color: var(--color-mist);
+  box-shadow: var(--shadow-xs);
+}
+
+.userInfo {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.25;
+}
+
+.userName {
+  font-size: var(--text-caption);
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.userRole {
+  font-size: 11px;
+  color: var(--color-slate);
+}
+
+.chevron {
+  width: 14px;
+  height: 14px;
+  color: var(--color-slate);
+  transition: transform var(--speed-base) var(--ease-out);
+}
+
+.userOpen .chevron {
+  transform: rotate(180deg);
+}
+
+/* ---------- dropdown ---------- */
+.menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 10px);
+  width: 248px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-mist);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  animation: menuIn 0.35s var(--ease-out) both;
+  z-index: 50;
+}
+
+@keyframes menuIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.menuHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--color-navy-ghost);
+  border-bottom: 1px solid var(--color-mist-soft);
+}
+
+.menuName {
+  display: block;
+  font-size: var(--text-body);
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.menuEmail {
+  display: block;
+  font-size: var(--text-caption);
+  color: var(--color-slate);
+}
+
+.menuList {
+  padding: var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.menuItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: 9px var(--space-3);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  font-size: var(--text-body);
+  font-weight: 500;
+  color: var(--color-ink);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background var(--speed-fast) var(--ease-out),
+    color var(--speed-fast) var(--ease-out);
+}
+
+.menuItem:hover {
+  background: var(--color-navy-ghost);
+  color: var(--color-navy);
+}
+
+.menuItem svg {
+  width: 17px;
+  height: 17px;
+  color: var(--color-slate);
+  transition: color var(--speed-fast) var(--ease-out);
+}
+
+.menuItem:hover svg {
+  color: var(--color-navy);
+}
+
+.menuDivider {
+  height: 1px;
+  margin: 0 var(--space-2);
+  background: var(--color-mist-soft);
+}
+
+.menuDanger {
+  margin: var(--space-2);
+  width: calc(100% - 16px);
+  color: var(--color-danger);
+}
+
+.menuDanger svg {
+  color: var(--color-danger);
+}
+
+.menuDanger:hover {
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+}
+
+.menuDanger:hover svg {
+  color: var(--color-danger);
+}
+
+@media (max-width: 640px) {
+  .userInfo {
+    display: none;
+  }
+}

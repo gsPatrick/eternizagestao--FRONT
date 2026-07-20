@@ -1,0 +1,157 @@
+.visual {
+  position: relative;
+  height: 100%;
+  min-height: inherit;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--space-5);
+  padding: clamp(28px, 4vw, 56px);
+  color: #fff;
+  background:
+    radial-gradient(900px 600px at 18% 8%, rgba(60, 130, 200, 0.28), transparent 55%),
+    radial-gradient(1100px 700px at 90% 100%, rgba(2, 16, 34, 0.85), transparent 70%),
+    linear-gradient(155deg, var(--color-navy-bright) 0%, var(--color-navy) 42%, #021a33 100%);
+  overflow: clip;
+}
+
+.rings {
+  position: absolute;
+  right: -180px;
+  bottom: -220px;
+  width: 640px;
+  height: 640px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow:
+    0 0 0 90px rgba(255, 255, 255, 0.035),
+    0 0 0 200px rgba(255, 255, 255, 0.022),
+    0 0 0 330px rgba(255, 255, 255, 0.012);
+  pointer-events: none;
+}
+
+.glow {
+  position: absolute;
+  left: -120px;
+  top: 30%;
+  width: 420px;
+  height: 420px;
+  background: radial-gradient(closest-side, rgba(120, 180, 235, 0.22), transparent);
+  filter: blur(30px);
+  pointer-events: none;
+  animation: drift 12s ease-in-out infinite alternate;
+}
+
+@keyframes drift {
+  from {
+    transform: translate(0, 0);
+  }
+  to {
+    transform: translate(60px, -40px);
+  }
+}
+
+.header,
+.content,
+.footer {
+  position: relative;
+  z-index: 1;
+}
+
+.content {
+  max-width: 620px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.eyebrow {
+  font-size: var(--text-caption);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.title {
+  font-size: clamp(2.25rem, 3.6vw, 3.75rem);
+  color: #fff;
+  max-width: 15ch;
+}
+
+.subtitle {
+  max-width: 46ch;
+  font-size: var(--text-body-lg);
+  line-height: 1.65;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.footer {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-4);
+  font-size: var(--text-caption);
+  color: rgba(255, 255, 255, 0.45);
+}
+
+@media (max-width: 960px) {
+  .visual {
+    min-height: 220px;
+    justify-content: flex-start;
+  }
+
+  .title {
+    font-size: clamp(1.5rem, 6vw, 2.25rem);
+  }
+
+  .subtitle,
+  .footer {
+    display: none;
+  }
+}
+
+/* ---------- intro igual à hero: o painel abre do centro, depois o conteúdo ---------- */
+.withIntro {
+  animation: authPanelIn 2s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes authPanelIn {
+  from {
+    clip-path: inset(48.5% 48.5% 48.5% 48.5% round 80px);
+  }
+  to {
+    clip-path: inset(0% 0% 0% 0% round 0px);
+  }
+}
+
+.withIntro .header {
+  animation: authRise 1s cubic-bezier(0.16, 1, 0.3, 1) 1.35s both;
+}
+
+.withIntro .content {
+  animation: authRise 1s cubic-bezier(0.16, 1, 0.3, 1) 1.55s both;
+}
+
+.withIntro .footer {
+  animation: authRise 1s cubic-bezier(0.16, 1, 0.3, 1) 1.75s both;
+}
+
+@keyframes authRise {
+  from {
+    opacity: 0;
+    transform: translateY(26px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .withIntro,
+  .withIntro .header,
+  .withIntro .content,
+  .withIntro .footer {
+    animation: none;
+  }
+}

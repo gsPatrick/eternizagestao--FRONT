@@ -1,0 +1,264 @@
+/* ==========================================================================
+ * HUB de Configurações — casca com SIDEBAR INTERNA de tópicos (2º nível, dentro
+ * do PanelShell). Sidebar navy premium à esquerda + área de conteúdo à direita.
+ * Só tokens do design system — não toca globals.css.
+ * ========================================================================== */
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  max-width: 1180px;
+  animation: pageIn 0.5s var(--ease-out) both;
+  padding-bottom: var(--space-8);
+}
+
+@keyframes pageIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ------------------------------- header ---------------------------------- */
+.head {
+  display: flex;
+  flex-direction: column;
+}
+
+.eyebrow {
+  font-size: var(--text-caption);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-navy);
+}
+
+.title {
+  margin-top: 6px;
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 2.4vw, 2rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--color-ink);
+}
+
+.subtitle {
+  margin-top: 8px;
+  max-width: 68ch;
+  font-size: var(--text-body);
+  line-height: 1.55;
+  color: var(--color-slate);
+}
+
+/* --------------------------------- hub ----------------------------------- */
+.hub {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  gap: var(--space-5);
+  align-items: start;
+}
+
+/* ------------------------------- sidebar --------------------------------- */
+.sidebar {
+  position: sticky;
+  top: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-mist);
+  background:
+    radial-gradient(120% 120% at 100% 0%, rgba(255, 255, 255, 0.08), transparent 60%),
+    linear-gradient(160deg, var(--color-navy) 0%, var(--color-navy-deep) 100%);
+  box-shadow: var(--shadow-md);
+}
+
+/* cartão da cidade */
+.cityCard {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.cityLogo {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.14);
+  overflow: hidden;
+}
+
+.cityLogo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #fff;
+  padding: 4px;
+}
+
+.cityMonogram {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.cityInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.cityLabel {
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.cityName {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cityDomain {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.62);
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cityStatus {
+  padding: 0 2px;
+}
+
+/* navegação por tópicos */
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.navItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 12px;
+  border-radius: var(--radius-md);
+  color: rgba(255, 255, 255, 0.72);
+  text-decoration: none;
+  transition: background 0.15s var(--ease-out), color 0.15s var(--ease-out);
+}
+
+.navItem:hover {
+  background: rgba(255, 255, 255, 0.07);
+  color: #fff;
+}
+
+.navItemActive,
+.navItemActive:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+}
+
+.navIcon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-sm, 8px);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.navIcon svg {
+  width: 19px;
+  height: 19px;
+}
+
+.navItemActive .navIcon {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.navText {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+
+.navLabel {
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.navDesc {
+  font-size: 11px;
+  line-height: 1.3;
+  color: rgba(255, 255, 255, 0.55);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.navChevron {
+  flex: none;
+  display: grid;
+  place-items: center;
+  color: rgba(255, 255, 255, 0.4);
+  opacity: 0;
+  transform: translateX(-2px);
+  transition: opacity 0.15s var(--ease-out), transform 0.15s var(--ease-out);
+}
+
+.navChevron svg { width: 16px; height: 16px; }
+
+.navItem:hover .navChevron,
+.navItemActive .navChevron {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* ------------------------------- content --------------------------------- */
+.content {
+  min-width: 0;
+}
+
+/* ------------------------------ responsive ------------------------------- */
+@media (max-width: 900px) {
+  .hub {
+    grid-template-columns: 1fr;
+  }
+  .sidebar {
+    position: static;
+  }
+  .nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .navItem {
+    flex: 1 1 220px;
+  }
+  .navChevron { display: none; }
+}
+
+@media (max-width: 560px) {
+  .navItem { flex-basis: 100%; }
+}
