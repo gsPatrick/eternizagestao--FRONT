@@ -213,7 +213,7 @@ function PerfilContent({ user, sub }) {
 
   function logout() {
     clearSession();
-    router.push("/login");
+    router.push("/portal/login");
   }
 
   return (

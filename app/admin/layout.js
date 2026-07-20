@@ -27,9 +27,9 @@ export default function AdminLayout({ children }) {
       setReady(true);
       return;
     }
-    // guard: exige sessão E papel de plataforma.
+    // guard: exige sessão E papel de plataforma. O login é o único em `/login`.
     if (!isAuthed() || getUser()?.role !== "super_admin") {
-      router.replace("/admin/login");
+      router.replace("/login");
       return;
     }
     setUser(getUser());
@@ -38,7 +38,7 @@ export default function AdminLayout({ children }) {
 
   function signOut() {
     clearSession();
-    router.replace("/admin/login");
+    router.replace("/login");
   }
 
   // A tela de login não recebe a casca.

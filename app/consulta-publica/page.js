@@ -72,7 +72,7 @@ function SearchContent() {
   const tenant = TENANTS.find((t) => t.id === params.get("t") && t.id !== "eterniza") || null;
   const tenantSlug = tenant ? tenant.id : params.get("t");
   const home = tenant ? `/${tenant.id}` : "/";
-  const portalHref = tenant ? `/login?t=${tenant.id}` : "/login";
+  const portalHref = tenant ? `/portal/login?t=${tenant.id}` : "/portal/login";
   const navLinks = [];
 
   const { results, loading, error, refetch, status } = usePublicSearch(

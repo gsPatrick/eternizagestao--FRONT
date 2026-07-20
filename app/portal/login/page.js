@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import styles from "./page.module.css";
 import TenantTheme from "@/components/providers/TenantTheme/TenantTheme";
@@ -14,47 +14,65 @@ import AuthVisual from "@/components/organisms/AuthVisual/AuthVisual";
 import { normalizeEmail } from "@/lib/masks";
 import { api, ApiError } from "@/lib/api/client";
 import { setSession } from "@/lib/api/session";
-import { getOnboarding } from "@/lib/api/resources/tenant";
+import { getPublicTenants } from "@/lib/api/resources/public";
+import { normalizeApiTenant, resolveTenant } from "@/lib/tenants";
 
-export default function LoginPage() {
+export default function PortalLoginPage() {
   const router = useRouter();
   const [remember, setRemember] = useState(true);
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
+  const [forcedTenant, setForcedTenant] = useState(null);
+  const [tenants, setTenants] = useState([]);
 
-  // Login ADMINISTRATIVO único: super_admin (dono do sistema) e admin de
-  // cada cidade entram por aqui. Sem header de tenant — o e-mail resolve o
-  // usuário na API e o token carrega o tenantId dele. Redireciona por papel.
+  // Resolve o tenant desta tela com PRECEDÊNCIA:
+  //   1) ?t=<slug>          → dev/override manual (stand-in do subdomínio no dev)
+  //   2) cookie eterniza_tenant → subdomínio em produção (setado pelo middleware)
+  useEffect(() => {
+    const t = new URLSearchParams(window.location.search).get("t");
+    const cookieTenant = readTenantCookie();
+    const resolved = t || cookieTenant;
+    if (resolved) setForcedTenant(resolved);
+  }, []);
+
+  // Fonte da verdade das cidades: resolve o SUBDOMÍNIO do tenant selecionado
+  // (o header X-Tenant-Subdomain que o login da família precisa enviar).
+  useEffect(() => {
+    let alive = true;
+    getPublicTenants()
+      .then((apiTenants) => {
+        if (alive && Array.isArray(apiTenants)) setTenants(apiTenants.map(normalizeApiTenant));
+      })
+      .catch(() => {}); // offline → resolve pelo próprio slug do ?t=
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  // Subdomínio a enviar no header: resolvido do tenant selecionado via lista da
+  // API. Nunca envia o id (UUID) — sempre o subdomínio.
+  function resolveTenantSubdomain() {
+    if (!forcedTenant) return undefined;
+    const match = resolveTenant(tenants, forcedTenant);
+    return match?.apiSubdomain || forcedTenant;
+  }
+
+  // Login da FAMÍLIA: exige tenant (subdomínio/cookie/?t=). O portal tem
+  // model/fluxo próprios (`/portal/sessions`).
   async function submitLogin(event) {
     event.preventDefault();
     setError(null);
     setLoading(true);
     try {
       const result = await api.post(
-        "/sessions",
+        "/portal/sessions",
         { email, password },
-        { auth: false }
+        { tenant: resolveTenantSubdomain(), auth: false }
       );
       setSession(result);
-      if (result?.user?.role === "super_admin") {
-        router.push("/admin");
-        return;
-      }
-      // Admin da cidade: no PRIMEIRO acesso (tenant `pendente`) leva ao
-      // onboarding; senão vai direto pro painel. O status não vem no login,
-      // então consultamos com o token recém-salvo. Falha/403 → painel.
-      try {
-        const onboarding = await getOnboarding();
-        if (onboarding?.onboardingStatus === "pendente") {
-          router.push("/onboarding");
-          return;
-        }
-      } catch {
-        // sem acesso ao onboarding (papel não-admin) ou erro → segue pro painel
-      }
-      router.push("/painel");
+      router.push("/portal/inicio");
     } catch (err) {
       const message =
         err instanceof ApiError ? err.message : "Não foi possível entrar. Tente novamente.";
@@ -64,7 +82,7 @@ export default function LoginPage() {
   }
 
   return (
-    <TenantTheme showSwitcher={false}>
+    <TenantTheme forcedTenantId={forcedTenant} showSwitcher={!forcedTenant}>
       <main className={styles.screen}>
         <section className={`${styles.visual} ${styles.visualShrunk}`}>
           <AuthVisual />
@@ -72,15 +90,18 @@ export default function LoginPage() {
 
         <section className={`${styles.panel} ${styles.panelExpanded}`}>
           <div className={styles.panelInner}>
-            <div className={styles.formView} key="login">
+            <div className={styles.formView} key="portal-login">
               <div className={styles.formHead}>
-                <h2 className={styles.formTitle}>Entrar</h2>
-                <p className={styles.formSub}>Acesse o painel administrativo para continuar.</p>
+                <h2 className={styles.formTitle}>Portal da Família</h2>
+                <p className={styles.formSub}>
+                  Acesse para consultar débitos, emitir 2ª via e acompanhar o
+                  histórico dos seus entes queridos.
+                </p>
               </div>
               <form className={styles.form} onSubmit={submitLogin}>
-                <FormField label="E-mail" htmlFor="login-email" required>
+                <FormField label="E-mail" htmlFor="portal-email" required>
                   <Input
-                    id="login-email"
+                    id="portal-email"
                     type="email"
                     placeholder="voce@exemplo.com"
                     autoComplete="email"
@@ -89,9 +110,9 @@ export default function LoginPage() {
                     required
                   />
                 </FormField>
-                <FormField label="Senha" htmlFor="login-password" required>
+                <FormField label="Senha" htmlFor="portal-password" required>
                   <Input
-                    id="login-password"
+                    id="portal-password"
                     type="password"
                     placeholder="••••••••••"
                     autoComplete="current-password"
@@ -111,10 +132,23 @@ export default function LoginPage() {
                   Entrar
                 </Button>
               </form>
+              <p className={styles.switchText}>
+                O acesso da família é criado pelo link de convite enviado por
+                e-mail pela gestão do cemitério.
+              </p>
             </div>
           </div>
         </section>
       </main>
     </TenantTheme>
   );
+}
+
+// Lê o subdomínio da cidade do cookie setado pelo middleware (produção).
+// Em dev o cookie não existe (middleware é no-op) → retorna null e o fluxo
+// segue pelo ?t=. SSR-safe.
+function readTenantCookie() {
+  if (typeof document === "undefined") return null;
+  const match = document.cookie.match(/(?:^|;\s*)eterniza_tenant=([^;]+)/);
+  return match ? decodeURIComponent(match[1]) : null;
 }

@@ -93,7 +93,7 @@ export default function PortalShell({ children, active }) {
             className={styles.exit}
             onClick={() => {
               clearSession();
-              router.push("/login");
+              router.push("/portal/login");
             }}
           >
             <span>Sair</span>

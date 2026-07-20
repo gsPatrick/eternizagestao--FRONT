@@ -44,7 +44,7 @@ export default async function TenantPublicPage({ params }) {
 
   const home = `/${tenant.id}`;
   const consultaHref = `/consulta-publica?t=${tenant.id}`;
-  const portalHref = `/login?t=${tenant.id}`;
+  const portalHref = `/portal/login?t=${tenant.id}`;
   const navLinks = [{ label: "Consulta pública", href: consultaHref }];
   const footerNav = [
     { label: "Início", href: `${home}#top` },
