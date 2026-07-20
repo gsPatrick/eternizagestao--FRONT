@@ -24,6 +24,9 @@ import styles from "./TenantTheme.module.css";
  */
 
 const STORAGE_KEY = "eterniza:tenant";
+// Cache das variáveis de cor por subdomínio — lido pelo script anti-flash no
+// <head> (app/layout.js) para pintar a cor da cidade já na 1ª renderização.
+const THEME_VARS_KEY = "eterniza:themeVars";
 const TenantContext = createContext(DEFAULT_TENANT);
 
 // Lê o subdomínio da cidade do cookie setado pelo middleware (produção).
@@ -32,6 +35,17 @@ function readTenantCookie() {
   if (typeof document === "undefined") return null;
   const match = document.cookie.match(/(?:^|;\s*)eterniza_tenant=([^;]+)/);
   return match ? decodeURIComponent(match[1]) : null;
+}
+
+// Guarda as variáveis de cor da cidade para o script anti-flash da próxima carga.
+// Chaveado por subdomínio (evita mostrar a cor de outra cidade). SSR-safe.
+function persistThemeVars(vars, sub) {
+  if (typeof window === "undefined" || !sub) return;
+  try {
+    localStorage.setItem(`${THEME_VARS_KEY}:${sub}`, JSON.stringify(vars));
+  } catch {
+    /* localStorage indisponível (modo privado/cheio) — ignora */
+  }
 }
 
 export function useTenant() {
@@ -104,18 +118,32 @@ export default function TenantTheme({
   // Aplica as variáveis da marca também no <html> (:root) — assim elas alcançam
   // os PORTAIS (modais/toasts renderizados em document.body, FORA do div do
   // tema). Sem isto, os botões dentro de modais caem no navy padrão do sistema.
+  // Também GRAVA o cache por subdomínio para o script anti-flash da próxima carga
+  // (só quando é uma cidade real — nunca sobrescreve com o navy padrão).
   useEffect(() => {
     if (typeof document === "undefined") return undefined;
     const root = document.documentElement;
     const entries = Object.entries(themeVars);
     entries.forEach(([k, v]) => root.style.setProperty(k, v));
+    if (tenant.id !== DEFAULT_TENANT.id) {
+      // chave = rótulo PURO do subdomínio (mesmo valor do cookie eterniza_tenant),
+      // não o domínio de exibição. apiSubdomain vem do normalizeApiTenant.
+      persistThemeVars(themeVars, tenant.apiSubdomain || readTenantCookie());
+    }
     return () => entries.forEach(([k]) => root.style.removeProperty(k));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tenant.accent, tenant.accentRgb, tenant.accentBright, tenant.accentDeep]);
+  }, [tenant.accent, tenant.accentRgb, tenant.accentBright, tenant.accentDeep, tenant.id]);
+
+  // Escopo por <div> (variáveis inline) SÓ quando o tenant é resolvido de forma
+  // determinística e igual no SSR e no cliente: showcase (tenantProp) ou URL
+  // (forcedTenantId). No caso normal (resolvido por cookie/API só no cliente) as
+  // vars inline no SSR seriam navy e "sombreariam" o subtree → flash; então
+  // deixamos herdar do :root, que o script anti-flash já pintou na cor certa.
+  const scopeVars = forcedTenantId || tenantProp;
 
   return (
     <TenantContext.Provider value={tenant}>
-      <div className={styles.root} style={themeVars}>
+      <div className={styles.root} style={scopeVars ? themeVars : undefined}>
         {children}
 
         {/* seletor de demonstração — só existe para mostrar o white label */}
