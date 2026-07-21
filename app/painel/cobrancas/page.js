@@ -6,6 +6,7 @@ import styles from "./page.module.css";
 
 import api from "@/lib/api/client";
 import { useResource, useMutation } from "@/lib/api/useResource";
+import IntegrationRequired, { useIntegrationGuard } from "@/components/molecules/IntegrationRequired/IntegrationRequired";
 import {
   listBillings,
   getBillingsSummary,
@@ -188,6 +189,9 @@ export default function BillingsPage() {
   const payM = useMutation(({ id, body }) => createManualPayment(id, body));
   const simM = useMutation((id) => simulateGatewayPayment(id, { method: "pix" }));
   const reissueM = useMutation((id) => reissueBilling(id, {}));
+  // Emitir cobrança depende da conta Asaas da cidade. Sem ela a API recusa —
+  // o modal diz o que falta e leva para a tela de configuração.
+  const guard = useIntegrationGuard();
   const cancelM = useMutation((id) => cancelBilling(id, {}));
   const genM = useMutation((body) => generateBillings(body));
   const createM = useMutation((body) => createBilling(body));
@@ -203,6 +207,7 @@ export default function BillingsPage() {
       setPayOpen(false);
       await Promise.all([refreshAll(), refetchDetail()]);
     } catch (e) {
+      if (guard.capture(e)) return;
       setActionError(e.message);
     }
   }
@@ -213,6 +218,7 @@ export default function BillingsPage() {
       await simM.mutate(detail.id);
       await Promise.all([refreshAll(), refetchDetail()]);
     } catch (e) {
+      if (guard.capture(e)) return;
       setActionError(e.message);
     }
   }
@@ -224,6 +230,7 @@ export default function BillingsPage() {
       setDetailId(null);
       await refreshAll();
     } catch (e) {
+      if (guard.capture(e)) return;
       setActionError(e.message);
     }
   }
@@ -235,6 +242,7 @@ export default function BillingsPage() {
       setDetailId(null);
       await refreshAll();
     } catch (e) {
+      if (guard.capture(e)) return;
       setActionError(e.message);
     }
   }
@@ -246,6 +254,7 @@ export default function BillingsPage() {
       setGenerateOpen(false);
       await refreshAll();
     } catch (e) {
+      if (guard.capture(e)) return;
       setActionError(e.message);
     }
   }
@@ -268,6 +277,7 @@ export default function BillingsPage() {
       });
       await refreshAll();
     } catch (e) {
+      if (guard.capture(e)) return;
       setActionError(e.message);
     }
   }
@@ -712,6 +722,8 @@ export default function BillingsPage() {
       />
 
       <FileViewer open={Boolean(preview)} file={preview} onClose={() => setPreview(null)} />
+
+      <IntegrationRequired integration={guard.integration} onClose={guard.close} />
     </div>
   );
 }

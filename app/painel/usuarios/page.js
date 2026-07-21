@@ -21,6 +21,7 @@ import ExportModal from "@/components/molecules/ExportModal/ExportModal";
 import { maskPhone } from "@/lib/masks";
 
 import { useResource, useMutation } from "@/lib/api/useResource";
+import IntegrationRequired, { useIntegrationGuard } from "@/components/molecules/IntegrationRequired/IntegrationRequired";
 import { getUser } from "@/lib/api/session";
 import {
   listUsers,
@@ -209,7 +210,12 @@ export default function UsersPage() {
   }
 
   // Traduz falhas da API em avisos amigáveis (403 → "sem acesso").
+  // Convidar/reenviar convite depende do e-mail: sem provedor configurado a API
+  // recusa, e o operador precisa saber que ninguém recebeu nada.
+  const guard = useIntegrationGuard();
+
   function fail(err) {
+    if (guard.capture(err)) return;
     if (err?.code === "INSUFFICIENT_ROLE") {
       flash("Sem acesso: apenas administradores podem gerenciar usuários.", "danger");
       return;
@@ -700,6 +706,8 @@ export default function UsersPage() {
         totalCount={users.length}
         filteredCount={filtered.length}
       />
+
+      <IntegrationRequired integration={guard.integration} onClose={guard.close} />
     </div>
   );
 }

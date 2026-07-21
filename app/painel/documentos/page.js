@@ -22,6 +22,7 @@ import EmptyState from "@/components/molecules/EmptyState/EmptyState";
 import FileViewer from "@/components/organisms/FileViewer/FileViewer";
 
 import { useResource, useMutation } from "@/lib/api/useResource";
+import IntegrationRequired, { useIntegrationGuard } from "@/components/molecules/IntegrationRequired/IntegrationRequired";
 import {
   listDocuments, issueDocument, reissueDocument, cancelDocument,
   listTemplates, createTemplate, updateTemplate,
@@ -158,6 +159,9 @@ export default function DocumentsPage() {
   // fica em branco porque o `role` da sessão é o papel de acesso do sistema
   // (admin/operador), não o cargo funcional que vai no documento.
   const [signer, setSigner] = useState({ name: "", role: "", email: "" });
+  // Enviar para assinatura depende de um provedor contratado; sem ele a API
+  // recusa e o modal explica que o documento NÃO foi enviado.
+  const guard = useIntegrationGuard();
 
   // Abre o envio para assinatura já com os dados do usuário logado.
   function openSignature(doc) {
@@ -262,6 +266,8 @@ export default function DocumentsPage() {
       const res = await promise;
       if (onSuccess) onSuccess(res);
     } catch (e) {
+      // envio para assinatura recusado por falta de provedor → modal explicativo
+      if (guard.capture(e)) return;
       flash(e?.message || "Não foi possível concluir a ação.", "danger");
     }
   }
@@ -973,6 +979,8 @@ export default function DocumentsPage() {
       />
 
       <FileViewer open={Boolean(preview)} file={preview} onClose={() => setPreview(null)} />
+
+      <IntegrationRequired integration={guard.integration} onClose={guard.close} />
     </div>
   );
 }

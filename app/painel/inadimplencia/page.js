@@ -19,6 +19,7 @@ import ErrorState from "@/components/molecules/ErrorState/ErrorState";
 import EmptyState from "@/components/molecules/EmptyState/EmptyState";
 
 import { useResource, useMutation } from "@/lib/api/useResource";
+import IntegrationRequired, { useIntegrationGuard } from "@/components/molecules/IntegrationRequired/IntegrationRequired";
 import {
   getPanel,
   getSummary,
@@ -101,6 +102,10 @@ export default function DelinquencyPage() {
   // ---- mutations ----
   const blockMut = useMutation(blockPayer);
   const unblockMut = useMutation(unblockPayer);
+  // Avisar inadimplente é exatamente o que depende de e-mail/WhatsApp: sem
+  // provedor configurado a API recusa, e o operador precisa saber que o devedor
+  // NÃO foi avisado — antes o sistema dizia "enviada" e ninguém recebia nada.
+  const guard = useIntegrationGuard();
   const notifyMut = useMutation(notifyPayer);
   const notifyAllMut = useMutation(notifyAll);
   const syncMut = useMutation(syncBlocks);
@@ -167,6 +172,7 @@ export default function DelinquencyPage() {
       setTimeout(() => setNotifyAllDone(false), 4000);
       refetchAll();
     } catch (e) {
+      if (guard.capture(e)) return;
       setActionError(e.message);
     }
   }
@@ -178,6 +184,7 @@ export default function DelinquencyPage() {
       await notifyMut.mutate(detail.id);
       refetchAll();
     } catch (e) {
+      if (guard.capture(e)) return;
       setActionError(e.message);
     }
   }
@@ -190,6 +197,7 @@ export default function DelinquencyPage() {
       else await blockMut.mutate(detail.id);
       refetchAll();
     } catch (e) {
+      if (guard.capture(e)) return;
       setActionError(e.message);
     }
   }
@@ -450,6 +458,8 @@ export default function DelinquencyPage() {
         totalCount={panelRes.data?.meta?.total ?? debtors.length}
         filteredCount={filtered.length}
       />
+
+      <IntegrationRequired integration={guard.integration} onClose={guard.close} />
     </div>
   );
 }

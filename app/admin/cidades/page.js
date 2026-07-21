@@ -16,6 +16,7 @@ import ErrorState from "@/components/molecules/ErrorState/ErrorState";
 import DataTable from "@/components/organisms/DataTable/DataTable";
 
 import { useResource, useMutation } from "@/lib/api/useResource";
+import IntegrationRequired, { useIntegrationGuard } from "@/components/molecules/IntegrationRequired/IntegrationRequired";
 import { normalizeEmail, maskPhone } from "@/lib/masks";
 import {
   listTenants,
@@ -95,6 +96,9 @@ export default function CitiesConsolePage() {
   const [deleteError, setDeleteError] = useState(null);
 
   const createM = useMutation((body) => createTenant(body));
+  // Criar a cidade dispara o convite do 1º admin por e-mail. Sem provedor
+  // configurado ninguém recebe a senha temporária — e isso precisa ser dito.
+  const guard = useIntegrationGuard();
   const updateM = useMutation(({ id, body }) => updateTenant(id, body));
   const removeM = useMutation((id) => removeTenant(id));
   const activateM = useMutation((id) => activateTenant(id));
@@ -213,12 +217,20 @@ export default function CitiesConsolePage() {
       setLogoFile(null);
       setCreating(false);
       await refetch();
-      if (logoFailed) {
+      // A cidade é criada mesmo se o convite não sair (derrubá-la seria pior),
+      // mas o convite carrega a SENHA TEMPORÁRIA: sem ele a cidade nasce
+      // inacessível. Então isso nunca pode ser anunciado como sucesso completo.
+      const invite = res?.adminInvite;
+      if (invite && invite.sent === false) {
+        flash(`Cidade "${draft.name.trim()}" criada, mas o convite ao administrador NÃO foi enviado.`, "warning");
+        guard.capture({ code: invite.code, message: invite.message });
+      } else if (logoFailed) {
         flash(`Cidade "${draft.name.trim()}" criada, mas a logo não pôde ser enviada — tente novamente na edição.`, "warning");
       } else {
         flash(`Cidade "${draft.name.trim()}" criada — convite enviado ao admin (${domain}).`);
       }
     } catch (err) {
+      if (guard.capture(err)) return;
       if (err?.code === "SUBDOMAIN_IN_USE") {
         setFormError("Este subdomínio já está em uso por outra cidade. Escolha outro.");
       } else if (err?.code === "INVALID_SUBDOMAIN") {
@@ -255,6 +267,7 @@ export default function CitiesConsolePage() {
       const to = res?.admin?.email || "o administrador";
       flash(`Convite reenviado para ${to}.`);
     } catch (err) {
+      if (guard.capture(err)) return;
       if (err?.code === "ADMIN_NOT_FOUND") {
         flash("Esta cidade ainda não tem um administrador para reconvite.", "warning");
       } else {
@@ -877,6 +890,8 @@ export default function CitiesConsolePage() {
           </div>
         )}
       </Modal>
+
+      <IntegrationRequired integration={guard.integration} onClose={guard.close} />
     </div>
   );
 }

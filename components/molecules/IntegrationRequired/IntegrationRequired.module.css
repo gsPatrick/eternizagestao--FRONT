@@ -1,0 +1,10 @@
+.note {
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--color-slate, #64748b);
+}
+
+/* o Link envolve o Button: sem isto o sublinhado do link vaza no botão */
+.ctaLink {
+  text-decoration: none;
+}

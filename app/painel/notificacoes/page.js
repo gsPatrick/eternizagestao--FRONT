@@ -21,6 +21,7 @@ import DataTable from "@/components/organisms/DataTable/DataTable";
 import ExportModal from "@/components/molecules/ExportModal/ExportModal";
 
 import { useResource, useMutation } from "@/lib/api/useResource";
+import IntegrationRequired, { useIntegrationGuard } from "@/components/molecules/IntegrationRequired/IntegrationRequired";
 import {
   listNotifications,
   sendNotification,
@@ -141,6 +142,9 @@ export default function NotificationsPage() {
   );
 
   const { mutate: doSend, loading: sending } = useMutation(sendNotification);
+  // Enviar depende do e-mail/WhatsApp da cidade: a API recusa quando não há
+  // provedor configurado, e o modal mostra qual falta e onde resolver.
+  const guard = useIntegrationGuard();
   const { mutate: doRetry, loading: resending } = useMutation(retryNotification);
 
   const detail = notifs.find((n) => n.id === detailId);
@@ -183,6 +187,7 @@ export default function NotificationsPage() {
       flash(`Mensagem avulsa enviada para ${to} por ${channel === "whatsapp" ? "WhatsApp" : "e-mail"}.`);
       refetch();
     } catch (e) {
+      if (guard.capture(e)) return;
       flash(e.message || "Não foi possível enviar a mensagem avulsa.", "danger");
     }
   }
@@ -195,6 +200,7 @@ export default function NotificationsPage() {
       flash(`Notificação reenviada para ${n.name}.`);
       refetch();
     } catch (e) {
+      if (guard.capture(e)) return;
       flash(e.message || "Não foi possível reenviar a notificação.", "danger");
     }
   }
@@ -594,6 +600,8 @@ export default function NotificationsPage() {
         totalCount={notifs.length}
         filteredCount={filtered.length}
       />
+
+      <IntegrationRequired integration={guard.integration} onClose={guard.close} />
     </div>
   );
 }
