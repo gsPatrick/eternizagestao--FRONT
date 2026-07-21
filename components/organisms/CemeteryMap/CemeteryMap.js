@@ -339,6 +339,22 @@ export default function CemeteryMap({
       } catch (_) {}
     });
 
+    // DIAGNÓSTICO: o overlay é criado mesmo quando a imagem não carrega, então
+    // o operador via "ortofoto posicionada" com o mapa vazio e não havia como
+    // saber por quê. Agora o erro de carregamento aparece no console com a URL
+    // exata que falhou — quase sempre origem errada (NEXT_PUBLIC_API_URL
+    // ausente no build) ou URL assinada expirada.
+    overlay.on("load", () => {
+      console.info("[ortofoto] imagem carregada:", orthophoto.fileUrl);
+    });
+    overlay.on("error", () => {
+      console.error(
+        "[ortofoto] a imagem NÃO carregou. URL usada:", orthophoto.fileUrl,
+        "\nVerifique se NEXT_PUBLIC_API_URL aponta para a API no build do front",
+        "e se a URL assinada ainda é válida."
+      );
+    });
+
     overlay.addTo(map);
     overlayRef.current = overlay;
     lastOrthoKeyRef.current = key;
