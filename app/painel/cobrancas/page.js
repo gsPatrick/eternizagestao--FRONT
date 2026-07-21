@@ -39,7 +39,6 @@ import ErrorState from "@/components/molecules/ErrorState/ErrorState";
 import DataTable from "@/components/organisms/DataTable/DataTable";
 import ExportModal from "@/components/molecules/ExportModal/ExportModal";
 import FileViewer from "@/components/organisms/FileViewer/FileViewer";
-import { DEMO_CERTIDAO_PDF } from "@/lib/mock-files";
 
 const TODAY = "16/07/2026";
 
@@ -518,13 +517,15 @@ export default function BillingsPage() {
                       <span className={styles.receiptLabel}>Recibo vinculado à sepultura</span>
                       <span className={styles.receiptNumber}>nº {detail.receipt}</span>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setPreview({ name: `recibo-${detail.receipt?.replace("/", "-")}.pdf`, category: "Recibo de pagamento", url: DEMO_CERTIDAO_PDF })}
-                    >
-                      Ver recibo
-                    </Button>
+                    {detail.receiptUrl && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setPreview({ name: `recibo-${detail.receipt?.replace("/", "-")}.pdf`, category: "Recibo de pagamento", url: detail.receiptUrl })}
+                      >
+                        Ver recibo
+                      </Button>
+                    )}
                   </div>
                 )}
               </>

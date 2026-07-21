@@ -21,7 +21,6 @@ import DataTable from "@/components/organisms/DataTable/DataTable";
 import ExportModal from "@/components/molecules/ExportModal/ExportModal";
 import GraveMap from "@/components/organisms/GraveMap/GraveMap";
 import FileViewer from "@/components/organisms/FileViewer/FileViewer";
-import { DEMO_CERTIDAO_PDF } from "@/lib/mock-files";
 
 import { useResource, useMutation } from "@/lib/api/useResource";
 import {
@@ -69,19 +68,16 @@ const STATUS_META = {
 const MONTH_LABEL = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" }).format(new Date());
 const TODAY_ISO = todayISO();
 
+// Documento REAL da autorização. Sem documento emitido devolve null — antes
+// havia um "fallback de pré-visualização" que abria um PDF de EXEMPLO (com o
+// texto "Certidão de Óbito"), fazendo parecer que o sistema gerou o documento
+// errado. Sem documento, o link simplesmente não é oferecido.
 function authFile(row) {
-  if (row.authUrl) {
-    return {
-      name: `autorizacao-sepultamento-${String(row.auth).replace("/", "-")}.html`,
-      category: "Autorização de Sepultamento",
-      url: row.authUrl,
-    };
-  }
-  // fallback de pré-visualização quando o sepultamento ainda não tem documento
+  if (!row?.authUrl) return null;
   return {
-    name: `autorizacao-sepultamento-${String(row.auth).replace("/", "-")}.pdf`,
+    name: `autorizacao-sepultamento-${String(row.auth).replace("/", "-")}.html`,
     category: "Autorização de Sepultamento",
-    url: DEMO_CERTIDAO_PDF,
+    url: row.authUrl,
   };
 }
 
@@ -263,8 +259,9 @@ export default function BurialsListPage() {
       render: (row) => (
         <button
           className={styles.authLink}
-          onClick={() => setPreview(authFile(row))}
-          title="Ver documento"
+          onClick={() => { const f = authFile(row); if (f) setPreview(f); }}
+          disabled={!row.authUrl}
+          title={row.authUrl ? "Ver documento" : "Autorização ainda não emitida"}
         >
           nº {row.auth}
         </button>
@@ -465,13 +462,15 @@ export default function BurialsListPage() {
                 </span>
               </div>
               <div className={styles.authActions}>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setPreview(authFile(detail))}
-                >
-                  Ver
-                </Button>
+                {detail.authUrl && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setPreview(authFile(detail))}
+                  >
+                    Ver
+                  </Button>
+                )}
                 <Button variant="ghost" size="sm" loading={savingAuth} onClick={() => reissueAuth(detail)}>
                   2ª via
                 </Button>

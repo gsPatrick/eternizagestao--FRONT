@@ -23,7 +23,6 @@ const PublicCemeteryMap = dynamic(
 );
 import { useResource } from "@/lib/api/useResource";
 import { getGraves } from "@/lib/api/resources/portal";
-import { DEMO_CONTRATO_PDF } from "@/lib/mock-files";
 
 const TIMELINE_META = {
   sepultamento: { tone: "navy", label: "Sepultamento" },
@@ -301,12 +300,14 @@ export default function PortalJazigoDetailPage() {
         )}
       </Modal>
 
-      {/* ---------- contrato ---------- */}
-      <FileViewer
-        open={contractOpen}
-        onClose={() => setContractOpen(false)}
-        file={{ name: `Contrato ${grave.contract}.pdf`, url: DEMO_CONTRATO_PDF }}
-      />
+      {/* ---------- contrato (só quando houver o arquivo REAL) ---------- */}
+      {grave.contractUrl && (
+        <FileViewer
+          open={contractOpen}
+          onClose={() => setContractOpen(false)}
+          file={{ name: `Contrato ${grave.contract}.pdf`, url: grave.contractUrl }}
+        />
+      )}
     </PortalShell>
   );
 }

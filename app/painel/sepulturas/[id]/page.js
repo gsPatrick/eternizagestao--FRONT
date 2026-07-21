@@ -21,7 +21,6 @@ import AttachmentUploadModal from "@/components/molecules/AttachmentUploadModal/
 import FileViewer from "@/components/organisms/FileViewer/FileViewer";
 import Skeleton from "@/components/atoms/Skeleton/Skeleton";
 import ErrorState from "@/components/molecules/ErrorState/ErrorState";
-import { DEMO_CERTIDAO_PDF, DEMO_CONTRATO_PDF } from "@/lib/mock-files";
 
 import { useResource } from "@/lib/api/useResource";
 import {
@@ -291,7 +290,8 @@ export default function GraveDetailPage() {
         transferTo: newer?.person?.fullName || "—",
         transferReason: newer?.acquisitionMethod === "heranca" ? "heranca" : "transferencia",
         kinship: "",
-        contractUrl: DEMO_CONTRATO_PDF,
+        // contrato é ANEXO manual da concessão; sem anexo não há o que abrir
+        contractUrl: null,
       };
     });
   }, [concessionsData]);
@@ -1107,7 +1107,8 @@ export default function GraveDetailPage() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => setContractPreview({ name: `${concession.contract}.pdf`, category: "Contrato de concessão", url: DEMO_CONTRATO_PDF })}
+                    onClick={() => concession.contractUrl && setContractPreview({ name: `${concession.contract}.pdf`, category: "Contrato de concessão", url: concession.contractUrl })}
+                    disabled={!concession.contractUrl}
                   >
                     Ver contrato
                   </Button>
