@@ -11,7 +11,7 @@ import Badge from "@/components/atoms/Badge/Badge";
 import FormField from "@/components/molecules/FormField/FormField";
 import Modal from "@/components/molecules/Modal/Modal";
 import Alert from "@/components/molecules/Alert/Alert";
-import EntrancePicker, { worldToGps, formatGps } from "@/components/molecules/EntrancePicker/EntrancePicker";
+import EntrancePicker, { formatGps } from "@/components/molecules/EntrancePicker/EntrancePicker";
 import Skeleton from "@/components/atoms/Skeleton/Skeleton";
 import ErrorState from "@/components/molecules/ErrorState/ErrorState";
 
@@ -27,16 +27,6 @@ import {
   adaptStructure,
   cemeteryInitial,
 } from "@/lib/api/resources/cemeteries";
-
-const DEFAULT_ENTRANCE = [400, 468]; // ponto na ortofoto (portão sul) quando não há GPS
-
-// inverso de worldToGps (mesma base) — GPS armazenado → ponto no mundo da ortofoto
-function gpsToWorld(lat, lng, base = [-23.5505, -46.6333]) {
-  if (lat === null || lat === undefined || lng === null || lng === undefined) return null;
-  const y = 250 + ((base[0] - Number(lat)) / 0.006) * 500;
-  const x = 400 + ((Number(lng) - base[1]) / 0.009) * 800;
-  return [x, y];
-}
 
 // "São Paulo — SP" → { addressCity, addressState }
 function parseCityUf(value = "") {
@@ -60,7 +50,7 @@ export default function CemeteryDetailPage() {
   const cemetery = useMemo(() => (data ? adaptCemetery(data[0]) : null), [data]);
   const structure = useMemo(() => (data ? adaptStructure(data[1]?.blocks) : []), [data]);
 
-  const [entrance, setEntrance] = useState(DEFAULT_ENTRANCE);
+  const [entrance, setEntrance] = useState(null); // [lat, lng] real
   const [path, setPath] = useState({ block: null, street: null });
   const [configOpen, setConfigOpen] = useState(false);
   const [addLevel, setAddLevel] = useState(null); // 'block' | 'street' | 'lot'
@@ -72,8 +62,9 @@ export default function CemeteryDetailPage() {
   // posiciona o marcador de entrada a partir do GPS salvo (quando existir)
   useEffect(() => {
     if (!cemetery) return;
-    const world = gpsToWorld(cemetery.raw.entranceLatitude, cemetery.raw.entranceLongitude);
-    if (world) setEntrance(world);
+    const lat = cemetery.raw.entranceLatitude;
+    const lng = cemetery.raw.entranceLongitude;
+    if (lat != null && lng != null) setEntrance([Number(lat), Number(lng)]);
   }, [cemetery]);
 
   const { mutate: doCreateBlock, loading: creatingBlock } = useMutation(createBlock);
@@ -126,7 +117,6 @@ export default function CemeteryDetailPage() {
 
   async function saveConfig() {
     setConfigError(null);
-    const gps = worldToGps(entrance);
     const { addressCity, addressState } = parseCityUf(config.city);
     const body = {
       name: config.name?.trim(),
@@ -140,8 +130,8 @@ export default function CemeteryDetailPage() {
       managerDocument: config.cnpj?.trim() || null,
       managerPhone: config.phone?.trim() || null,
       managerEmail: config.email?.trim() || null,
-      entranceLatitude: gps ? gps[0] : null,
-      entranceLongitude: gps ? gps[1] : null,
+      entranceLatitude: entrance ? entrance[0] : null,
+      entranceLongitude: entrance ? entrance[1] : null,
     };
     try {
       await doUpdate(cemeteryId, body);
@@ -210,7 +200,7 @@ export default function CemeteryDetailPage() {
               {cemetery.code} · {cemetery.address} · {cemetery.city}
             </p>
             <p className={styles.heroMetaSub}>
-              {cemetery.organ} · Entrada GPS {formatGps(worldToGps(entrance)) || cemetery.entrance}
+              {cemetery.organ} · Entrada GPS {formatGps(entrance) || cemetery.entrance}
             </p>
           </div>
           <div className={styles.heroActions}>

@@ -11,7 +11,7 @@ import FormField from "@/components/molecules/FormField/FormField";
 import Modal from "@/components/molecules/Modal/Modal";
 import Alert from "@/components/molecules/Alert/Alert";
 import StatCard from "@/components/molecules/StatCard/StatCard";
-import EntrancePicker, { worldToGps } from "@/components/molecules/EntrancePicker/EntrancePicker";
+import EntrancePicker from "@/components/molecules/EntrancePicker/EntrancePicker";
 import Skeleton from "@/components/atoms/Skeleton/Skeleton";
 import ErrorState from "@/components/molecules/ErrorState/ErrorState";
 import EmptyState from "@/components/molecules/EmptyState/EmptyState";
@@ -86,7 +86,7 @@ export default function CemeteriesPage() {
 
   async function createNewCemetery() {
     setFormError(null);
-    const gps = worldToGps(entrance);
+    // entrance já é [lat, lng] real (clique no mapa OSM do LocationPicker).
     const { addressCity, addressState } = parseCityUf(form.city);
     const body = {
       name: form.name?.trim(),
@@ -94,8 +94,8 @@ export default function CemeteriesPage() {
       addressStreet: form.address?.trim() || undefined,
       addressCity,
       addressState,
-      entranceLatitude: gps ? gps[0] : undefined,
-      entranceLongitude: gps ? gps[1] : undefined,
+      entranceLatitude: entrance ? entrance[0] : undefined,
+      entranceLongitude: entrance ? entrance[1] : undefined,
     };
     if (!body.name) {
       setFormError("Informe o nome do cemitério.");

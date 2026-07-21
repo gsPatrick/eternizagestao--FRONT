@@ -1,32 +1,28 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import styles from "./EntrancePicker.module.css";
 
 import Button from "@/components/atoms/Button/Button";
 import Modal from "@/components/molecules/Modal/Modal";
-import MapCanvas from "@/components/organisms/MapCanvas/MapCanvas";
 
-// Converte o ponto do mundo da ortofoto (800×500) em coordenadas geográficas.
-// Quando a ortofoto real for importada, o georreferenciamento dela substitui esta base.
-export function worldToGps(point, base = [-23.5505, -46.6333]) {
-  if (!point) return null;
-  const lat = base[0] - ((point[1] - 250) / 500) * 0.006;
-  const lng = base[1] + ((point[0] - 400) / 800) * 0.009;
-  return [lat, lng];
-}
+// Mapa REAL (Leaflet) — client-only.
+const LocationPicker = dynamic(
+  () => import("@/components/molecules/LocationPicker/LocationPicker"),
+  { ssr: false }
+);
 
+// value/draft agora são coordenadas GEOGRÁFICAS reais [lat, lng] — vindas do
+// clique no mapa OSM (não mais de uma fórmula sobre um SVG ilustrativo).
 export function formatGps(gps) {
   if (!gps) return "";
-  return `${gps[0].toFixed(6)}, ${gps[1].toFixed(6)}`;
+  return `${Number(gps[0]).toFixed(6)}, ${Number(gps[1]).toFixed(6)}`;
 }
 
 export default function EntrancePicker({ value = null, onChange, cemeteryName = "" }) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(value);
-
-  const gps = worldToGps(value);
-  const draftGps = worldToGps(draft);
 
   function openPicker() {
     setDraft(value);
@@ -50,7 +46,7 @@ export default function EntrancePicker({ value = null, onChange, cemeteryName = 
           </span>
           <div className={styles.selectedInfo}>
             <span className={styles.selectedTitle}>Entrada demarcada</span>
-            <span className={styles.selectedCoords}>{formatGps(gps)}</span>
+            <span className={styles.selectedCoords}>{formatGps(value)}</span>
           </div>
           <button type="button" className={styles.changeBtn} onClick={openPicker}>
             Ajustar
@@ -86,12 +82,12 @@ export default function EntrancePicker({ value = null, onChange, cemeteryName = 
         }
       >
         <div className={styles.pickerBody}>
-          <MapCanvas mode="view" height={380} marker={draft} onPick={(point) => setDraft(point)} />
+          <LocationPicker value={draft} onChange={setDraft} height={380} />
           <div className={styles.coordsBar}>
             {draft ? (
               <>
                 <span className={styles.coordsLabel}>Coordenadas</span>
-                <span className={styles.coordsValue}>{formatGps(draftGps)}</span>
+                <span className={styles.coordsValue}>{formatGps(draft)}</span>
                 <span className={styles.coordsHint}>arraste para navegar · toque para reposicionar</span>
               </>
             ) : (
