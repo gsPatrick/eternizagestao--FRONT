@@ -119,8 +119,9 @@ export default function MapPage() {
   const isSuperAdmin = user?.role === "super_admin";
   // Demarcação de sepultura/camada: admin/operador (staff da cidade).
   const canEdit = ["admin", "super_admin", "operador"].includes(user?.role);
-  // Edição da ORTOFOTO: SÓ super_admin (a Eterniza aplica; o cliente não).
-  const canEditOrtho = isSuperAdmin;
+  // ORTOFOTO: enviar e POSICIONAR é do ADMIN da cidade — sem posicionar (definir
+  // os 4 cantos) a imagem nunca aparece no mapa. Excluir segue só na plataforma.
+  const canEditOrtho = ["admin", "super_admin"].includes(user?.role);
   // Tenant a enviar nas chamadas (só para super_admin operando uma cidade).
   const mapTenant = isSuperAdmin ? tenantSub || undefined : undefined;
 
@@ -567,7 +568,7 @@ export default function MapPage() {
                 <p className={styles.hint}>
                   {canEditOrtho
                     ? "Carregue a ortofoto (imagem aérea) e posicione-a sobre o cemitério para georreferenciar o mapa."
-                    : "Nenhuma ortofoto posicionada neste cemitério. A aplicação da ortofoto é feita pela equipe Eterniza."}
+                    : "Nenhuma ortofoto posicionada neste cemitério. O administrador da prefeitura pode carregar e posicionar a imagem aérea."}
                 </p>
               ) : (
                 <>
