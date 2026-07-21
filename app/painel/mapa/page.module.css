@@ -1051,3 +1051,10 @@
   flex-shrink: 0;
   color: var(--color-navy);
 }
+
+/* dica curta ao lado do rótulo de uma linha de controle */
+.rowHint {
+  font-style: normal;
+  font-size: 11.5px;
+  color: var(--color-slate, #64748b);
+}

@@ -108,6 +108,7 @@ export default function CemeteryMap({
   graves = [],
   layers = { blocks: [], streets: [], lots: [] }, // camadas de quadra/rua/lote
   drawing = false,
+  basemapVisible = true, // mapa de ruas por baixo da ortofoto
   markingEntrance = false, // clique no mapa define a ENTRADA do cemitério
   entrance = null, // [lat, lng] já marcada — mostra o marcador
   focusGrave = null, // { id, nonce }
@@ -123,6 +124,7 @@ export default function CemeteryMap({
 }) {
   const containerRef = useRef(null);
   const LRef = useRef(null);
+  const baseTilesRef = useRef(null);
   const mapRef = useRef(null);
   const overlayRef = useRef(null);
   const graveGroupRef = useRef(null);
@@ -213,7 +215,10 @@ export default function CemeteryMap({
         });
         lastCenterRef.current = center ? String(center) : null;
 
-        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        // Mapa de RUAS por baixo. É a referência para alinhar a ortofoto às
+        // ruas reais durante o posicionamento; depois de posicionada, vira
+        // ruído — por isso pode ser desligado (ver efeito de basemapVisible).
+        baseTilesRef.current = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
           maxNativeZoom: 19,
           maxZoom: 22,
           attribution:
@@ -420,6 +425,18 @@ export default function CemeteryMap({
       }
     } catch (_) {}
   }, [ready, drawing, canEdit]);
+
+  // ------------------------------------------- mapa de ruas ligado/desligado
+  useEffect(() => {
+    const map = mapRef.current;
+    const tiles = baseTilesRef.current;
+    if (!ready || !map || !tiles) return;
+    if (basemapVisible) {
+      if (!map.hasLayer(tiles)) tiles.addTo(map);
+    } else if (map.hasLayer(tiles)) {
+      map.removeLayer(tiles);
+    }
+  }, [ready, basemapVisible]);
 
   // --------------------------------------- marcar a ENTRADA (clique no mapa)
   //

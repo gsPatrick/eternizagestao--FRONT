@@ -85,6 +85,7 @@ export default function MapPage() {
   const [preferredOrthoId, setPreferredOrthoId] = useState(null);
   const [positioning, setPositioning] = useState(false);
   const [orthoVisible, setOrthoVisible] = useState(true);
+  const [basemapVisible, setBasemapVisible] = useState(true);
   const [orthoOpacity, setOrthoOpacity] = useState(1);
   const [draftCorners, setDraftCorners] = useState(null);
   const [orthoDirty, setOrthoDirty] = useState(false);
@@ -644,6 +645,22 @@ export default function MapPage() {
                       onChange={() => setOrthoVisible((v) => !v)}
                     />
                   </div>
+                  {/* O mapa de ruas é a REFERÊNCIA para alinhar a ortofoto às
+                      ruas reais. Depois de posicionada ele vira ruído — a foto
+                      passa a ser o mapa do cemitério —, então dá para desligar.
+                      Durante o posicionamento fica travado ligado: sem ele não
+                      há como saber se a foto caiu no lugar certo. */}
+                  <div className={styles.rowBetween}>
+                    <span className={styles.rowLabel}>
+                      Mapa de ruas
+                      {positioning && <em className={styles.rowHint}> · necessário para alinhar</em>}
+                    </span>
+                    <Switch
+                      checked={positioning ? true : basemapVisible}
+                      disabled={positioning}
+                      onChange={() => setBasemapVisible((v) => !v)}
+                    />
+                  </div>
                   <div className={styles.opacityRow}>
                     <span className={styles.rowLabel}>Opacidade</span>
                     <input
@@ -904,6 +921,7 @@ export default function MapPage() {
               onGravePolygon={onGravePolygon}
               onGraveClick={onGraveClick}
               onOrthoError={onOrthoError}
+              basemapVisible={positioning ? true : basemapVisible}
               markingEntrance={markingEntrance}
               entrance={entranceCoord}
               onEntrancePick={onEntrancePick}
