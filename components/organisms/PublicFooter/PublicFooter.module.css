@@ -232,7 +232,7 @@
   width: 100%;
   height: 400px;
   /* placeholder borrado enquanto a foto (lazy) carrega — nunca fica vazio */
-  background: #0b1626 url("/media/hero-blur.jpg") center 30% / cover no-repeat;
+  background: #0b1626 var(--hero-blur, url("/media/hero-blur.jpg")) center 30% / cover no-repeat;
 }
 
 .bgImage {

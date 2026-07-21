@@ -21,10 +21,21 @@ const PHRASES = [
   "Cada história guardada\nno seu devido lugar.",
 ];
 
-// `imageUrl`: arte própria da CIDADE (config → Identidade). Sem ela, usa a arte
-// padrão da plataforma (/media/hero.*) — é o que mantém o portal Eterniza com a
-// imagem institucional e permite cada cidade ter a sua.
-export default function PublicHero({ variant = "public", tenantSlug = null, imageUrl = null }) {
+// Artes PADRÃO: a plataforma (portal Eterniza) e as CIDADES têm imagens
+// diferentes. `imageUrl` (upload da cidade em Configurações › Identidade) tem
+// prioridade sobre as duas.
+const DEFAULT_ART = {
+  platform: { jpg: "/media/hero.jpg", webp: "/media/hero.webp", blur: "/media/hero-blur.jpg" },
+  city: { jpg: "/media/hero-city.jpg", webp: "/media/hero-city.webp", blur: "/media/hero-city-blur.jpg" },
+};
+
+export default function PublicHero({
+  variant = "public",
+  tenantSlug = null,
+  imageUrl = null,
+  defaultImage = "platform",
+}) {
+  const art = DEFAULT_ART[defaultImage] || DEFAULT_ART.platform;
   // variant "sales" = LP institucional (sem busca, com CTA de venda)
   // variant "public" = página pública do tenant (com busca do cidadão)
   const router = useRouter();
@@ -102,14 +113,14 @@ export default function PublicHero({ variant = "public", tenantSlug = null, imag
       {/* fundo fixado: hero + statements rolam por cima dele */}
       <div className={styles.imageBg}>
         <div className={`${styles.frame} ${expanded ? styles.expanded : ""}`}>
-          <div className={styles.canvas}>
+          <div className={styles.canvas} style={{ "--hero-blur": `url("${art.blur}")` }}>
             <picture>
-              {/* WebP otimizado só existe para a arte PADRÃO; imagem da cidade
-                  é servida direto do storage (já validada no upload). */}
-              {!imageUrl && <source srcSet="/media/hero.webp" type="image/webp" />}
+              {/* WebP otimizado só existe para a arte PADRÃO; imagem enviada
+                  pela cidade é servida direto do storage (validada no upload). */}
+              {!imageUrl && <source srcSet={art.webp} type="image/webp" />}
               <img
                 ref={heroImgRef}
-                src={imageUrl || "/media/hero.jpg"}
+                src={imageUrl || art.jpg}
                 alt=""
                 className={`${styles.image} ${imgLoaded ? styles.imageLoaded : ""}`}
                 aria-hidden="true"

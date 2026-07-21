@@ -26,8 +26,23 @@ function ArrowIcon() {
   );
 }
 
-// `imageUrl`: arte própria do rodapé da CIDADE; sem ela, a arte padrão.
-export default function PublicFooter({ variant = "sales", nav, heading, cityName, imageUrl = null }) {
+// Artes PADRÃO do rodapé — plataforma × cidades (mesma lógica do hero).
+const DEFAULT_ART = {
+  platform: { jpg: "/media/hero.jpg", webp: "/media/hero.webp", blur: "/media/hero-blur.jpg" },
+  city: { jpg: "/media/hero-city.jpg", webp: "/media/hero-city.webp", blur: "/media/hero-city-blur.jpg" },
+};
+
+// `imageUrl`: arte própria do rodapé da CIDADE; sem ela, a arte padrão de
+// `defaultImage` ('platform' | 'city').
+export default function PublicFooter({
+  variant = "sales",
+  nav,
+  heading,
+  cityName,
+  imageUrl = null,
+  defaultImage = "platform",
+}) {
+  const art = DEFAULT_ART[defaultImage] || DEFAULT_ART.platform;
   const isPublic = variant === "public";
   const navItems = nav || SALES_NAV;
   // fade-in da foto revelada no rodapé (mesmo esquema do hero: LQIP + fade)
@@ -110,13 +125,13 @@ export default function PublicFooter({ variant = "sales", nav, heading, cityName
 
       {/* fundo fixo revelado no fim do scroll (a foto do hero) */}
       <div className={styles.bgWrap} aria-hidden="true">
-        <div className={styles.bgInner}>
+        <div className={styles.bgInner} style={{ "--hero-blur": `url("${art.blur}")` }}>
           <div className={styles.bgGradient} />
           <picture>
-            {!imageUrl && <source srcSet="/media/hero.webp" type="image/webp" />}
+            {!imageUrl && <source srcSet={art.webp} type="image/webp" />}
             <img
               ref={bgImgRef}
-              src={imageUrl || "/media/hero.jpg"}
+              src={imageUrl || art.jpg}
               alt=""
               className={`${styles.bgImage} ${bgLoaded ? styles.bgImageLoaded : ""}`}
               loading="lazy"

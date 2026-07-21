@@ -34,8 +34,9 @@
   inset: 0;
   background-color: #0b1626;
   /* Placeholder borrado (LQIP ~1KB): aparece INSTANTÂNEO, então a foto real
-     entra por cima com fade — a animação nunca fica num quadro vazio. */
-  background-image: url("/media/hero-blur.jpg");
+     entra por cima com fade — a animação nunca fica num quadro vazio.
+     `--hero-blur` permite trocar a arte padrão (plataforma × cidade). */
+  background-image: var(--hero-blur, url("/media/hero-blur.jpg"));
   background-size: cover;
   background-position: center;
   /* Intro: o painel abre a partir de um ponto central no load. */
