@@ -101,6 +101,7 @@ const LAYER_LABELS = { blocks: "Quadras", streets: "Ruas", lots: "Lotes" };
 export default function CemeteryMap({
   center = null,
   orthophoto = null, // { id, fileUrl, corners, opacity, rev }
+  onOrthoError = null, // (fileUrl) => void — imagem da ortofoto não carregou
   orthoVisible = true,
   orthoOpacity = 1,
   positioning = false,
@@ -140,7 +141,7 @@ export default function CemeteryMap({
   });
 
   const cbRef = useRef({});
-  cbRef.current = { onCornersChange, onGravePolygon, onGraveClick };
+  cbRef.current = { onCornersChange, onGravePolygon, onGraveClick, onOrthoError };
 
   // API imperativa estável (usada no "Salvar posição"). next/dynamic não
   // encaminha ref, então entregamos via callback onApi.
@@ -348,6 +349,7 @@ export default function CemeteryMap({
       console.info("[ortofoto] imagem carregada:", orthophoto.fileUrl);
     });
     overlay.on("error", () => {
+      cbRef.current.onOrthoError && cbRef.current.onOrthoError(orthophoto.fileUrl);
       console.error(
         "[ortofoto] a imagem NÃO carregou. URL usada:", orthophoto.fileUrl,
         "\nA origem é a mesma das chamadas de API, então normalmente a causa é",
@@ -359,9 +361,17 @@ export default function CemeteryMap({
     overlayRef.current = overlay;
     lastOrthoKeyRef.current = key;
 
-    // enquadra a ortofoto ao carregá-la (uma vez por id), fora do modo de edição
+    // Enquadra a ortofoto ao carregá-la (uma vez por id).
+    //
+    // Quando ela AINDA NÃO tem cantos salvos, os cantos vêm do viewport atual —
+    // e se o cemitério não tem coordenadas o mapa abre no centro do Brasil, com
+    // a foto caindo lá. O operador então "sobe a ortofoto e o mapa não muda",
+    // porque a imagem está a centenas de quilômetros de onde ele está olhando.
+    // Por isso, sem cantos, enquadramos TAMBÉM no modo de edição — que é
+    // justamente o modo em que a foto recém-enviada é posicionada.
+    const semCantos = !orthophoto.corners;
     const fitKey = orthophoto.id || key;
-    if (!editableNow && lastFitOrthoRef.current !== fitKey) {
+    if ((!editableNow || semCantos) && lastFitOrthoRef.current !== fitKey) {
       lastFitOrthoRef.current = fitKey;
       try {
         map.fitBounds(L.latLngBounds(cornersToLatLngs(L, corners)), {

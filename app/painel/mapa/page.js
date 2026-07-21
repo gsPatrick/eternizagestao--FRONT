@@ -89,6 +89,17 @@ export default function MapPage() {
   const [orthoRev, setOrthoRev] = useState(0);
   const [orthoMsg, setOrthoMsg] = useState(null);
 
+  // A imagem da ortofoto não carregou. O overlay é criado do mesmo jeito, então
+  // sem isto a tela mostrava "posicionando ortofoto" sobre um mapa vazio e o
+  // operador não tinha como saber o que houve — nem sabia abrir o console.
+  const onOrthoError = useCallback((fileUrl) => {
+    setOrthoMsg({
+      tone: "danger",
+      text: `A imagem da ortofoto não pôde ser carregada (${fileUrl ? new URL(fileUrl, window.location.origin).pathname : "URL vazia"}). `
+        + "O arquivo pode ter sido removido do servidor ou o link de acesso expirou — reenvie a ortofoto.",
+    });
+  }, []);
+
   // demarcação
   const [demarcTarget, setDemarcTarget] = useState(null);
   const [drawing, setDrawing] = useState(false);
@@ -794,6 +805,7 @@ export default function MapPage() {
               onCornersChange={onCornersChange}
               onGravePolygon={onGravePolygon}
               onGraveClick={onGraveClick}
+              onOrthoError={onOrthoError}
               height="100%"
             />
 
