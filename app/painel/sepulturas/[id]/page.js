@@ -341,7 +341,8 @@ export default function GraveDetailPage() {
   // Modal de edição dos campos oficiais (dados dos modelos de documento).
   const [officialModal, setOfficialModal] = useState(false);
   const [officialForm, setOfficialForm] = useState({
-    tombType: "", utilizacao: "", carneiraPermission: "", notes: "",
+    tombType: "", utilizacao: "", carneiraPermission: "", carneiraPermissionDate: "",
+    previousBlock: "", previousLot: "", notes: "",
   });
   const [exhumTarget, setExhumTarget] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -569,6 +570,9 @@ export default function GraveDetailPage() {
       tombType: GRAVE.tombType || "",
       utilizacao: GRAVE.utilizacao || "",
       carneiraPermission: GRAVE.carneiraPermission || "",
+      carneiraPermissionDate: (GRAVE.carneiraPermissionDate || "").slice(0, 10),
+      previousBlock: GRAVE.previousBlock || "",
+      previousLot: GRAVE.previousLot || "",
       notes: GRAVE.notes || "",
     });
     setOfficialModal(true);
@@ -580,6 +584,9 @@ export default function GraveDetailPage() {
         tombType: officialForm.tombType || null,
         utilizacao: officialForm.utilizacao || null,
         carneiraPermission: officialForm.carneiraPermission || null,
+        carneiraPermissionDate: officialForm.carneiraPermissionDate || null,
+        previousBlock: officialForm.previousBlock || null,
+        previousLot: officialForm.previousLot || null,
         notes: officialForm.notes || null,
       }),
       { closeAll: () => setOfficialModal(false) }
@@ -903,26 +910,17 @@ export default function GraveDetailPage() {
       >
         <div className={styles.modalForm}>
           <FormField label="Tipo do túmulo">
-            <Select
-              value={TOMB_TYPE_OPTIONS.includes(officialForm.tombType) || !officialForm.tombType ? officialForm.tombType : "__free"}
-              onChange={(e) => setOfficialForm({ ...officialForm, tombType: e.target.value === "__free" ? " " : e.target.value })}
-            >
+            <Select value={officialForm.tombType} onChange={(e) => setOfficialForm({ ...officialForm, tombType: e.target.value })}>
               <option value="">Não informado</option>
               {TOMB_TYPE_OPTIONS.map((t) => (
                 <option key={t} value={t}>{t}</option>
               ))}
-              <option value="__free">Outro (digitar)…</option>
+              {/* valor legado fora da lista continua selecionável, para não sumir na edição */}
+              {officialForm.tombType && !TOMB_TYPE_OPTIONS.includes(officialForm.tombType) && (
+                <option value={officialForm.tombType}>{officialForm.tombType}</option>
+              )}
             </Select>
           </FormField>
-          {officialForm.tombType !== "" && !TOMB_TYPE_OPTIONS.includes(officialForm.tombType) && (
-            <FormField label="Tipo do túmulo (livre)">
-              <Input
-                value={officialForm.tombType.trim()}
-                onChange={(e) => setOfficialForm({ ...officialForm, tombType: e.target.value })}
-                placeholder="Descreva o tipo do túmulo"
-              />
-            </FormField>
-          )}
           <FormField label="Utilização">
             <Select value={officialForm.utilizacao} onChange={(e) => setOfficialForm({ ...officialForm, utilizacao: e.target.value })}>
               <option value="">Não informado</option>
@@ -932,11 +930,29 @@ export default function GraveDetailPage() {
             </Select>
           </FormField>
           <FormField label="Permissão de carneira">
-            <Select value={officialForm.carneiraPermission} onChange={(e) => setOfficialForm({ ...officialForm, carneiraPermission: e.target.value })}>
-              <option value="">Não informado</option>
-              <option value="Sim">Sim</option>
-              <option value="Não">Não</option>
-            </Select>
+            <Input
+              value={officialForm.carneiraPermission}
+              onChange={(e) => setOfficialForm({ ...officialForm, carneiraPermission: e.target.value })}
+            />
+          </FormField>
+          <FormField label="Data da permissão">
+            <Input
+              type="date"
+              value={officialForm.carneiraPermissionDate}
+              onChange={(e) => setOfficialForm({ ...officialForm, carneiraPermissionDate: e.target.value })}
+            />
+          </FormField>
+          <FormField label="Quadra anterior" hint="Opcional — nome no sistema antigo">
+            <Input
+              value={officialForm.previousBlock}
+              onChange={(e) => setOfficialForm({ ...officialForm, previousBlock: e.target.value })}
+            />
+          </FormField>
+          <FormField label="Lote anterior" hint="Opcional — número no sistema antigo">
+            <Input
+              value={officialForm.previousLot}
+              onChange={(e) => setOfficialForm({ ...officialForm, previousLot: e.target.value })}
+            />
           </FormField>
           <FormField label="Observação">
             <Textarea rows={3} value={officialForm.notes} onChange={(e) => setOfficialForm({ ...officialForm, notes: e.target.value })} placeholder="Observações da sepultura (aparecem no documento)" />
