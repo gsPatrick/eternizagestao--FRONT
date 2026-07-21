@@ -79,7 +79,7 @@ function Artifact({ kind }) {
         <i style={{ background: "#1a7f5c" }} />
         <i style={{ background: "#8c5a2b" }} />
       </span>
-      <span className={styles.artUrl}>suacidade.eterniza.com.br</span>
+      <span className={styles.artUrl}>suacidade.eternizagestao.com.br</span>
     </div>
   );
 }

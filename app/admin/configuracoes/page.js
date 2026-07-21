@@ -199,7 +199,7 @@ export default function SettingsPage() {
                   id="settings-email"
                   type="email"
                   value={email}
-                  placeholder="voce@eterniza.com.br"
+                  placeholder="voce@eternizagestao.com.br"
                   onChange={(e) => setEmail(normalizeEmail(e.target.value))}
                 />
               </FormField>
