@@ -24,6 +24,7 @@ import { listDeceased, getLocationCounts, createDeceased, uploadDeathCertificate
 import { createBurial, listFreeGraves, adaptFreeGrave } from "@/lib/api/resources/burials";
 import { listCartorios } from "@/lib/api/resources/cartorios";
 import { listFunerarias } from "@/lib/api/resources/funerarias";
+import { listPeople } from "@/lib/api/resources/people";
 
 const LOCATION_META = {
   sepultado: { label: "Sepultado", tone: "navy" },
@@ -41,6 +42,7 @@ const EMPTY_FORM = {
   fatherName: "", birthDate: "", deathDate: "", deathTime: "", causeOfDeath: "",
   attendingPhysician: "",
   deathCertificateNumber: "", deathCertificateRegistry: "", funeralHome: "",
+  responsiblePersonId: "",
 };
 
 // "YYYY-MM-DD" (DATEONLY da API) → "DD/MM/YYYY"
@@ -102,6 +104,12 @@ export default function DeceasedListPage() {
     [modalOpen]
   );
   const funerarias = funerariasData?.data ?? [];
+  // Pessoas cadastradas → dropdown de RESPONSÁVEL pela sepultura.
+  const { data: peopleData } = useResource(
+    ({ signal }) => (modalOpen ? listPeople({ perPage: 1000 }, { signal }) : Promise.resolve({ data: [] })),
+    [modalOpen]
+  );
+  const people = peopleData?.data ?? [];
 
   // debounce da busca (evita disparar um fetch a cada tecla)
   useEffect(() => {
@@ -204,6 +212,7 @@ export default function DeceasedListPage() {
       deathCertificateNumber: form.deathCertificateNumber || undefined,
       deathCertificateRegistry: form.deathCertificateRegistry || undefined,
       funeralHome: form.funeralHome || undefined,
+      responsiblePersonId: form.responsiblePersonId || undefined,
     };
     try {
       // validação do sepultamento vinculado (quando marcado)
@@ -229,6 +238,7 @@ export default function DeceasedListPage() {
             burialDate: burialForm.date,
             burialTime: burialForm.time || undefined,
             funeralHome: form.funeralHome || undefined,
+            declarantPersonId: form.responsiblePersonId || undefined,
           });
         } catch (e) {
           // sepultado criado, mas o sepultamento falhou → avisa e não perde o cadastro
@@ -476,6 +486,24 @@ export default function DeceasedListPage() {
         }
       >
         <form className={styles.form} onSubmit={(e) => { e.preventDefault(); handleCreate(); }}>
+          <span className={styles.formSection}>Responsável</span>
+          <div className={styles.formGrid}>
+            <FormField
+              label="Responsável pela sepultura"
+              className={styles.spanTwo}
+              hint="Quem responde pela sepultura — distinto do proprietário (comum em disputas familiares)"
+            >
+              <Select value={form.responsiblePersonId} onChange={set("responsiblePersonId")}>
+                <option value="">Sem responsável definido</option>
+                {people.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.fullName || p.name}
+                    {p.cpf ? ` — ${p.cpf}` : ""}
+                  </option>
+                ))}
+              </Select>
+            </FormField>
+          </div>
           <span className={styles.formSection}>Identificação</span>
           <div className={styles.formGrid}>
             <FormField label="Nome completo" required className={styles.spanTwo}>
