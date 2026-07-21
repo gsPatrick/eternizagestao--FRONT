@@ -23,10 +23,14 @@ import {
   createStreet,
   createLot,
   updateCemetery,
+  removeCemetery,
   adaptCemetery,
   adaptStructure,
   cemeteryInitial,
 } from "@/lib/api/resources/cemeteries";
+import { getUser } from "@/lib/api/session";
+import ConfirmDelete from "@/components/molecules/ConfirmDelete/ConfirmDelete";
+import { useRouter } from "next/navigation";
 
 // "São Paulo — SP" → { addressCity, addressState }
 function parseCityUf(value = "") {
@@ -71,6 +75,25 @@ export default function CemeteryDetailPage() {
   const { mutate: doCreateStreet, loading: creatingStreet } = useMutation(createStreet);
   const { mutate: doCreateLot, loading: creatingLot } = useMutation(createLot);
   const { mutate: doUpdate, loading: savingConfig } = useMutation(updateCemetery);
+
+  // ---- exclusão do cemitério (RBAC + confirmação) ----
+  const router = useRouter();
+  const currentUser = getUser();
+  const canDelete = ["admin", "super_admin"].includes(currentUser?.role);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+  const deleteM = useMutation(removeCemetery);
+
+  async function doDelete() {
+    setDeleteError("");
+    try {
+      await deleteM.mutate(cemeteryId);
+      setConfirmDelete(false);
+      router.push("/painel/cemiterios");
+    } catch (e) {
+      setDeleteError(e?.message || "Não foi possível excluir o cemitério.");
+    }
+  }
   const creating = creatingBlock || creatingStreet || creatingLot;
 
   const block = path.block ? structure.find((b) => b.id === path.block) : null;
@@ -208,6 +231,11 @@ export default function CemeteryDetailPage() {
             <Link href="/painel/mapa">
               <Button variant="ghost">{cemetery.ortofoto ? "Ver mapa" : "Importar ortofoto"}</Button>
             </Link>
+            {canDelete && (
+              <Button variant="ghost" onClick={() => { setDeleteError(""); setConfirmDelete(true); }}>
+                Excluir
+              </Button>
+            )}
           </div>
         </div>
         <div className={styles.heroStats}>
@@ -457,6 +485,19 @@ export default function CemeteryDetailPage() {
           </Alert>
         </div>
       </Modal>
+
+      <ConfirmDelete
+        open={confirmDelete}
+        onClose={() => setConfirmDelete(false)}
+        onConfirm={doDelete}
+        loading={deleteM.loading}
+        title="Excluir cemitério"
+        name={cemetery?.name}
+        description={
+          deleteError
+          || "O cemitério sai das listagens e do mapa. Cemitérios com sepulturas cadastradas não podem ser excluídos."
+        }
+      />
     </div>
   );
 }

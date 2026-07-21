@@ -21,13 +21,14 @@ import Skeleton from "@/components/atoms/Skeleton/Skeleton";
 import ErrorState from "@/components/molecules/ErrorState/ErrorState";
 import EmptyState from "@/components/molecules/EmptyState/EmptyState";
 
-import { useResource } from "@/lib/api/useResource";
+import { useResource, useMutation } from "@/lib/api/useResource";
 import {
   listGraves,
   getGraveStatusCounts,
   listCemeteries,
   listBlocks,
   createGrave,
+  removeGrave,
   adaptGraveRow,
   normalizeStatusSlug,
   frontStatusToApiSlug,
@@ -38,6 +39,9 @@ import {
 } from "@/lib/api/resources/graves";
 import { listPeople } from "@/lib/api/resources/people";
 import { getStructure } from "@/lib/api/resources/cemeteries";
+import { getUser } from "@/lib/api/session";
+import RowActions from "@/components/molecules/RowActions/RowActions";
+import ConfirmDelete from "@/components/molecules/ConfirmDelete/ConfirmDelete";
 
 const STATUS_META = {
   livre: { label: "Livre", tone: "success" },
@@ -198,6 +202,24 @@ export default function GravesListPage() {
     () => rows.filter((r) => ["jazigo", "tumulo"].includes(labelToUnitType(r.type) || r.unitType)),
     [rows]
   );
+
+  // ---- exclusão de sepultura (RBAC + confirmação) ----
+  const currentUser = getUser();
+  const canDelete = ["admin", "super_admin"].includes(currentUser?.role);
+  const [confirmDelete, setConfirmDelete] = useState(null);
+  const [deleteError, setDeleteError] = useState("");
+  const deleteM = useMutation(removeGrave);
+
+  async function doDelete() {
+    setDeleteError("");
+    try {
+      await deleteM.mutate(confirmDelete.id);
+      setConfirmDelete(null);
+      refetch();
+    } catch (e) {
+      setDeleteError(e?.message || "Não foi possível excluir a sepultura.");
+    }
+  }
 
   function openModal() {
     setGForm(emptyGrave);
@@ -426,9 +448,11 @@ export default function GravesListPage() {
                   label: "",
                   align: "right",
                   render: (row) => (
-                    <Link href={`/painel/sepulturas/${row.id}`} className={styles.detailLink}>
-                      Detalhes
-                    </Link>
+                    <RowActions
+                      editHref={`/painel/sepulturas/${row.id}`}
+                      canDelete={canDelete}
+                      onDelete={() => { setDeleteError(""); setConfirmDelete(row); }}
+                    />
                   ),
                 },
               ]}
@@ -659,6 +683,19 @@ export default function GravesListPage() {
         entity={"sepulturas"}
         totalCount={totalCount}
         filteredCount={rows.length}
+      />
+
+      <ConfirmDelete
+        open={Boolean(confirmDelete)}
+        onClose={() => setConfirmDelete(null)}
+        onConfirm={doDelete}
+        loading={deleteM.loading}
+        title="Excluir sepultura"
+        name={confirmDelete?.code || confirmDelete?.location}
+        description={
+          deleteError
+          || "A sepultura sai das listagens e do mapa. Sepulturas com sepultado ativo não podem ser excluídas."
+        }
       />
     </div>
   );

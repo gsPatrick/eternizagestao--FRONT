@@ -1,0 +1,42 @@
+.actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--color-navy, #032e59);
+  padding: 6px 10px;
+  border-radius: var(--radius-sm, 8px);
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s ease;
+}
+
+.btn:hover {
+  background: var(--color-navy-soft, rgba(3, 46, 89, 0.07));
+}
+
+.danger {
+  color: var(--color-danger, #b42318);
+}
+
+.danger:hover {
+  background: rgba(180, 35, 24, 0.08);
+}
+
+/* em telas estreitas fica só o ícone — a tabela já rola no horizontal */
+@media (max-width: 900px) {
+  .text {
+    display: none;
+  }
+}

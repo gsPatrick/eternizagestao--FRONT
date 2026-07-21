@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import styles from "./page.module.css";
 
 import Button from "@/components/atoms/Button/Button";
@@ -21,6 +21,8 @@ import AttachmentUploadModal from "@/components/molecules/AttachmentUploadModal/
 import FileViewer from "@/components/organisms/FileViewer/FileViewer";
 import Skeleton from "@/components/atoms/Skeleton/Skeleton";
 import ErrorState from "@/components/molecules/ErrorState/ErrorState";
+import ConfirmDelete from "@/components/molecules/ConfirmDelete/ConfirmDelete";
+import { getUser } from "@/lib/api/session";
 
 import { useResource } from "@/lib/api/useResource";
 import {
@@ -47,6 +49,7 @@ import {
   issueDocument,
   reissueDocument,
   updateGrave,
+  removeGrave,
   normalizeStatusSlug,
   frontStatusToApiSlug,
   unitTypeLabel,
@@ -146,6 +149,27 @@ const toInputDate = (br) => {
 export default function GraveDetailPage() {
   const params = useParams();
   const id = params?.id;
+  const router = useRouter();
+
+  // ---- exclusão da sepultura (RBAC + confirmação) ----
+  const currentUser = getUser();
+  const canDelete = ["admin", "super_admin"].includes(currentUser?.role);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+  const [deleting, setDeleting] = useState(false);
+
+  async function doDelete() {
+    setDeleteError("");
+    setDeleting(true);
+    try {
+      await removeGrave(id);
+      router.push("/painel/sepulturas");
+    } catch (e) {
+      setDeleteError(e?.message || "Não foi possível excluir a sepultura.");
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   // ---- dados da API ----
   const { data: summary, loading, error, refetch } = useResource(
@@ -592,6 +616,11 @@ export default function GraveDetailPage() {
             {blocked ? "Desbloquear" : "Bloquear"}
           </Button>
           <Button onClick={() => setBurialModal(true)}>Registrar sepultamento</Button>
+          {canDelete && (
+            <Button variant="ghost" onClick={() => { setDeleteError(""); setConfirmDelete(true); }}>
+              Excluir
+            </Button>
+          )}
         </div>
       </header>
 
@@ -1251,6 +1280,19 @@ export default function GraveDetailPage() {
       />
 
       <FileViewer open={Boolean(contractPreview)} file={contractPreview} onClose={() => setContractPreview(null)} />
+
+      <ConfirmDelete
+        open={confirmDelete}
+        onClose={() => setConfirmDelete(false)}
+        onConfirm={doDelete}
+        loading={deleting}
+        title="Excluir sepultura"
+        name={GRAVE?.code}
+        description={
+          deleteError
+          || "A sepultura sai das listagens e do mapa. Sepulturas com sepultado ativo não podem ser excluídas."
+        }
+      />
     </div>
   );
 }

@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import styles from "./page.module.css";
 
 import Button from "@/components/atoms/Button/Button";
@@ -21,7 +21,9 @@ import Skeleton from "@/components/atoms/Skeleton/Skeleton";
 import ErrorState from "@/components/molecules/ErrorState/ErrorState";
 import { maskCpf } from "@/lib/masks";
 import { useResource, useMutation } from "@/lib/api/useResource";
-import { getDeceased, updateDeceased, uploadDeceasedPhoto } from "@/lib/api/resources/deceased";
+import { getDeceased, updateDeceased, uploadDeceasedPhoto, deleteDeceased } from "@/lib/api/resources/deceased";
+import { getUser } from "@/lib/api/session";
+import ConfirmDelete from "@/components/molecules/ConfirmDelete/ConfirmDelete";
 import { listDocuments, fileHref, fetchDocumentPdf } from "@/lib/api/resources/documents";
 
 // Ícone de documento reutilizado nos botões de download (padrão do sistema).
@@ -213,6 +215,24 @@ export default function DeceasedDetailPage() {
 
   const { mutate: submitUpdate, loading: saving } = useMutation((body) => updateDeceased(id, body));
 
+  // ---- exclusão do sepultado (RBAC + confirmação) ----
+  const router = useRouter();
+  const currentUser = getUser();
+  const canDelete = ["admin", "super_admin"].includes(currentUser?.role);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+  const deleteM = useMutation(() => deleteDeceased(id));
+
+  async function doDelete() {
+    setDeleteError("");
+    try {
+      await deleteM.mutate();
+      router.push("/painel/sepultados");
+    } catch (e) {
+      setDeleteError(e?.message || "Não foi possível excluir o sepultado.");
+    }
+  }
+
   async function handleSave() {
     setEditError("");
     if (!editForm.fullName.trim()) { setEditError("Informe o nome completo."); return; }
@@ -321,6 +341,11 @@ export default function DeceasedDetailPage() {
         </div>
         <div className={styles.headActions}>
           <Button variant="secondary" onClick={openEdit}>Editar cadastro</Button>
+          {canDelete && (
+            <Button variant="ghost" onClick={() => { setDeleteError(""); setConfirmDelete(true); }}>
+              Excluir
+            </Button>
+          )}
           {grave && (
             <Link href={`/painel/sepulturas/${grave.id}`}>
               <Button>Ver sepultura</Button>
@@ -606,6 +631,19 @@ export default function DeceasedDetailPage() {
       />
 
       <FileViewer open={Boolean(preview)} file={preview} onClose={() => setPreview(null)} />
+
+      <ConfirmDelete
+        open={confirmDelete}
+        onClose={() => setConfirmDelete(false)}
+        onConfirm={doDelete}
+        loading={deleteM.loading}
+        title="Excluir sepultado"
+        name={person?.name}
+        description={
+          deleteError
+          || "Sepultados com sepultamento ativo não podem ser excluídos — registre a exumação antes. O registro fica arquivado no histórico."
+        }
+      />
     </div>
   );
 }

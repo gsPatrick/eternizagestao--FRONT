@@ -34,7 +34,11 @@ import {
   toPersonRow,
   toPersonDetail,
   toPersonPayload,
+  deletePerson,
 } from "@/lib/api/resources/people";
+import { getUser } from "@/lib/api/session";
+import RowActions from "@/components/molecules/RowActions/RowActions";
+import ConfirmDelete from "@/components/molecules/ConfirmDelete/ConfirmDelete";
 import { listGraves, isPerpetualUse } from "@/lib/api/resources/graves";
 import { issueConcession } from "@/lib/api/resources/concessions";
 
@@ -178,6 +182,27 @@ export default function PeopleView({
   function refreshList() {
     refetch();
     refetchSummary();
+  }
+
+  // ---- exclusão de pessoa (RBAC + confirmação) ----
+  const currentUser = getUser();
+  const canDelete = ["admin", "super_admin"].includes(currentUser?.role);
+  const [confirmDelete, setConfirmDelete] = useState(null);
+  const [deleteError, setDeleteError] = useState("");
+  const [deleting, setDeleting] = useState(false);
+
+  async function doDelete() {
+    setDeleteError("");
+    setDeleting(true);
+    try {
+      await deletePerson(confirmDelete.id);
+      setConfirmDelete(null);
+      refreshList();
+    } catch (e) {
+      setDeleteError(e?.message || "Não foi possível excluir a pessoa.");
+    } finally {
+      setDeleting(false);
+    }
   }
 
   function openForm(person) {
@@ -439,9 +464,16 @@ export default function PeopleView({
       render: (p) => (p.active ? <Badge tone="success" dot>Ativo</Badge> : <Badge tone="neutral">Inativo</Badge>),
     },
     {
-      key: "action", label: "",
+      key: "action", label: "", align: "right",
       render: (p) => (
-        <button className={styles.detailLink} onClick={() => setDetailId(p.id)}>Detalhes</button>
+        <RowActions
+          onEdit={() => openForm(p)}
+          canDelete={canDelete}
+          onDelete={() => { setDeleteError(""); setConfirmDelete(p); }}
+          extra={
+            <button className={styles.detailLink} onClick={() => setDetailId(p.id)}>Detalhes</button>
+          }
+        />
       ),
     },
   ];
@@ -994,6 +1026,19 @@ export default function PeopleView({
         entity="pessoas"
         totalCount={counts.todos}
         filteredCount={rows.length}
+      />
+
+      <ConfirmDelete
+        open={Boolean(confirmDelete)}
+        onClose={() => setConfirmDelete(null)}
+        onConfirm={doDelete}
+        loading={deleting}
+        title="Excluir pessoa"
+        name={confirmDelete?.name}
+        description={
+          deleteError
+          || "Pessoas vinculadas a concessões ou cobranças não podem ser excluídas — desative-as em vez disso."
+        }
       />
     </div>
   );

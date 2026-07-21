@@ -21,7 +21,10 @@ import ErrorState from "@/components/molecules/ErrorState/ErrorState";
 import EmptyState from "@/components/molecules/EmptyState/EmptyState";
 import { maskCpf } from "@/lib/masks";
 import { useResource, useMutation } from "@/lib/api/useResource";
-import { listDeceased, getLocationCounts, createDeceased, uploadDeathCertificate } from "@/lib/api/resources/deceased";
+import { listDeceased, getLocationCounts, createDeceased, uploadDeathCertificate, deleteDeceased } from "@/lib/api/resources/deceased";
+import { getUser } from "@/lib/api/session";
+import RowActions from "@/components/molecules/RowActions/RowActions";
+import ConfirmDelete from "@/components/molecules/ConfirmDelete/ConfirmDelete";
 import { createBurial, listFreeGraves, adaptFreeGrave } from "@/lib/api/resources/burials";
 import { listCartorios } from "@/lib/api/resources/cartorios";
 import { listFunerarias } from "@/lib/api/resources/funerarias";
@@ -199,6 +202,24 @@ export default function DeceasedListPage() {
 
   const { mutate: submitCreate, loading: saving } = useMutation(createDeceased);
 
+  // ---- exclusão de sepultado (RBAC + confirmação) ----
+  const currentUser = getUser();
+  const canDelete = ["admin", "super_admin"].includes(currentUser?.role);
+  const [confirmDelete, setConfirmDelete] = useState(null);
+  const [deleteError, setDeleteError] = useState("");
+  const deleteM = useMutation(deleteDeceased);
+
+  async function doDelete() {
+    setDeleteError("");
+    try {
+      await deleteM.mutate(confirmDelete.id);
+      setConfirmDelete(null);
+      refetch();
+    } catch (e) {
+      setDeleteError(e?.message || "Não foi possível excluir o sepultado.");
+    }
+  }
+
   async function handleCreate() {
     setFormError("");
     if (!form.fullName.trim()) { setFormError("Informe o nome completo do sepultado."); return; }
@@ -322,20 +343,24 @@ export default function DeceasedListPage() {
       label: "",
       align: "right",
       render: (row) => (
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 12 }}>
-          <Link
-            href={`/painel/sepultados/${row.id}`}
-            title="Documentos (autorização de sepultamento, certidão de óbito)"
-            aria-label="Documentos"
-            style={{ display: "inline-flex", color: "var(--color-navy, #032e59)" }}
-          >
-            <svg viewBox="0 0 16 16" fill="none" width="17" height="17" aria-hidden="true">
-              <path d="M4 1.5h5L13 5.5V14a.5.5 0 0 1-.5.5h-8A.5.5 0 0 1 4 14V1.5Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
-              <path d="M9 1.5V5h4M6.5 8.5h3M6.5 11h3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-            </svg>
-          </Link>
-          <Link href={`/painel/sepultados/${row.id}`} className={styles.detailLink}>Detalhes</Link>
-        </span>
+        <RowActions
+          editHref={`/painel/sepultados/${row.id}`}
+          canDelete={canDelete}
+          onDelete={() => { setDeleteError(""); setConfirmDelete(row); }}
+          extra={
+            <Link
+              href={`/painel/sepultados/${row.id}`}
+              title="Documentos (autorização de sepultamento, certidão de óbito)"
+              aria-label="Documentos"
+              style={{ display: "inline-flex", color: "var(--color-navy, #032e59)", padding: "6px 4px" }}
+            >
+              <svg viewBox="0 0 16 16" fill="none" width="17" height="17" aria-hidden="true">
+                <path d="M4 1.5h5L13 5.5V14a.5.5 0 0 1-.5.5h-8A.5.5 0 0 1 4 14V1.5Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+                <path d="M9 1.5V5h4M6.5 8.5h3M6.5 11h3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+              </svg>
+            </Link>
+          }
+        />
       ),
     },
   ];
@@ -702,6 +727,19 @@ export default function DeceasedListPage() {
         entity={"sepultados"}
         totalCount={totalCount}
         filteredCount={filtered.length}
+      />
+
+      <ConfirmDelete
+        open={Boolean(confirmDelete)}
+        onClose={() => setConfirmDelete(null)}
+        onConfirm={doDelete}
+        loading={deleteM.loading}
+        title="Excluir sepultado"
+        name={confirmDelete?.name}
+        description={
+          deleteError
+          || "Sepultados com sepultamento ativo não podem ser excluídos — registre a exumação antes. O registro fica arquivado no histórico."
+        }
       />
     </div>
   );

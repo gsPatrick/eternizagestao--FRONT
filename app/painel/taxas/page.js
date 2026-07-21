@@ -22,8 +22,11 @@ import ErrorState from "@/components/molecules/ErrorState/ErrorState";
 import EmptyState from "@/components/molecules/EmptyState/EmptyState";
 
 import { useResource, useMutation } from "@/lib/api/useResource";
+import { getUser } from "@/lib/api/session";
+import RowActions from "@/components/molecules/RowActions/RowActions";
+import ConfirmDelete from "@/components/molecules/ConfirmDelete/ConfirmDelete";
 import {
-  listFeeTypes, createFeeType, updateFeeType,
+  listFeeTypes, createFeeType, updateFeeType, deleteFeeType,
   listFees, createFee, adjustFee, batchAdjustFees,
   suspendFee, reactivateFee, terminateFee,
   listGraveOptions, listPayerOptions,
@@ -205,6 +208,53 @@ export default function FeesPage() {
   }
 
   const [typeForm, setTypeForm] = useState({ name: "", description: "", amount: "", periodicity: "anual" });
+  // o mesmo modal serve para criar e editar: editingType guarda o tipo em edição
+  const [editingType, setEditingType] = useState(null);
+  const currentUser = getUser();
+  const canDeleteType = ["admin", "super_admin"].includes(currentUser?.role);
+  const [confirmDeleteType, setConfirmDeleteType] = useState(null);
+  const [deleteTypeError, setDeleteTypeError] = useState("");
+  const deleteTypeM = useMutation(deleteFeeType);
+
+  function openTypeForm(type = null) {
+    setEditingType(type);
+    setTypeForm(type
+      ? {
+          name: type.name || "",
+          description: type.description || "",
+          amount: String(type.amount ?? ""),
+          periodicity: type.periodicity || "anual",
+        }
+      : { name: "", description: "", amount: "", periodicity: "anual" });
+    setNewTypeOpen(true);
+  }
+
+  function saveType() {
+    if (!editingType) return createType();
+    runAction(
+      async () => {
+        await updateTypeM.mutate(editingType.id, {
+          name: typeForm.name,
+          description: typeForm.description || null,
+          defaultAmount: Number(String(typeForm.amount).replace(",", ".")) || 0,
+          periodicity: typeForm.periodicity,
+        });
+        await typesQ.refetch();
+      },
+      () => { setEditingType(null); setNewTypeOpen(false); }
+    );
+  }
+
+  async function doDeleteType() {
+    setDeleteTypeError("");
+    try {
+      await deleteTypeM.mutate(confirmDeleteType.id);
+      setConfirmDeleteType(null);
+      await typesQ.refetch();
+    } catch (e) {
+      setDeleteTypeError(e?.message || "Não foi possível excluir o tipo de taxa.");
+    }
+  }
 
   function createType() {
     runAction(
@@ -475,7 +525,7 @@ export default function FeesPage() {
                     Os tipos definem o valor padrão e a periodicidade — a taxa aplicada a
                     cada jazigo pode personalizar valor e vencimento.
                   </p>
-                  <Button variant="secondary" size="sm" onClick={() => setNewTypeOpen(true)}>Novo tipo</Button>
+                  <Button variant="secondary" size="sm" onClick={() => openTypeForm(null)}>Novo tipo</Button>
                 </div>
                 <div className={styles.typeGrid}>
                   {types.map((type) => (
@@ -493,6 +543,11 @@ export default function FeesPage() {
                         <Badge tone="navy">{PERIOD_META[type.periodicity]}</Badge>
                         <span className={styles.typeUse}>{type.inUse.toLocaleString("pt-BR")} jazigo(s)</span>
                       </div>
+                      <RowActions
+                        onEdit={() => openTypeForm(type)}
+                        canDelete={canDeleteType}
+                        onDelete={() => { setDeleteTypeError(""); setConfirmDeleteType(type); }}
+                      />
                     </article>
                   ))}
                 </div>
@@ -701,14 +756,14 @@ export default function FeesPage() {
       {/* ---- novo tipo de taxa ---- */}
       <Modal
         open={newTypeOpen}
-        onClose={() => setNewTypeOpen(false)}
-        title="Novo tipo de taxa"
-        subtitle="Entra no catálogo com valor padrão e periodicidade"
+        onClose={() => { setNewTypeOpen(false); setEditingType(null); }}
+        title={editingType ? "Editar tipo de taxa" : "Novo tipo de taxa"}
+        subtitle="Valor padrão e periodicidade do catálogo"
         footer={
           <>
-            <Button variant="ghost" onClick={() => setNewTypeOpen(false)}>Cancelar</Button>
-            <Button loading={saving} disabled={!typeForm.name || !typeForm.amount} onClick={createType}>
-              Criar tipo
+            <Button variant="ghost" onClick={() => { setNewTypeOpen(false); setEditingType(null); }}>Cancelar</Button>
+            <Button loading={saving} disabled={!typeForm.name || !typeForm.amount} onClick={saveType}>
+              {editingType ? "Salvar alterações" : "Criar tipo"}
             </Button>
           </>
         }
@@ -735,6 +790,19 @@ export default function FeesPage() {
           </div>
         </div>
       </Modal>
+
+      <ConfirmDelete
+        open={Boolean(confirmDeleteType)}
+        onClose={() => setConfirmDeleteType(null)}
+        onConfirm={doDeleteType}
+        loading={deleteTypeM.loading}
+        title="Excluir tipo de taxa"
+        name={confirmDeleteType?.name}
+        description={
+          deleteTypeError
+          || "O tipo sai do catálogo. As taxas já aplicadas com ele continuam ativas e inalteradas."
+        }
+      />
 
       <ExportModal
         open={exportOpen}
