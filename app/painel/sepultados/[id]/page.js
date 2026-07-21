@@ -23,6 +23,8 @@ import { maskCpf } from "@/lib/masks";
 import { useResource, useMutation } from "@/lib/api/useResource";
 import { getDeceased, updateDeceased, uploadDeceasedPhoto, deleteDeceased } from "@/lib/api/resources/deceased";
 import { getUser } from "@/lib/api/session";
+import { listCartorios } from "@/lib/api/resources/cartorios";
+import { listFunerarias } from "@/lib/api/resources/funerarias";
 import ConfirmDelete from "@/components/molecules/ConfirmDelete/ConfirmDelete";
 import { listDocuments, fileHref, fetchDocumentPdf, reissueDocument } from "@/lib/api/resources/documents";
 
@@ -127,7 +129,7 @@ function buildMovements(d) {
 const EMPTY_EDIT = {
   fullName: "", cpf: "", rg: "", gender: "", birthplace: "", motherName: "",
   fatherName: "", birthDate: "", deathDate: "", causeOfDeath: "",
-  deathCertificateNumber: "", deathCertificateRegistry: "",
+  deathCertificateNumber: "", deathCertificateRegistry: "", registryNumber: "", funeralHome: "",
 };
 
 export default function DeceasedDetailPage() {
@@ -148,6 +150,18 @@ export default function DeceasedDetailPage() {
 
   // anexos reais do sepultado (attachableType = deceased) — fetch/loading/erro
   // documentos oficiais deste sepultado (autorização de sepultamento etc.)
+  // Cartórios e funerárias cadastrados (Básico) → listas da edição.
+  const { data: cartoriosData } = useResource(
+    ({ signal }) => listCartorios({ perPage: 300 }, { signal }),
+    []
+  );
+  const cartorios = cartoriosData?.data ?? [];
+  const { data: funerariasData } = useResource(
+    ({ signal }) => listFunerarias({ perPage: 300 }, { signal }),
+    []
+  );
+  const funerarias = funerariasData?.data ?? [];
+
   const { data: docsData, refetch: refetchDocs } = useResource(
     ({ signal }) => listDocuments({ deceasedId: id, perPage: 50 }, { signal }),
     [id]
@@ -209,6 +223,8 @@ export default function DeceasedDetailPage() {
       causeOfDeath: data.causeOfDeath || "",
       deathCertificateNumber: data.deathCertificateNumber || "",
       deathCertificateRegistry: data.deathCertificateRegistry || "",
+      registryNumber: data.registryNumber || "",
+      funeralHome: data.funeralHome || "",
     });
     setEditModal(true);
   }
@@ -269,6 +285,8 @@ export default function DeceasedDetailPage() {
         causeOfDeath: editForm.causeOfDeath || null,
         deathCertificateNumber: editForm.deathCertificateNumber || null,
         deathCertificateRegistry: editForm.deathCertificateRegistry || null,
+        registryNumber: editForm.registryNumber || null,
+        funeralHome: editForm.funeralHome || null,
       });
       setEditModal(false);
       refetch();
@@ -636,8 +654,29 @@ export default function DeceasedDetailPage() {
             <FormField label="Nº da certidão">
               <Input value={editForm.deathCertificateNumber} onChange={setField("deathCertificateNumber")} />
             </FormField>
-            <FormField label="Cartório" className={styles.spanTwo}>
-              <Input value={editForm.deathCertificateRegistry} onChange={setField("deathCertificateRegistry")} />
+            <FormField label="Cartório" hint="Cadastrados em Básico › Cartórios">
+              <Select value={editForm.deathCertificateRegistry} onChange={setField("deathCertificateRegistry")}>
+                <option value="">Selecione uma opção</option>
+                {cartorios.map((c) => (<option key={c.id} value={c.name}>{c.name}</option>))}
+                {/* preserva valor legado fora da lista */}
+                {editForm.deathCertificateRegistry
+                  && !cartorios.some((c) => c.name === editForm.deathCertificateRegistry) && (
+                  <option value={editForm.deathCertificateRegistry}>{editForm.deathCertificateRegistry}</option>
+                )}
+              </Select>
+            </FormField>
+            <FormField label="Registro" hint="Nº do registro no cartório">
+              <Input value={editForm.registryNumber} onChange={setField("registryNumber")} />
+            </FormField>
+            <FormField label="Funerária" hint="Cadastradas em Básico › Funerárias">
+              <Select value={editForm.funeralHome} onChange={setField("funeralHome")}>
+                <option value="">Selecione uma opção</option>
+                {funerarias.map((f) => (<option key={f.id} value={f.name}>{f.name}</option>))}
+                {editForm.funeralHome
+                  && !funerarias.some((f) => f.name === editForm.funeralHome) && (
+                  <option value={editForm.funeralHome}>{editForm.funeralHome}</option>
+                )}
+              </Select>
             </FormField>
           </div>
           {editError && <Alert tone="danger">{editError}</Alert>}

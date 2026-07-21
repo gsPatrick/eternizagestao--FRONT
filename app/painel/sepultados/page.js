@@ -25,10 +25,11 @@ import { listDeceased, getLocationCounts, createDeceased, uploadDeathCertificate
 import { getUser } from "@/lib/api/session";
 import RowActions from "@/components/molecules/RowActions/RowActions";
 import ConfirmDelete from "@/components/molecules/ConfirmDelete/ConfirmDelete";
-import { createBurial, listFreeGraves, adaptFreeGrave } from "@/lib/api/resources/burials";
+import { createBurial } from "@/lib/api/resources/burials";
 import { listCartorios } from "@/lib/api/resources/cartorios";
 import { listFunerarias } from "@/lib/api/resources/funerarias";
 import { listPeople } from "@/lib/api/resources/people";
+import GravePicker, { graveLabel } from "@/components/organisms/GravePicker/GravePicker";
 import { todayISO } from "@/lib/date-local";
 
 const LOCATION_META = {
@@ -48,7 +49,7 @@ const EMPTY_FORM = {
   fatherName: "", birthDate: "", deathDate: "", deathTime: "", causeOfDeath: "",
   maritalStatus: "", skinColor: "", voterId: "", deathPlace: "",
   attendingPhysician: "",
-  deathCertificateNumber: "", deathCertificateRegistry: "", funeralHome: "",
+  deathCertificateNumber: "", deathCertificateRegistry: "", registryNumber: "", funeralHome: "",
   responsiblePersonId: "", notes: "",
 };
 
@@ -68,17 +69,28 @@ function placeLabel(row) {
 function blockCode(row) {
   return row.currentGrave?.lot?.street?.block?.code || "—";
 }
+function lotCode(row) {
+  return row.currentGrave?.lot?.code || "—";
+}
+function cemeteryName(row) {
+  return row.currentGrave?.cemetery?.name || "—";
+}
+// "Gaveta": quando a unidade atual está dentro de um jazigo/túmulo, é o código
+// da própria unidade; sepultura solta não tem gaveta.
+function gavetaCode(row) {
+  const g = row.currentGrave;
+  return g?.parentGrave ? g.code : "—";
+}
 
 export default function DeceasedListPage() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [locationFilter, setLocationFilter] = useState("");
-  const [blockFilter, setBlockFilter] = useState("");
   const [deathFrom, setDeathFrom] = useState("");
   const [deathTo, setDeathTo] = useState("");
   // filtros avançados (busca ampliada — pedido do cliente)
-  const [adv, setAdv] = useState({ cpf: "", motherName: "", graveCode: "" });
-  const [debouncedAdv, setDebouncedAdv] = useState({ cpf: "", motherName: "", graveCode: "" });
+  const [adv, setAdv] = useState({ cpf: "", motherName: "", graveCode: "", block: "", lot: "", registrationNumber: "" });
+  const [debouncedAdv, setDebouncedAdv] = useState({ cpf: "", motherName: "", graveCode: "", block: "", lot: "", registrationNumber: "" });
   const [advOpen, setAdvOpen] = useState(false);
   const setAdvField = (k) => (e) => setAdv((a) => ({ ...a, [k]: e.target.value }));
   const [page, setPage] = useState(1);
@@ -96,14 +108,10 @@ export default function DeceasedListPage() {
   // sepultado JÁ o vincula à sepultura escolhida. Quem não tem jazigo (cremado,
   // transladado) simplesmente não escolhe a sepultura — daí este valor derivado.
   const linkBurial = Boolean(burialForm.graveId);
-  const { data: freeGravesData } = useResource(
-    ({ signal }) => (modalOpen ? listFreeGraves({ perPage: 500 }, { signal }) : Promise.resolve({ data: [] })),
-    [modalOpen]
-  );
-  const freeGraves = useMemo(
-    () => (freeGravesData?.data ?? []).map(adaptFreeGrave),
-    [freeGravesData]
-  );
+  // Sepultura escolhida no modal "Pesquisa de sepulturas" — guardamos o objeto
+  // inteiro para exibir "Cemitério - Quadra: X - Lote: Y", como na tela dele.
+  const [pickedGrave, setPickedGrave] = useState(null);
+  const [gravePickerOpen, setGravePickerOpen] = useState(false);
 
   // Cartórios e Funerárias cadastrados (Básico) → dropdowns do sepultado.
   const { data: cartoriosData } = useResource(
@@ -142,11 +150,14 @@ export default function DeceasedListPage() {
         cpf: adv.cpf.trim(),
         motherName: adv.motherName.trim(),
         graveCode: adv.graveCode.trim(),
+        block: adv.block.trim(),
+        lot: adv.lot.trim(),
+        registrationNumber: adv.registrationNumber.trim(),
       });
       setPage(1);
     }, 350);
     return () => clearTimeout(t);
-  }, [adv.cpf, adv.motherName, adv.graveCode]);
+  }, [adv.cpf, adv.motherName, adv.graveCode, adv.block, adv.lot, adv.registrationNumber]);
 
   const listParams = useMemo(
     () => ({
@@ -157,6 +168,9 @@ export default function DeceasedListPage() {
       cpf: debouncedAdv.cpf || undefined,
       motherName: debouncedAdv.motherName || undefined,
       graveCode: debouncedAdv.graveCode || undefined,
+      block: debouncedAdv.block || undefined,
+      lot: debouncedAdv.lot || undefined,
+      registrationNumber: debouncedAdv.registrationNumber || undefined,
       deathFrom: deathFrom || undefined,
       deathTo: deathTo || undefined,
     }),
@@ -193,21 +207,20 @@ export default function DeceasedListPage() {
         burial: fmtDate(r.lastBurialDate),
         location: r.currentLocationType,
         place: placeLabel(r),
+        cemetery: cemeteryName(r),
         block: blockCode(r),
+        lot: lotCode(r),
+        gaveta: gavetaCode(r),
+        registration: r.registrationNumber || "—",
+        gender: GENDER_LABEL[String(r.gender || "").toLowerCase()] || r.gender || "—",
         responsible: r.responsible?.name || "—",
       })),
     [rawRows]
   );
 
-  // quadras disponíveis derivadas da página atual (filtro client-side, preserva a UI)
-  const blockOptions = useMemo(
-    () => [...new Set(mapped.map((r) => r.block).filter((b) => b && b !== "—"))].sort(),
-    [mapped]
-  );
-  const filtered = useMemo(
-    () => (blockFilter ? mapped.filter((r) => r.block === blockFilter) : mapped),
-    [mapped, blockFilter]
-  );
+  // Quadra e lote agora são filtrados NA API (texto), não mais no cliente —
+  // filtrar só a página corrente escondia resultados das páginas seguintes.
+  const filtered = mapped;
 
   const { mutate: submitCreate, loading: saving } = useMutation(createDeceased);
 
@@ -251,6 +264,7 @@ export default function DeceasedListPage() {
       attendingPhysician: form.attendingPhysician || undefined,
       deathCertificateNumber: form.deathCertificateNumber || undefined,
       deathCertificateRegistry: form.deathCertificateRegistry || undefined,
+      registryNumber: form.registryNumber || undefined,
       funeralHome: form.funeralHome || undefined,
       responsiblePersonId: form.responsiblePersonId || undefined,
       registrationNumber: form.registrationNumber || undefined,
@@ -298,6 +312,7 @@ export default function DeceasedListPage() {
       setModalOpen(false);
       setForm(EMPTY_FORM);
       setCertFile(null);
+      setPickedGrave(null);
       setBurialForm({ graveId: "", date: todayISO(), time: "" });
       refetch();
     } catch (e) {
@@ -309,10 +324,17 @@ export default function DeceasedListPage() {
     return (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
   }
 
+  // Colunas espelhando a listagem do cliente: Cemitério · Quadra · Lote ·
+  // Gaveta · Matrícula · Nome · Sexo · Falecimento · Sepultamento.
   const columns = [
+    { key: "cemetery", label: "Cemitério" },
+    { key: "block", label: "Quadra" },
+    { key: "lot", label: "Lote" },
+    { key: "gaveta", label: "Gaveta" },
+    { key: "registration", label: "Matrícula" },
     {
       key: "name",
-      label: "Sepultado",
+      label: "Nome",
       render: (row) => (
         <span className={styles.personCell}>
           <Avatar name={row.name} size="sm" />
@@ -323,28 +345,14 @@ export default function DeceasedListPage() {
         </span>
       ),
     },
-    {
-      key: "death",
-      label: "Falecimento",
-      render: (row) => (
-        <span className={styles.dates}>
-          <span>✝ {row.death}</span>
-          <span className={styles.datesSub}>{row.birth} — {row.death}</span>
-        </span>
-      ),
-    },
-    { key: "burial", label: "Sepultamento" },
-    {
-      key: "place",
-      label: "Localização exata",
-      render: (row) => <code className={styles.code}>{row.place}</code>,
-    },
+    { key: "gender", label: "Sexo" },
+    { key: "death", label: "Data de falecimento" },
+    { key: "burial", label: "Data de sepultamento" },
     {
       key: "location",
       label: "Situação",
       render: (row) => <Badge tone={locationMeta(row.location).tone} dot>{locationMeta(row.location).label}</Badge>,
     },
-    { key: "responsible", label: "Responsável" },
     {
       key: "actions",
       label: "",
@@ -433,10 +441,16 @@ export default function DeceasedListPage() {
           />
         </div>
         <div className={styles.filters}>
-          <Select value={blockFilter} onChange={(e) => setBlockFilter(e.target.value)}>
-            <option value="">Todas as quadras</option>
-            {blockOptions.map((b) => <option key={b} value={b}>Quadra {b}</option>)}
-          </Select>
+          <Input
+            placeholder="Quadra"
+            value={adv.block}
+            onChange={(e) => setAdv((a) => ({ ...a, block: e.target.value }))}
+          />
+          <Input
+            placeholder="Lote"
+            value={adv.lot}
+            onChange={(e) => setAdv((a) => ({ ...a, lot: e.target.value }))}
+          />
           <Input type="date" value={deathFrom} onChange={(e) => { setDeathFrom(e.target.value); setPage(1); }} title="Falecimento — de" />
           <Input type="date" value={deathTo} onChange={(e) => { setDeathTo(e.target.value); setPage(1); }} title="Falecimento — até" />
           <Button variant="ghost" onClick={() => setAdvOpen((v) => !v)}>
@@ -453,13 +467,16 @@ export default function DeceasedListPage() {
           <FormField label="Nome da mãe">
             <Input placeholder="Nome da mãe" value={adv.motherName} onChange={setAdvField("motherName")} />
           </FormField>
-          <FormField label="Jazigo / Gaveta / Matrícula">
-            <Input placeholder="Código do jazigo (ex.: M2/12B)" value={adv.graveCode} onChange={setAdvField("graveCode")} />
+          <FormField label="Gaveta / Jazigo">
+            <Input placeholder="Código da unidade (ex.: M2/12B)" value={adv.graveCode} onChange={setAdvField("graveCode")} />
           </FormField>
-          {(adv.cpf || adv.motherName || adv.graveCode) && (
+          <FormField label="Matrícula">
+            <Input placeholder="Ex.: M2/12B" value={adv.registrationNumber} onChange={setAdvField("registrationNumber")} />
+          </FormField>
+          {(adv.cpf || adv.motherName || adv.graveCode || adv.registrationNumber) && (
             <Button
               variant="ghost"
-              onClick={() => setAdv({ cpf: "", motherName: "", graveCode: "" })}
+              onClick={() => setAdv((a) => ({ ...a, cpf: "", motherName: "", graveCode: "", registrationNumber: "" }))}
               className={styles.clearAdv}
             >
               Limpar
@@ -524,7 +541,7 @@ export default function DeceasedListPage() {
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         title="Novo sepultado"
-        subtitle="Dados civis completos do sepultado"
+        subtitle="Cadastro do sepultado e vínculo com a sepultura"
         width={680}
         footer={
           <>
@@ -534,12 +551,44 @@ export default function DeceasedListPage() {
         }
       >
         <form className={styles.form} onSubmit={(e) => { e.preventDefault(); handleCreate(); }}>
-          <span className={styles.formSection}>Responsável</span>
+          {/* Ordem, seções e natureza dos campos espelham o formulário que o
+              cliente já usa. Listas: Sexo, Cor, Estado civil, Cartório,
+              Funerária e Responsável. Todo o resto é texto. */}
           <div className={styles.formGrid}>
             <FormField
-              label="Responsável pela sepultura"
+              label="Sepultura"
+              required={false}
               className={styles.spanTwo}
-              hint="Quem responde pela sepultura — distinto do proprietário (comum em disputas familiares)"
+              hint="Escolha na pesquisa de sepulturas. Deixe vazio se o corpo foi cremado ou transladado."
+            >
+              <div className={styles.pickerRow}>
+                <Input
+                  readOnly
+                  value={pickedGrave ? graveLabel(pickedGrave) : ""}
+                  placeholder="Nenhuma sepultura selecionada"
+                  onClick={() => setGravePickerOpen(true)}
+                />
+                <Button type="button" variant="secondary" onClick={() => setGravePickerOpen(true)}>
+                  {pickedGrave ? "Trocar" : "Selecionar"}
+                </Button>
+                {pickedGrave && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => { setPickedGrave(null); setBurialForm((b) => ({ ...b, graveId: "" })); }}
+                  >
+                    Limpar
+                  </Button>
+                )}
+              </div>
+            </FormField>
+            <FormField label="Matrícula">
+              <Input placeholder="Ex.: M2/12B" value={form.registrationNumber} onChange={set("registrationNumber")} />
+            </FormField>
+            <FormField
+              label="Responsável"
+              className={styles.spanTwo}
+              hint="Quem responde pela sepultura — distinto do proprietário"
             >
               <Select value={form.responsiblePersonId} onChange={set("responsiblePersonId")}>
                 <option value="">Sem responsável definido</option>
@@ -552,27 +601,13 @@ export default function DeceasedListPage() {
               </Select>
             </FormField>
           </div>
+
           <span className={styles.formSection}>Identificação</span>
           <div className={styles.formGrid}>
-            <FormField label="Nome completo" required className={styles.spanTwo}>
+            <FormField label="Nome" required className={styles.spanTwo}>
               <Input placeholder="Nome do sepultado" value={form.fullName} onChange={set("fullName")} />
             </FormField>
-            <FormField label="Matrícula" hint="Registro interno (opcional)">
-              <Input placeholder="Ex.: M2/12B" value={form.registrationNumber} onChange={set("registrationNumber")} />
-            </FormField>
-            <FormField label="Idade" hint="No falecimento">
-              <Input placeholder="Ex.: 75 anos" value={form.age} onChange={set("age")} />
-            </FormField>
-            <FormField label="CPF">
-              <Input placeholder="000.000.000-00" inputMode="numeric" value={form.cpf} onChange={(e) => setForm((f) => ({ ...f, cpf: maskCpf(e.target.value) }))} />
-            </FormField>
-            <FormField label="RG">
-              <Input placeholder="00.000.000-0" value={form.rg} onChange={set("rg")} />
-            </FormField>
-            <FormField label="Título de eleitor">
-              <Input placeholder="Nº do título" value={form.voterId} onChange={set("voterId")} />
-            </FormField>
-            <FormField label="Sexo">
+            <FormField label="Sexo" required>
               <Select value={form.gender} onChange={set("gender")}>
                 <option value="">Não informado</option>
                 <option value="f">Feminino</option>
@@ -580,7 +615,26 @@ export default function DeceasedListPage() {
                 <option value="o">Outro</option>
               </Select>
             </FormField>
-            <FormField label="Estado civil">
+            <FormField label="Nome do pai">
+              <Input placeholder="Filiação paterna" value={form.fatherName} onChange={set("fatherName")} />
+            </FormField>
+            <FormField label="Nome da mãe" required>
+              <Input placeholder="Filiação materna" value={form.motherName} onChange={set("motherName")} />
+            </FormField>
+            <FormField label="Naturalidade" required>
+              <Input placeholder="Cidade — UF" value={form.birthplace} onChange={set("birthplace")} />
+            </FormField>
+            <FormField label="Cor" required>
+              <Select value={form.skinColor} onChange={set("skinColor")}>
+                <option value="">Sem declaração</option>
+                <option value="Branca">Branca</option>
+                <option value="Preta">Preta</option>
+                <option value="Parda">Parda</option>
+                <option value="Amarela">Amarela</option>
+                <option value="Indígena">Indígena</option>
+              </Select>
+            </FormField>
+            <FormField label="Estado civil" required>
               <Select value={form.maritalStatus} onChange={set("maritalStatus")}>
                 <option value="">Sem declaração</option>
                 <option value="Solteiro(a)">Solteiro(a)</option>
@@ -591,53 +645,77 @@ export default function DeceasedListPage() {
                 <option value="União estável">União estável</option>
               </Select>
             </FormField>
-            <FormField label="Cor/raça">
-              <Select value={form.skinColor} onChange={set("skinColor")}>
-                <option value="">Sem declaração</option>
-                <option value="Branca">Branca</option>
-                <option value="Preta">Preta</option>
-                <option value="Parda">Parda</option>
-                <option value="Amarela">Amarela</option>
-                <option value="Indígena">Indígena</option>
-              </Select>
+            <FormField label="Idade" required>
+              <Input placeholder="Ex.: 75 anos" value={form.age} onChange={set("age")} />
             </FormField>
-            <FormField label="Naturalidade">
-              <Input placeholder="Cidade — UF" value={form.birthplace} onChange={set("birthplace")} />
-            </FormField>
-            <FormField label="Nome da mãe">
-              <Input placeholder="Filiação materna" value={form.motherName} onChange={set("motherName")} />
-            </FormField>
-            <FormField label="Nome do pai">
-              <Input placeholder="Filiação paterna" value={form.fatherName} onChange={set("fatherName")} />
-            </FormField>
-          </div>
-
-          <span className={styles.formSection}>Óbito</span>
-          <div className={styles.formGrid}>
             <FormField label="Data de nascimento">
               <Input type="date" value={form.birthDate} onChange={set("birthDate")} />
             </FormField>
-            <FormField label="Data do falecimento">
+          </div>
+
+          <span className={styles.formSection}>Documentação</span>
+          <div className={styles.formGrid}>
+            <FormField label="RG">
+              <Input placeholder="00.000.000-0" value={form.rg} onChange={set("rg")} />
+            </FormField>
+            <FormField label="CPF">
+              <Input placeholder="000.000.000-00" inputMode="numeric" value={form.cpf} onChange={(e) => setForm((f) => ({ ...f, cpf: maskCpf(e.target.value) }))} />
+            </FormField>
+            <FormField label="Título de eleitor">
+              <Input placeholder="Nº do título" value={form.voterId} onChange={set("voterId")} />
+            </FormField>
+          </div>
+
+          <span className={styles.formSection}>Falecimento</span>
+          <div className={styles.formGrid}>
+            <FormField label="Data de falecimento" required>
               <Input type="date" value={form.deathDate} onChange={set("deathDate")} />
+            </FormField>
+            <FormField label="Data de sepultamento" required={linkBurial}>
+              <Input type="date" value={burialForm.date} onChange={(e) => setBurialForm((b) => ({ ...b, date: e.target.value }))} />
+            </FormField>
+            <FormField label="Causa da morte" required>
+              <Input placeholder="Conforme atestado" value={form.causeOfDeath} onChange={set("causeOfDeath")} />
+            </FormField>
+            <FormField label="Médico" required>
+              <Input placeholder="Dr(a). Nome do médico" value={form.attendingPhysician} onChange={set("attendingPhysician")} />
+            </FormField>
+            <FormField label="Nº atestado de óbito" required>
+              <Input placeholder="Número do atestado" value={form.deathCertificateNumber} onChange={set("deathCertificateNumber")} />
+            </FormField>
+            <FormField label="Local de falecimento" required>
+              <Input placeholder="Ex.: Hospital Municipal, residência" value={form.deathPlace} onChange={set("deathPlace")} />
             </FormField>
             <FormField label="Hora do falecimento">
               <Input type="time" value={form.deathTime} onChange={set("deathTime")} />
             </FormField>
-            <FormField label="Causa do óbito">
-              <Input placeholder="Conforme certidão" value={form.causeOfDeath} onChange={set("causeOfDeath")} />
+            <FormField label="Hora do sepultamento">
+              <Input type="time" value={burialForm.time} onChange={(e) => setBurialForm((b) => ({ ...b, time: e.target.value }))} />
             </FormField>
-            <FormField label="Local do falecimento">
-              <Input placeholder="Ex.: Hospital Municipal, residência" value={form.deathPlace} onChange={set("deathPlace")} />
+            <FormField
+              label="Atestado de óbito"
+              className={styles.spanTwo}
+              hint={certFile ? `Selecionado: ${certFile.name}` : "PDF ou imagem, até 15 MB"}
+            >
+              <input
+                type="file"
+                accept="application/pdf,image/*"
+                onChange={(e) => setCertFile(e.target.files?.[0] || null)}
+              />
             </FormField>
-            <FormField label="Médico responsável" hint="Nome do médico do atestado de óbito">
-              <Input placeholder="Dr(a). Nome do médico" value={form.attendingPhysician} onChange={set("attendingPhysician")} />
+          </div>
+
+          <div className={styles.formGrid}>
+            <FormField label="Observação" className={styles.spanTwo}>
+              <Textarea
+                rows={2}
+                value={form.notes}
+                onChange={set("notes")}
+              />
             </FormField>
-            <FormField label="Nº da certidão de óbito">
-              <Input placeholder="Livro, folha, termo" value={form.deathCertificateNumber} onChange={set("deathCertificateNumber")} />
-            </FormField>
-            <FormField label="Cartório de registro" hint="Cadastrados em Básico › Cartórios">
+            <FormField label="Cartório" required hint="Cadastrados em Básico › Cartórios">
               <Select value={form.deathCertificateRegistry} onChange={set("deathCertificateRegistry")}>
-                <option value="">Selecione o cartório…</option>
+                <option value="">Selecione uma opção</option>
                 {cartorios.map((c) => (
                   <option key={c.id} value={c.name}>{c.name}</option>
                 ))}
@@ -648,9 +726,12 @@ export default function DeceasedListPage() {
                   )}
               </Select>
             </FormField>
-            <FormField label="Funerária" hint="Cadastradas em Básico › Funerárias">
+            <FormField label="Registro" required hint="Nº do registro no cartório">
+              <Input value={form.registryNumber} onChange={set("registryNumber")} />
+            </FormField>
+            <FormField label="Funerária" required hint="Cadastradas em Básico › Funerárias">
               <Select value={form.funeralHome} onChange={set("funeralHome")}>
-                <option value="">Selecione a funerária…</option>
+                <option value="">Selecione uma opção</option>
                 {funerarias.map((f) => (
                   <option key={f.id} value={f.name}>{f.name}</option>
                 ))}
@@ -660,61 +741,20 @@ export default function DeceasedListPage() {
                   )}
               </Select>
             </FormField>
-            <FormField
-              label="Declaração / Certidão de óbito (PDF)"
-              className={styles.spanTwo}
-              hint={certFile ? `Selecionado: ${certFile.name}` : "Anexe o PDF da declaração ou certidão de óbito (até 15 MB)"}
-            >
-              <input
-                type="file"
-                accept="application/pdf,image/*"
-                onChange={(e) => setCertFile(e.target.files?.[0] || null)}
-              />
-            </FormField>
-            <FormField label="Observação" className={styles.spanTwo}>
-              <Textarea
-                rows={2}
-                placeholder="Observações sobre o sepultado (opcional)"
-                value={form.notes}
-                onChange={set("notes")}
-              />
-            </FormField>
-          </div>
-
-          <div className={styles.linkBurialBox}>
-            <p className={styles.linkBurialToggle}>
-              <span>
-                <strong>Sepultura</strong> — escolha o jazigo e a data. A Autorização
-                de Sepultamento é gerada automaticamente. Deixe em branco se o corpo
-                foi cremado ou transladado.
-              </span>
-            </p>
-            <div className={styles.formGrid}>
-              <FormField label="Jazigo (livre)">
-                <Select
-                  value={burialForm.graveId}
-                  onChange={(e) => setBurialForm((b) => ({ ...b, graveId: e.target.value }))}
-                >
-                  <option value="">Sem sepultura (cremado/transladado)</option>
-                  {freeGraves.map((g) => (
-                    <option key={g.id} value={g.id}>
-                      {g.code}{g.available != null ? ` · ${g.available} vaga(s)` : ""}
-                    </option>
-                  ))}
-                </Select>
-              </FormField>
-              <FormField label="Data do sepultamento" required={linkBurial}>
-                <Input type="date" value={burialForm.date} onChange={(e) => setBurialForm((b) => ({ ...b, date: e.target.value }))} />
-              </FormField>
-              <FormField label="Hora">
-                <Input type="time" value={burialForm.time} onChange={(e) => setBurialForm((b) => ({ ...b, time: e.target.value }))} />
-              </FormField>
-            </div>
           </div>
 
           {formError && <Alert tone="danger">{formError}</Alert>}
         </form>
       </Modal>
+      <GravePicker
+        open={gravePickerOpen}
+        onClose={() => setGravePickerOpen(false)}
+        onSelect={(g) => {
+          setPickedGrave(g);
+          setBurialForm((b) => ({ ...b, graveId: g.id }));
+        }}
+      />
+
       <ExportModal
         open={exportOpen}
         onClose={() => setExportOpen(false)}

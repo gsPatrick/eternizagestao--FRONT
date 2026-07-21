@@ -460,3 +460,16 @@
     flex-shrink: 0;
   }
 }
+
+/* Campo "Sepultura": leitura + botões que abrem a pesquisa de sepulturas.
+   minmax(0,…)/min-width:0 impedem que o input estoure a linha. */
+.pickerRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.pickerRow > *:first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
