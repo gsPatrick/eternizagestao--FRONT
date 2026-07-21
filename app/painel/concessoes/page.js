@@ -25,7 +25,8 @@ import { listConcessions, getConcessionsSummary, issueConcession } from "@/lib/a
 import { listGraves } from "@/lib/api/resources/graves";
 import { listPeople } from "@/lib/api/resources/people";
 
-const TODAY = new Date("2026-07-16");
+// "Hoje" REAL — antes era fixo em 16/07/2026, congelando "vence em X meses".
+const TODAY = new Date();
 
 const STATUS_META = {
   ativa: { label: "Ativa", tone: "success" },

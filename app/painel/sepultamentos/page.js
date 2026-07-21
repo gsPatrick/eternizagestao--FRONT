@@ -40,6 +40,7 @@ import {
   composeBurialNotes,
 } from "@/lib/api/resources/burials";
 import { listPeople } from "@/lib/api/resources/people";
+import { todayISO, toLocalISODate } from "@/lib/date-local";
 
 // Resolve o nome digitado (declarante) para o id de uma Pessoa real: tenta a
 // lista já carregada (match exato, case-insensitive) e, se não achar, busca na
@@ -66,7 +67,7 @@ const STATUS_META = {
 };
 
 const MONTH_LABEL = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" }).format(new Date());
-const TODAY_ISO = new Date().toISOString().slice(0, 10);
+const TODAY_ISO = todayISO();
 
 function authFile(row) {
   if (row.authUrl) {

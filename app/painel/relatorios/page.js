@@ -24,6 +24,7 @@ import {
   downloadDataExport,
 } from "@/lib/api/resources/data-exports";
 import { listCemeteries } from "@/lib/api/resources/cemeteries";
+import { todayISO, toLocalISODate } from "@/lib/date-local";
 
 const TODAY = new Date().toLocaleDateString("pt-BR");
 
@@ -355,7 +356,7 @@ export default function ReportsPage() {
   // Gera uma remessa oficial real e atualiza o histórico.
   async function generateRemessa(remessa) {
     setRemessaLoading(remessa.id);
-    const isoToday = new Date().toISOString().slice(0, 10);
+    const isoToday = todayISO();
     const isoMonthStart = `${isoToday.slice(0, 7)}-01`;
     try {
       await runCreateExport({

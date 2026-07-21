@@ -69,7 +69,7 @@ function total(row) {
 
 function daysLate(due) {
   const [d, m, y] = due.split("/").map(Number);
-  const diff = Math.round((new Date(2026, 6, 16) - new Date(y, m - 1, d)) / 86400000);
+  const diff = Math.round((new Date() - new Date(y, m - 1, d)) / 86400000);
   return diff;
 }
 

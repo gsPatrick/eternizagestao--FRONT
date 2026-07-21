@@ -31,8 +31,11 @@ import {
   deleteAttachment,
   toAttachmentView,
 } from "@/lib/api/resources/attachments";
+import { toLocalISODate } from "@/lib/date-local";
 
-const TODAY = new Date("2026-07-16");
+// "Hoje" REAL. Antes era uma data fixa (2026-07-16), o que congelava a barra de
+// vigência e o "faltam N meses" da concessão numa data que nunca mudava.
+const TODAY = new Date();
 
 const TRANSFER_REASONS = {
   venda: "Venda",
@@ -92,7 +95,7 @@ function formatBRL(value) {
 function isoPlusYears(iso, years) {
   const base = parseIso(iso) || new Date(TODAY);
   base.setFullYear(base.getFullYear() + years);
-  return base.toISOString().slice(0, 10);
+  return toLocalISODate(base);
 }
 
 export default function ConcessionDetailPage() {

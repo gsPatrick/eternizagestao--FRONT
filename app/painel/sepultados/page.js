@@ -26,6 +26,7 @@ import { createBurial, listFreeGraves, adaptFreeGrave } from "@/lib/api/resource
 import { listCartorios } from "@/lib/api/resources/cartorios";
 import { listFunerarias } from "@/lib/api/resources/funerarias";
 import { listPeople } from "@/lib/api/resources/people";
+import { todayISO } from "@/lib/date-local";
 
 const LOCATION_META = {
   sepultado: { label: "Sepultado", tone: "navy" },
@@ -38,13 +39,6 @@ const locationMeta = (key) => LOCATION_META[key] || { label: "Desconhecido", ton
 const GENDER_LABEL = { f: "Feminino", m: "Masculino", o: "Outro" };
 
 const PER_PAGE = 30;
-// data de hoje no fuso LOCAL (YYYY-MM-DD) — usada como padrão do sepultamento
-function todayLocalISO() {
-  const d = new Date();
-  const p = (n) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
-}
-
 const EMPTY_FORM = {
   fullName: "", registrationNumber: "", cpf: "", rg: "", age: "", gender: "",
   birthplace: "", motherName: "",
@@ -95,7 +89,7 @@ export default function DeceasedListPage() {
   // Cadastrar sepultado JÁ registra o sepultamento (é o que gera a AUTORIZAÇÃO
   // DE SEPULTAMENTO automaticamente). O operador pode desmarcar se não houver.
   const [linkBurial, setLinkBurial] = useState(true);
-  const [burialForm, setBurialForm] = useState({ graveId: "", date: todayLocalISO(), time: "" });
+  const [burialForm, setBurialForm] = useState({ graveId: "", date: todayISO(), time: "" });
   const { data: freeGravesData } = useResource(
     ({ signal }) => (modalOpen ? listFreeGraves({ perPage: 500 }, { signal }) : Promise.resolve({ data: [] })),
     [modalOpen]
@@ -267,7 +261,7 @@ export default function DeceasedListPage() {
           setForm(EMPTY_FORM);
           setCertFile(null);
           setLinkBurial(true);
-          setBurialForm({ graveId: "", date: todayLocalISO(), time: "" });
+          setBurialForm({ graveId: "", date: todayISO(), time: "" });
           refetch();
           return;
         }
@@ -276,7 +270,7 @@ export default function DeceasedListPage() {
       setForm(EMPTY_FORM);
       setCertFile(null);
       setLinkBurial(true);
-      setBurialForm({ graveId: "", date: todayLocalISO(), time: "" });
+      setBurialForm({ graveId: "", date: todayISO(), time: "" });
       refetch();
     } catch (e) {
       setFormError(e.message || "Não foi possível registrar o sepultado.");
@@ -350,7 +344,7 @@ export default function DeceasedListPage() {
     <Button
       onClick={() => {
         setLinkBurial(true);
-        setBurialForm({ graveId: "", date: todayLocalISO(), time: "" });
+        setBurialForm({ graveId: "", date: todayISO(), time: "" });
         setModalOpen(true);
       }}
       iconLeft={

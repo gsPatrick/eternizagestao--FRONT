@@ -30,6 +30,7 @@ import {
   deleteAttachment,
   toAttachmentView,
 } from "@/lib/api/resources/attachments";
+import { todayISO } from "@/lib/date-local";
 import {
   getGraveSummary,
   getGraveTimeline,
@@ -136,10 +137,10 @@ const MAINTENANCE_TYPES = {
 const concessionTypeLabel = (t) => (t === "perpetua" ? "Perpétua" : t === "temporaria" ? "Temporária" : "—");
 const toInputDate = (br) => {
   // "16/07/2026" ou ISO → yyyy-mm-dd para <input type=date>
-  if (!br) return new Date().toISOString().slice(0, 10);
+  if (!br) return todayISO();
   if (/^\d{4}-\d{2}-\d{2}/.test(br)) return br.slice(0, 10);
   const [d, m, y] = br.split("/");
-  return y ? `${y}-${m}-${d}` : new Date().toISOString().slice(0, 10);
+  return y ? `${y}-${m}-${d}` : todayISO();
 };
 
 export default function GraveDetailPage() {
