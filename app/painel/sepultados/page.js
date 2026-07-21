@@ -22,6 +22,8 @@ import { maskCpf } from "@/lib/masks";
 import { useResource, useMutation } from "@/lib/api/useResource";
 import { listDeceased, getLocationCounts, createDeceased, uploadDeathCertificate } from "@/lib/api/resources/deceased";
 import { createBurial, listFreeGraves, adaptFreeGrave } from "@/lib/api/resources/burials";
+import { listCartorios } from "@/lib/api/resources/cartorios";
+import { listFunerarias } from "@/lib/api/resources/funerarias";
 
 const LOCATION_META = {
   sepultado: { label: "Sepultado", tone: "navy" },
@@ -38,7 +40,7 @@ const EMPTY_FORM = {
   fullName: "", cpf: "", rg: "", gender: "", birthplace: "", motherName: "",
   fatherName: "", birthDate: "", deathDate: "", deathTime: "", causeOfDeath: "",
   attendingPhysician: "",
-  deathCertificateNumber: "", deathCertificateRegistry: "",
+  deathCertificateNumber: "", deathCertificateRegistry: "", funeralHome: "",
 };
 
 // "YYYY-MM-DD" (DATEONLY da API) → "DD/MM/YYYY"
@@ -88,6 +90,18 @@ export default function DeceasedListPage() {
     () => (freeGravesData?.data ?? []).map(adaptFreeGrave),
     [freeGravesData]
   );
+
+  // Cartórios e Funerárias cadastrados (Básico) → dropdowns do sepultado.
+  const { data: cartoriosData } = useResource(
+    ({ signal }) => (modalOpen ? listCartorios({ perPage: 300 }, { signal }) : Promise.resolve({ data: [] })),
+    [modalOpen]
+  );
+  const cartorios = cartoriosData?.data ?? [];
+  const { data: funerariasData } = useResource(
+    ({ signal }) => (modalOpen ? listFunerarias({ perPage: 300 }, { signal }) : Promise.resolve({ data: [] })),
+    [modalOpen]
+  );
+  const funerarias = funerariasData?.data ?? [];
 
   // debounce da busca (evita disparar um fetch a cada tecla)
   useEffect(() => {
@@ -189,6 +203,7 @@ export default function DeceasedListPage() {
       attendingPhysician: form.attendingPhysician || undefined,
       deathCertificateNumber: form.deathCertificateNumber || undefined,
       deathCertificateRegistry: form.deathCertificateRegistry || undefined,
+      funeralHome: form.funeralHome || undefined,
     };
     try {
       // validação do sepultamento vinculado (quando marcado)
@@ -213,6 +228,7 @@ export default function DeceasedListPage() {
             graveId: burialForm.graveId,
             burialDate: burialForm.date,
             burialTime: burialForm.time || undefined,
+            funeralHome: form.funeralHome || undefined,
           });
         } catch (e) {
           // sepultado criado, mas o sepultamento falhou → avisa e não perde o cadastro
@@ -510,8 +526,30 @@ export default function DeceasedListPage() {
             <FormField label="Nº da certidão de óbito">
               <Input placeholder="Livro, folha, termo" value={form.deathCertificateNumber} onChange={set("deathCertificateNumber")} />
             </FormField>
-            <FormField label="Cartório de registro">
-              <Input placeholder="Nome do cartório" value={form.deathCertificateRegistry} onChange={set("deathCertificateRegistry")} />
+            <FormField label="Cartório de registro" hint="Cadastrados em Básico › Cartórios">
+              <Select value={form.deathCertificateRegistry} onChange={set("deathCertificateRegistry")}>
+                <option value="">Selecione o cartório…</option>
+                {cartorios.map((c) => (
+                  <option key={c.id} value={c.name}>{c.name}</option>
+                ))}
+                {/* preserva um valor legado que não esteja na lista */}
+                {form.deathCertificateRegistry &&
+                  !cartorios.some((c) => c.name === form.deathCertificateRegistry) && (
+                    <option value={form.deathCertificateRegistry}>{form.deathCertificateRegistry}</option>
+                  )}
+              </Select>
+            </FormField>
+            <FormField label="Funerária" hint="Cadastradas em Básico › Funerárias">
+              <Select value={form.funeralHome} onChange={set("funeralHome")}>
+                <option value="">Selecione a funerária…</option>
+                {funerarias.map((f) => (
+                  <option key={f.id} value={f.name}>{f.name}</option>
+                ))}
+                {form.funeralHome &&
+                  !funerarias.some((f) => f.name === form.funeralHome) && (
+                    <option value={form.funeralHome}>{form.funeralHome}</option>
+                  )}
+              </Select>
             </FormField>
             <FormField
               label="Declaração / Certidão de óbito (PDF)"
