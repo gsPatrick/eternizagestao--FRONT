@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import Link from "next/link";
@@ -14,6 +14,7 @@ import EmptyState from "@/components/molecules/EmptyState/EmptyState";
 import { getClientSubdomain } from "@/lib/tenant-subdomain";
 import { usePublicSearch, formatDate, yearOf } from "@/src/features/public-search";
 import { usePublicGraveRoute } from "@/src/features/public-map";
+import { getPublicCemeteries } from "@/lib/api/resources/public";
 
 // Mapa REAL georreferenciado (Leaflet: ortofoto + polígonos das sepulturas) —
 // client-only. Substitui o antigo mapa ilustrativo (SVG sintético).
@@ -87,6 +88,22 @@ function SearchContent() {
   // Login ÚNICO da cidade (admin + Portal da Família no mesmo /login).
   const loginHref = `/login${tParam}`;
   const navLinks = [];
+
+  // Cemitério padrão da cidade → o MAPA aparece junto da busca, sem precisar
+  // pesquisar antes. Muitos visitantes (público idoso) se localizam melhor pelo
+  // mapa do que por texto.
+  const [defaultCemeteryId, setDefaultCemeteryId] = useState(null);
+  useEffect(() => {
+    let alive = true;
+    getPublicCemeteries({ tenant: tenantSlug })
+      .then((list) => {
+        if (!alive) return;
+        const first = Array.isArray(list) ? list[0] : list?.data?.[0];
+        if (first?.id) setDefaultCemeteryId(first.id);
+      })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [tenantSlug]);
 
   const { results, loading, error, refetch, status } = usePublicSearch(
     { q: submitted, ...appliedFilters },
@@ -352,15 +369,18 @@ function SearchContent() {
               </>
             )}
 
-            {/* ---------- mapa com rota ---------- */}
-            {selected && (
+            {/* ---------- mapa do cemitério (sempre visível) + rota ---------- */}
+            {(selected?.cemeteryId || defaultCemeteryId) && (
               <div className={styles.mapPanel}>
                 <header className={styles.mapPanelHead}>
                   <div>
                     <h3 className={styles.mapPanelTitle}>
-                      {selected.name} · {selected.code || "sepultura"}
+                      {selected
+                        ? `${selected.name} · ${selected.code || "sepultura"}`
+                        : "Mapa do cemitério"}
                     </h3>
                     <p className={styles.mapPanelMeta}>
+                      {!selected && "Navegue pelo mapa ou use a busca acima para localizar uma sepultura."}
                       {grave.loading && "🧭 Calculando a rota da entrada…"}
                       {!grave.loading && grave.mapped && (
                         <>🧭 Rota da entrada: <strong>{grave.meters} m · ~{grave.minutes} min a pé</strong></>
@@ -373,22 +393,26 @@ function SearchContent() {
                       )}
                     </p>
                   </div>
-                  <button className={styles.mapPanelClose} onClick={() => setSelected(null)} aria-label="Fechar mapa">
-                    <svg viewBox="0 0 16 16" fill="none">
-                      <path d="m4 4 8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                    </svg>
-                  </button>
+                  {selected && (
+                    <button className={styles.mapPanelClose} onClick={() => setSelected(null)} aria-label="Limpar seleção do mapa">
+                      <svg viewBox="0 0 16 16" fill="none">
+                        <path d="m4 4 8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                      </svg>
+                    </button>
+                  )}
                 </header>
                 <PublicCemeteryMap
-                  cemeteryId={selected?.cemeteryId}
+                  cemeteryId={selected?.cemeteryId || defaultCemeteryId}
                   tenant={tenantSlug}
                   focusGraveId={selected?.graveId}
                   grave={grave}
                   height={460}
                 />
-                <p className={styles.mapPanelHint}>
-                  No local, use o app do visitante para seguir a rota guiada por GPS a partir do portão principal.
-                </p>
+                {selected && (
+                  <p className={styles.mapPanelHint}>
+                    No local, use o app do visitante para seguir a rota guiada por GPS a partir do portão principal.
+                  </p>
+                )}
               </div>
             )}
           </div>
