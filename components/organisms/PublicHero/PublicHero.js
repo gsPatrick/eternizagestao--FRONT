@@ -21,7 +21,10 @@ const PHRASES = [
   "Cada história guardada\nno seu devido lugar.",
 ];
 
-export default function PublicHero({ variant = "public", tenantSlug = null }) {
+// `imageUrl`: arte própria da CIDADE (config → Identidade). Sem ela, usa a arte
+// padrão da plataforma (/media/hero.*) — é o que mantém o portal Eterniza com a
+// imagem institucional e permite cada cidade ter a sua.
+export default function PublicHero({ variant = "public", tenantSlug = null, imageUrl = null }) {
   // variant "sales" = LP institucional (sem busca, com CTA de venda)
   // variant "public" = página pública do tenant (com busca do cidadão)
   const router = useRouter();
@@ -101,10 +104,12 @@ export default function PublicHero({ variant = "public", tenantSlug = null }) {
         <div className={`${styles.frame} ${expanded ? styles.expanded : ""}`}>
           <div className={styles.canvas}>
             <picture>
-              <source srcSet="/media/hero.webp" type="image/webp" />
+              {/* WebP otimizado só existe para a arte PADRÃO; imagem da cidade
+                  é servida direto do storage (já validada no upload). */}
+              {!imageUrl && <source srcSet="/media/hero.webp" type="image/webp" />}
               <img
                 ref={heroImgRef}
-                src="/media/hero.jpg"
+                src={imageUrl || "/media/hero.jpg"}
                 alt=""
                 className={`${styles.image} ${imgLoaded ? styles.imageLoaded : ""}`}
                 aria-hidden="true"

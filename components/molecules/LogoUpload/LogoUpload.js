@@ -4,28 +4,67 @@ import { useRef, useState } from "react";
 import styles from "./LogoUpload.module.css";
 import Spinner from "@/components/atoms/Spinner/Spinner";
 import { useMutation } from "@/lib/api/useResource";
-import { uploadTenantLogo } from "@/lib/api/resources/tenant";
+import { uploadTenantLogo, uploadTenantPublicImage } from "@/lib/api/resources/tenant";
 
-const ACCEPT = "image/png,image/jpeg,image/svg+xml";
-const ALLOWED = ["image/png", "image/jpeg", "image/svg+xml"];
-const MAX_BYTES = 3 * 1024 * 1024; // 3 MB — espelha o limite da API
+// Presets por tipo de imagem — mesmo controle serve para a LOGO e para as
+// imagens da PÁGINA PÚBLICA da cidade (topo/hero e rodapé).
+const PRESETS = {
+  logo: {
+    accept: "image/png,image/jpeg,image/svg+xml",
+    allowed: ["image/png", "image/jpeg", "image/svg+xml"],
+    maxBytes: 3 * 1024 * 1024,
+    typesLabel: "PNG, JPEG ou SVG",
+    sizeLabel: "3 MB",
+    currentLabel: "Logo atual",
+    alt: "Logo da cidade",
+    emptyTitle: "Arraste a logo ou clique para enviar",
+    busyTitle: "Enviando logo…",
+    upload: async (file) => (await uploadTenantLogo(file)).logoUrl,
+  },
+  hero: {
+    accept: "image/png,image/jpeg,image/webp",
+    allowed: ["image/png", "image/jpeg", "image/webp"],
+    maxBytes: 12 * 1024 * 1024,
+    typesLabel: "PNG, JPEG ou WEBP",
+    sizeLabel: "12 MB",
+    currentLabel: "Imagem do topo",
+    alt: "Imagem do topo da página pública",
+    emptyTitle: "Arraste a imagem do topo ou clique para enviar",
+    busyTitle: "Enviando imagem…",
+    upload: async (file) => (await uploadTenantPublicImage("hero", file)).heroImageUrl,
+  },
+  footer: {
+    accept: "image/png,image/jpeg,image/webp",
+    allowed: ["image/png", "image/jpeg", "image/webp"],
+    maxBytes: 12 * 1024 * 1024,
+    typesLabel: "PNG, JPEG ou WEBP",
+    sizeLabel: "12 MB",
+    currentLabel: "Imagem do rodapé",
+    alt: "Imagem do rodapé da página pública",
+    emptyTitle: "Arraste a imagem do rodapé ou clique para enviar",
+    busyTitle: "Enviando imagem…",
+    upload: async (file) => (await uploadTenantPublicImage("footer", file)).footerImageUrl,
+  },
+};
 
 /**
- * Controle de upload da logo da cidade — clique ou arraste-e-solte.
- * Mostra o preview da logo atual (value), com "Trocar" e "Remover", estado de
+ * Controle de upload de imagem da cidade — clique ou arraste-e-solte.
+ * Mostra o preview da imagem atual (value), com "Trocar" e "Remover", estado de
  * envio (spinner) e erro amigável. Ao selecionar → sobe o arquivo e devolve a
  * URL via onChange(url). "Remover" → onChange("").
  *
- * @param {string}  value       logoUrl atual (URL do arquivo já enviado)
+ * @param {string}  value       URL atual (arquivo já enviado)
  * @param {(url:string)=>void} onChange
  * @param {(uploading:boolean)=>void} [onUploading]
  * @param {boolean} [disabled]
+ * @param {'logo'|'hero'|'footer'} [kind='logo']  o que está sendo enviado
  */
-export default function LogoUpload({ value, onChange, onUploading, disabled = false }) {
+export default function LogoUpload({ value, onChange, onUploading, disabled = false, kind = "logo" }) {
+  const preset = PRESETS[kind] || PRESETS.logo;
   const inputRef = useRef(null);
   const [dragOver, setDragOver] = useState(false);
   const [localError, setLocalError] = useState(null);
-  const { mutate, loading, error } = useMutation(uploadTenantLogo);
+  const { mutate, loading, error } = useMutation(preset.upload);
 
   const busy = loading;
   const message = localError || (error ? error.message : null);
@@ -39,19 +78,19 @@ export default function LogoUpload({ value, onChange, onUploading, disabled = fa
     if (!file || disabled) return;
     setLocalError(null);
 
-    if (!ALLOWED.includes(file.type)) {
-      setLocalError("Formato inválido. Envie uma imagem PNG, JPEG ou SVG.");
+    if (!preset.allowed.includes(file.type)) {
+      setLocalError(`Formato inválido. Envie uma imagem ${preset.typesLabel}.`);
       return;
     }
-    if (file.size > MAX_BYTES) {
-      setLocalError("Imagem muito grande. O limite é 3 MB.");
+    if (file.size > preset.maxBytes) {
+      setLocalError(`Imagem muito grande. O limite é ${preset.sizeLabel}.`);
       return;
     }
 
     onUploading?.(true);
     try {
-      const { logoUrl } = await mutate(file);
-      onChange?.(logoUrl);
+      const url = await mutate(file);
+      onChange?.(url);
     } catch {
       // erro tipado exposto via `error` (message) — nada a fazer aqui.
     } finally {
@@ -82,7 +121,7 @@ export default function LogoUpload({ value, onChange, onUploading, disabled = fa
       <input
         ref={inputRef}
         type="file"
-        accept={ACCEPT}
+        accept={preset.accept}
         className={styles.input}
         disabled={disabled}
         onChange={(e) => {
@@ -101,13 +140,13 @@ export default function LogoUpload({ value, onChange, onUploading, disabled = fa
               <Spinner size={22} />
             ) : (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={value} alt="Logo da cidade" />
+              <img src={value} alt={preset.alt} />
             )}
           </div>
           <div className={styles.info}>
-            <span className={styles.infoLabel}>Logo atual</span>
+            <span className={styles.infoLabel}>{preset.currentLabel}</span>
             <span className={styles.infoHint}>
-              {busy ? "Enviando…" : "PNG, JPEG ou SVG · até 3 MB"}
+              {busy ? "Enviando…" : `${preset.typesLabel} · até ${preset.sizeLabel}`}
             </span>
             <div className={styles.actions}>
               <button
@@ -164,12 +203,12 @@ export default function LogoUpload({ value, onChange, onUploading, disabled = fa
           </span>
           <strong className={styles.title}>
             {busy
-              ? "Enviando logo…"
+              ? preset.busyTitle
               : dragOver
                 ? "Solte a imagem aqui"
-                : "Arraste a logo ou clique para enviar"}
+                : preset.emptyTitle}
           </strong>
-          <span className={styles.hint}>PNG, JPEG ou SVG · até 3 MB</span>
+          <span className={styles.hint}>{preset.typesLabel} · até {preset.sizeLabel}</span>
         </button>
       )}
 

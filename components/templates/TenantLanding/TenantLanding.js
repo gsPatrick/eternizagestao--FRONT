@@ -34,7 +34,7 @@ export default function TenantLanding({ tenant }) {
     <TenantTheme forcedTenantId={tenant.id} showSwitcher={false}>
       <PublicNav home={home} links={navLinks} cta={{ label: "Entrar", href: loginHref }} />
       <main>
-        <PublicHero variant="public" tenantSlug={tenant.id} />
+        <PublicHero variant="public" tenantSlug={tenant.id} imageUrl={tenant.heroImageUrl || null} />
         <PublicStatement
           tone="white"
           kicker="Memória viva"
@@ -50,7 +50,13 @@ export default function TenantLanding({ tenant }) {
         />
         <PublicAgenda cityName={tenant.name} tenantSlug={tenant.apiSubdomain || tenant.id} />
       </main>
-      <PublicFooter variant="public" nav={footerNav} cityName={tenant.brandLead} />
+      {/* rodapé: arte própria do rodapé; se não houver, reaproveita a do topo */}
+      <PublicFooter
+        variant="public"
+        nav={footerNav}
+        cityName={tenant.brandLead}
+        imageUrl={tenant.footerImageUrl || tenant.heroImageUrl || null}
+      />
     </TenantTheme>
   );
 }

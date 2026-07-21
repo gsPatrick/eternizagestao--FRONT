@@ -26,7 +26,8 @@ function ArrowIcon() {
   );
 }
 
-export default function PublicFooter({ variant = "sales", nav, heading, cityName }) {
+// `imageUrl`: arte própria do rodapé da CIDADE; sem ela, a arte padrão.
+export default function PublicFooter({ variant = "sales", nav, heading, cityName, imageUrl = null }) {
   const isPublic = variant === "public";
   const navItems = nav || SALES_NAV;
   // fade-in da foto revelada no rodapé (mesmo esquema do hero: LQIP + fade)
@@ -112,10 +113,10 @@ export default function PublicFooter({ variant = "sales", nav, heading, cityName
         <div className={styles.bgInner}>
           <div className={styles.bgGradient} />
           <picture>
-            <source srcSet="/media/hero.webp" type="image/webp" />
+            {!imageUrl && <source srcSet="/media/hero.webp" type="image/webp" />}
             <img
               ref={bgImgRef}
-              src="/media/hero.jpg"
+              src={imageUrl || "/media/hero.jpg"}
               alt=""
               className={`${styles.bgImage} ${bgLoaded ? styles.bgImageLoaded : ""}`}
               loading="lazy"

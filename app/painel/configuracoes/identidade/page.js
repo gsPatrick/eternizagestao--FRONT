@@ -87,6 +87,31 @@ export default function IdentidadePage() {
           />
         </FormField>
 
+        {/* Arte da PÁGINA PÚBLICA da cidade — independente do portal Eterniza */}
+        <FormField
+          label="Imagem do topo (página pública)"
+          hint="Foto grande do topo da página da cidade. Sem envio, usamos a arte padrão da plataforma."
+        >
+          <LogoUpload
+            kind="hero"
+            value={form.heroImageUrl}
+            onChange={(url) => set("heroImageUrl", url)}
+            disabled={!canEdit}
+          />
+        </FormField>
+
+        <FormField
+          label="Imagem do rodapé (página pública)"
+          hint="Foto revelada no fim da página da cidade. Sem envio, repete a do topo."
+        >
+          <LogoUpload
+            kind="footer"
+            value={form.footerImageUrl}
+            onChange={(url) => set("footerImageUrl", url)}
+            disabled={!canEdit}
+          />
+        </FormField>
+
         {/* Pré-visualização ao vivo da marca */}
         <div
           className={ui.brandPreview}
