@@ -350,8 +350,8 @@ export default function CemeteryMap({
     overlay.on("error", () => {
       console.error(
         "[ortofoto] a imagem NÃO carregou. URL usada:", orthophoto.fileUrl,
-        "\nVerifique se NEXT_PUBLIC_API_URL aponta para a API no build do front",
-        "e se a URL assinada ainda é válida."
+        "\nA origem é a mesma das chamadas de API, então normalmente a causa é",
+        "a URL assinada expirada ou o arquivo ausente no storage da API."
       );
     });
 

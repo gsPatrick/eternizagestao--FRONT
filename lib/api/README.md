@@ -11,7 +11,10 @@ SSR-safe, sem dependências novas (nada de SWR/axios).
 | `session.js` | `setSession`, `getToken`, `getRefreshToken`, `getUser`, `clearSession`, `isAuthed` |
 | `useResource.js` | `useResource(fetcher, deps)`, `useMutation(mutateFn)` |
 
-Base URL vem de `NEXT_PUBLIC_API_URL` (`.env.local`) → `http://localhost:3333/api/v1`.
+Base URL é resolvida em `client.js` e aponta SEMPRE para a API de produção.
+`NEXT_PUBLIC_API_URL` é opcional e só é aceita quando aponta para um host real
+(valores de localhost são ignorados de propósito). Nenhum outro módulo deve
+resolver essa base por conta própria — importe `API_URL`/`API_ORIGIN` do client.
 Suba a API com `APP_PORT=3333` (o default 3000 conflita com o Next).
 
 ## `apiFetch(path, opts)` — assinatura e retorno
