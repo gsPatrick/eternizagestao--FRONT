@@ -850,3 +850,64 @@
     transform: rotate(360deg);
   }
 }
+
+/* ---- vínculo de sepultura no cadastro (proprietário) ---- */
+.linkedGrave {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.linkedGrave code {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.linkedGraveClear {
+  border: none;
+  background: transparent;
+  color: var(--color-navy);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.graveResults {
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 180px;
+  overflow-y: auto;
+  border: 1px solid var(--color-mist);
+  border-radius: var(--radius-md);
+  padding: 4px;
+}
+
+.graveResultsNote {
+  padding: 8px 10px;
+  font-size: 0.8rem;
+  color: var(--color-slate);
+}
+
+.graveOption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 8px 10px;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  text-align: left;
+  font-size: 0.82rem;
+  color: var(--color-slate);
+}
+
+.graveOption:hover {
+  background: var(--color-navy-ghost);
+}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import styles from "./page.module.css";
 
@@ -35,6 +35,8 @@ import {
   toPersonDetail,
   toPersonPayload,
 } from "@/lib/api/resources/people";
+import { listGraves } from "@/lib/api/resources/graves";
+import { issueConcession } from "@/lib/api/resources/concessions";
 
 const ROLE_META = {
   proprietario: { label: "Proprietário", tone: "navy" },
@@ -76,6 +78,25 @@ export default function PeopleView({
   const [feedback, setFeedback] = useState(null); // { tone, message }
   const [addr, setAddr] = useState({ zip: "", city: "", street: "" });
   const [cepStatus, setCepStatus] = useState("idle"); // idle | loading | done | error
+  // SEPULTURA vinculada no cadastro (pedido do cliente: ao cadastrar o
+  // proprietário já escolher a sepultura). Ao salvar, emite a concessão.
+  const [graveSearch, setGraveSearch] = useState("");
+  const [graveSearchDebounced, setGraveSearchDebounced] = useState("");
+  const [linkedGrave, setLinkedGrave] = useState(null); // { id, code, utilizacao }
+
+  useEffect(() => {
+    const t = setTimeout(() => setGraveSearchDebounced(graveSearch.trim()), 300);
+    return () => clearTimeout(t);
+  }, [graveSearch]);
+
+  const { data: graveOptionsData, loading: graveSearching } = useResource(
+    ({ signal }) =>
+      graveSearchDebounced.length >= 2
+        ? listGraves({ search: graveSearchDebounced, perPage: 10 }, { signal })
+        : Promise.resolve({ data: [] }),
+    [graveSearchDebounced]
+  );
+  const graveOptions = graveOptionsData?.data ?? [];
   // foto da pessoa: url exibida no preview + arquivo pendente (modo criação, antes
   // de existir o id) + estado de envio. NUNCA guardamos link — só upload.
   const [photo, setPhoto] = useState({ url: null, pendingFile: null, uploading: false });
@@ -164,6 +185,10 @@ export default function PeopleView({
     setAddr({ zip: person?.zipcode || "", city: person?.city || "", street: person?.address || "" });
     setCepStatus("idle");
     setPhoto({ url: person?.photoUrl || null, pendingFile: null, uploading: false });
+    // vínculo de sepultura só existe no CADASTRO novo (edição usa o detalhe)
+    setLinkedGrave(null);
+    setGraveSearch("");
+    setGraveSearchDebounced("");
     setFormOpen(true);
   }
 
@@ -277,6 +302,15 @@ export default function PeopleView({
       const created = await createPerson(payload);
       if (photo.pendingFile && created?.id) {
         await uploadPersonPhoto(created.id, photo.pendingFile);
+      }
+      // SEPULTURA escolhida no cadastro → emite a concessão (torna proprietário).
+      // Perpétua quando a utilização da sepultura indicar perpetuidade.
+      if (linkedGrave?.id && created?.id) {
+        const perpetua = /perpet/i.test(String(linkedGrave.utilizacao || ""));
+        await issueConcession(linkedGrave.id, {
+          personId: created.id,
+          concessionType: perpetua ? "perpetua" : "temporaria",
+        });
       }
     }, editingId ? "Cadastro atualizado." : "Pessoa cadastrada com sucesso.");
     if (ok) {
@@ -898,6 +932,55 @@ export default function PeopleView({
                     : "Clique ou arraste a foto da pessoa"}
               </span>
             </label>
+            {/* Vincular SEPULTURA já no cadastro (torna a pessoa proprietária).
+                Só no cadastro novo — na edição, use o detalhe da pessoa. */}
+            {!editing && (
+              <FormField
+                label="Sepultura (opcional)"
+                hint="Escolha para já registrar a pessoa como PROPRIETÁRIA desta sepultura"
+              >
+                {linkedGrave ? (
+                  <div className={styles.linkedGrave}>
+                    <code>{linkedGrave.code}</code>
+                    <button type="button" className={styles.linkedGraveClear} onClick={() => setLinkedGrave(null)}>
+                      trocar
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <Input
+                      placeholder="Buscar pelo código da sepultura…"
+                      value={graveSearch}
+                      onChange={(e) => setGraveSearch(e.target.value)}
+                    />
+                    {graveSearchDebounced.length >= 2 && (
+                      <div className={styles.graveResults}>
+                        {graveSearching ? (
+                          <span className={styles.graveResultsNote}>Buscando…</span>
+                        ) : graveOptions.length === 0 ? (
+                          <span className={styles.graveResultsNote}>Nenhuma sepultura encontrada.</span>
+                        ) : (
+                          graveOptions.map((g) => (
+                            <button
+                              key={g.id}
+                              type="button"
+                              className={styles.graveOption}
+                              onClick={() => {
+                                setLinkedGrave({ id: g.id, code: g.code, utilizacao: g.utilizacao });
+                                setGraveSearch("");
+                              }}
+                            >
+                              <code>{g.code}</code>
+                              <span>{g.utilizacao || "—"}</span>
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </>
+                )}
+              </FormField>
+            )}
             <FormField label="Observações">
               <Textarea name="notes" defaultValue={editing?.notes} rows={3} placeholder="Preferências de contato, restrições, contexto…" />
             </FormField>
