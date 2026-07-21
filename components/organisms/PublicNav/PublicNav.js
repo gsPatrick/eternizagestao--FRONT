@@ -38,7 +38,7 @@ export default function PublicNav({ solid = false, links = SALES_LINKS, home = "
   const isSolid = solid || scrolled;
 
   return (
-    <header className={`${styles.header} ${isSolid ? styles.scrolled : ""} ${open ? styles.menuOpen : ""}`}>
+    <header className={`${styles.header} ${isSolid ? styles.scrolled : ""} ${solid ? styles.instant : ""} ${open ? styles.menuOpen : ""}`}>
       <div className={styles.inner}>
         <Link className={styles.logo} href={home} aria-label="Início">
           <BrandMark tone={isSolid || open ? "dark" : "light"} size="md" />
