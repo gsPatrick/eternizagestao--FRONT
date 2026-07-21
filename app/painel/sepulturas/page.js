@@ -34,6 +34,7 @@ import {
   labelToUnitType,
   TOMB_TYPE_OPTIONS,
   UTILIZACAO_OPTIONS,
+  isPerpetualUse,
 } from "@/lib/api/resources/graves";
 import { listPeople } from "@/lib/api/resources/people";
 
@@ -375,7 +376,7 @@ export default function GravesListPage() {
                   key: "utilizacao",
                   label: "Utilização",
                   render: (row) => (
-                    <Badge tone={/perpet/i.test(row.utilizacao) ? "inverse" : "neutral"}>
+                    <Badge tone={isPerpetualUse(row.utilizacao) ? "inverse" : "neutral"}>
                       {row.utilizacao}
                     </Badge>
                   ),

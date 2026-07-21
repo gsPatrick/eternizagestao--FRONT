@@ -35,7 +35,7 @@ import {
   toPersonDetail,
   toPersonPayload,
 } from "@/lib/api/resources/people";
-import { listGraves } from "@/lib/api/resources/graves";
+import { listGraves, isPerpetualUse } from "@/lib/api/resources/graves";
 import { issueConcession } from "@/lib/api/resources/concessions";
 
 const ROLE_META = {
@@ -306,7 +306,7 @@ export default function PeopleView({
       // SEPULTURA escolhida no cadastro → emite a concessão (torna proprietário).
       // Perpétua quando a utilização da sepultura indicar perpetuidade.
       if (linkedGrave?.id && created?.id) {
-        const perpetua = /perpet/i.test(String(linkedGrave.utilizacao || ""));
+        const perpetua = isPerpetualUse(linkedGrave.utilizacao);
         await issueConcession(linkedGrave.id, {
           personId: created.id,
           concessionType: perpetua ? "perpetua" : "temporaria",
