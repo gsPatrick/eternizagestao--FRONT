@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { geocodeCemetery } from "@/lib/geocode";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import styles from "./page.module.css";
@@ -243,9 +244,29 @@ export default function MapPage() {
     }
   }, [activeOrtho?.id, activeOrtho?.corners, canEditOrtho]);
 
-  // centro: contexto → entrada do cemitério → média entre cemitérios → default
+  // Enquadramento pelo ENDEREÇO quando ainda não há entrada marcada.
+  //
+  // A entrada é definida clicando no mapa, então exigir a entrada para o mapa se
+  // localizar era um ciclo: sem entrada o mapa abria no centro do Brasil e a
+  // ortofoto enviada ia parar lá. Agora a ordem correta funciona — envia a
+  // ortofoto, posiciona, e só então marca a entrada.
+  // É só VISÃO: nada aqui é gravado; a coordenada oficial continua vindo do
+  // clique do operador.
+  const [addressCenter, setAddressCenter] = useState(null);
+  useEffect(() => {
+    if (ctx?.center) return; // já tem entrada: não precisa adivinhar
+    if (!cem?.raw) return;
+    const ac = new AbortController();
+    geocodeCemetery(cem.raw, { signal: ac.signal }).then((coord) => {
+      if (coord) setAddressCenter(coord);
+    });
+    return () => ac.abort();
+  }, [ctx?.center, cem?.raw]);
+
+  // centro: contexto → endereço → entrada do cemitério → média → default
   const center = useMemo(() => {
     if (ctx?.center) return ctx.center;
+    if (addressCenter) return addressCenter;
     const lat = cem?.raw?.entranceLatitude;
     const lng = cem?.raw?.entranceLongitude;
     if (lat != null && lng != null) return [Number(lat), Number(lng)];
@@ -253,7 +274,7 @@ export default function MapPage() {
       .map((c) => [c.raw?.entranceLatitude, c.raw?.entranceLongitude])
       .filter(([a, b]) => a != null && b != null);
     return averageCenter(all);
-  }, [ctx, cem, cemeteries]);
+  }, [ctx, cem, cemeteries, addressCenter]);
 
   // objeto de ortofoto entregue ao mapa (rev força remontar na revert)
   const orthoForMap = useMemo(() => {
@@ -647,6 +668,19 @@ export default function MapPage() {
                       </Button>
                     ))}
                 </>
+              )}
+              {/* Sem entrada marcada: a entrada é definida CLICANDO no mapa, então
+                  ela vem DEPOIS da ortofoto — o mapa se enquadra pelo endereço
+                  cadastrado enquanto isso. Dizer a ordem evita o operador ficar
+                  procurando uma etapa que não existe. */}
+              {!ctx?.center && (
+                <div className={styles.msg}>
+                  <Alert tone="info" title="Entrada ainda não marcada">
+                    {addressCenter
+                      ? "O mapa foi enquadrado pelo endereço cadastrado do cemitério. Envie e posicione a ortofoto e, depois, marque a entrada clicando no mapa."
+                      : "Sem a entrada e sem endereço com cidade, o mapa abre em vista ampla. Cadastre a cidade do cemitério ou navegue até o local, posicione a ortofoto e marque a entrada em seguida."}
+                  </Alert>
+                </div>
               )}
               {orthoMsg && (
                 <div className={styles.msg}>
