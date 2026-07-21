@@ -40,6 +40,7 @@ const PER_PAGE = 30;
 const EMPTY_FORM = {
   fullName: "", cpf: "", rg: "", gender: "", birthplace: "", motherName: "",
   fatherName: "", birthDate: "", deathDate: "", deathTime: "", causeOfDeath: "",
+  maritalStatus: "", skinColor: "", voterId: "", deathPlace: "",
   attendingPhysician: "",
   deathCertificateNumber: "", deathCertificateRegistry: "", funeralHome: "",
   responsiblePersonId: "",
@@ -208,6 +209,10 @@ export default function DeceasedListPage() {
       deathDate: form.deathDate || undefined,
       deathTime: form.deathTime || undefined,
       causeOfDeath: form.causeOfDeath || undefined,
+      maritalStatus: form.maritalStatus || undefined,
+      skinColor: form.skinColor || undefined,
+      voterId: form.voterId || undefined,
+      deathPlace: form.deathPlace || undefined,
       attendingPhysician: form.attendingPhysician || undefined,
       deathCertificateNumber: form.deathCertificateNumber || undefined,
       deathCertificateRegistry: form.deathCertificateRegistry || undefined,
@@ -515,12 +520,36 @@ export default function DeceasedListPage() {
             <FormField label="RG">
               <Input placeholder="00.000.000-0" value={form.rg} onChange={set("rg")} />
             </FormField>
+            <FormField label="Título de eleitor">
+              <Input placeholder="Nº do título" value={form.voterId} onChange={set("voterId")} />
+            </FormField>
             <FormField label="Sexo">
               <Select value={form.gender} onChange={set("gender")}>
                 <option value="">Não informado</option>
                 <option value="f">Feminino</option>
                 <option value="m">Masculino</option>
                 <option value="o">Outro</option>
+              </Select>
+            </FormField>
+            <FormField label="Estado civil">
+              <Select value={form.maritalStatus} onChange={set("maritalStatus")}>
+                <option value="">Sem declaração</option>
+                <option value="Solteiro(a)">Solteiro(a)</option>
+                <option value="Casado(a)">Casado(a)</option>
+                <option value="Divorciado(a)">Divorciado(a)</option>
+                <option value="Viúvo(a)">Viúvo(a)</option>
+                <option value="Separado(a)">Separado(a)</option>
+                <option value="União estável">União estável</option>
+              </Select>
+            </FormField>
+            <FormField label="Cor/raça">
+              <Select value={form.skinColor} onChange={set("skinColor")}>
+                <option value="">Sem declaração</option>
+                <option value="Branca">Branca</option>
+                <option value="Preta">Preta</option>
+                <option value="Parda">Parda</option>
+                <option value="Amarela">Amarela</option>
+                <option value="Indígena">Indígena</option>
               </Select>
             </FormField>
             <FormField label="Naturalidade">
@@ -547,6 +576,9 @@ export default function DeceasedListPage() {
             </FormField>
             <FormField label="Causa do óbito">
               <Input placeholder="Conforme certidão" value={form.causeOfDeath} onChange={set("causeOfDeath")} />
+            </FormField>
+            <FormField label="Local do falecimento">
+              <Input placeholder="Ex.: Hospital Municipal, residência" value={form.deathPlace} onChange={set("deathPlace")} />
             </FormField>
             <FormField label="Médico responsável" hint="Nome do médico do atestado de óbito">
               <Input placeholder="Dr(a). Nome do médico" value={form.attendingPhysician} onChange={set("attendingPhysician")} />
