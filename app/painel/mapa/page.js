@@ -12,6 +12,7 @@ import Badge from "@/components/atoms/Badge/Badge";
 import Select from "@/components/atoms/Select/Select";
 import Skeleton from "@/components/atoms/Skeleton/Skeleton";
 import Alert from "@/components/molecules/Alert/Alert";
+import ConfirmDelete from "@/components/molecules/ConfirmDelete/ConfirmDelete";
 import ErrorState from "@/components/molecules/ErrorState/ErrorState";
 import EmptyState from "@/components/molecules/EmptyState/EmptyState";
 
@@ -29,6 +30,7 @@ import {
   listOrthophotos,
   uploadOrthophoto,
   updateOrthophoto,
+  deleteOrthophoto,
   getMapContext,
   listMapGraves,
   setGraveGeometry,
@@ -81,6 +83,27 @@ export default function MapPage() {
   // Volta a ortofoto a um retângulo alinhado ao norte, na proporção real do
   // arquivo, mantendo centro e tamanho. Serve para recuperar de uma distorção
   // acidental sem ter que apagar e reenviar a imagem.
+  // ---- limpar ortofotos antigas (envio errado ou arquivo perdido) ----
+  const [confirmOrtho, setConfirmOrtho] = useState(null);
+  const [removingOrtho, setRemovingOrtho] = useState(false);
+
+  async function removerOrtofoto() {
+    setRemovingOrtho(true);
+    try {
+      await deleteOrthophoto(confirmOrtho.id, { tenant: mapTenant });
+      // Se a excluída era a que estava em tela, solta a preferência para a
+      // próxima render escolher outra em vez de insistir num id que sumiu.
+      setPreferredOrthoId((id) => (id === confirmOrtho.id ? null : id));
+      setConfirmOrtho(null);
+      setOrthoMsg({ tone: "success", text: "Ortofoto removida." });
+      await orthoState.refetch();
+    } catch (e) {
+      setOrthoMsg({ tone: "danger", text: e?.message || "Não foi possível remover a ortofoto." });
+    } finally {
+      setRemovingOrtho(false);
+    }
+  }
+
   const desentortar = useCallback(() => {
     const cantos = mapApiRef.current?.resetShape?.();
     setOrthoMsg(
@@ -673,6 +696,41 @@ export default function MapPage() {
                       onChange={() => setBasemapVisible((v) => !v)}
                     />
                   </div>
+                  {/* Lista das ortofotos do cemitério. Existe para o operador
+                      trocar qual está em uso e REMOVER as antigas — envios
+                      errados e imagens cujo arquivo se perdeu ficavam para
+                      sempre, dando erro de carga a cada abertura do mapa. */}
+                  {orthophotos.length > 1 && (
+                    <div className={styles.orthoList}>
+                      {orthophotos.map((o) => (
+                        <div key={o.id} className={styles.orthoItem}>
+                          <button
+                            type="button"
+                            className={styles.orthoName}
+                            title="Usar esta ortofoto"
+                            onClick={() => setPreferredOrthoId(o.id)}
+                          >
+                            {o.id === activeOrtho?.id ? "● " : "○ "}
+                            {o.raw?.name || "ortofoto"}
+                            {o.raw?.createdAt
+                              ? ` · ${new Date(o.raw.createdAt).toLocaleDateString("pt-BR")}`
+                              : ""}
+                            {!o.corners && " · sem posição"}
+                          </button>
+                          {canEditOrtho && (
+                            <button
+                              type="button"
+                              className={styles.orthoRemove}
+                              title="Remover esta ortofoto"
+                              onClick={() => setConfirmOrtho(o)}
+                            >
+                              Excluir
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   <div className={styles.opacityRow}>
                     <span className={styles.rowLabel}>Opacidade</span>
                     <input
@@ -1061,6 +1119,16 @@ export default function MapPage() {
           </div>
         </div>
       )}
+      <ConfirmDelete
+        open={Boolean(confirmOrtho)}
+        onClose={() => setConfirmOrtho(null)}
+        onConfirm={removerOrtofoto}
+        loading={removingOrtho}
+        title="Excluir ortofoto"
+        name={confirmOrtho?.raw?.name || "esta ortofoto"}
+        description="A imagem sai do mapa e o arquivo é removido. As sepulturas já demarcadas continuam onde estão."
+      />
+
     </div>
   );
 }
