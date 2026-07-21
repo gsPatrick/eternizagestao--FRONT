@@ -797,6 +797,25 @@ export default function MapPage() {
               height="100%"
             />
 
+            {/* Reenquadra no cemitério/ortofoto — evita se perder ao navegar */}
+            <button
+              type="button"
+              className={styles.locateBtn}
+              onClick={() => mapApiRef.current?.locate()}
+              title="Voltar para o cemitério / ortofoto"
+            >
+              <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <circle cx="8" cy="8" r="3.1" stroke="currentColor" strokeWidth="1.5" />
+                <path
+                  d="M8 1.4v2.2M8 12.4v2.2M14.6 8h-2.2M3.6 8H1.4"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                />
+              </svg>
+              Localizar
+            </button>
+
             {positioning && (
               <div className={styles.banner}>
                 <span className={styles.bannerText}>

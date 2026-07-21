@@ -1016,3 +1016,38 @@
     justify-content: center;
   }
 }
+
+/* botão flutuante "Localizar" — reenquadra no cemitério/ortofoto */
+.locateBtn {
+  position: absolute;
+  left: 14px;
+  bottom: 18px;
+  z-index: 25;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 34px;
+  padding: 0 13px;
+  border: 1px solid var(--color-mist);
+  border-radius: 9999px;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-md);
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--color-ink);
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.locateBtn:hover {
+  background: var(--color-navy-ghost);
+  transform: translateY(-1px);
+}
+
+.locateBtn svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  color: var(--color-navy);
+}

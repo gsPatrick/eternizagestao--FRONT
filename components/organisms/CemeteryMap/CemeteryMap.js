@@ -144,6 +144,10 @@ export default function CemeteryMap({
 
   // API imperativa estável (usada no "Salvar posição"). next/dynamic não
   // encaminha ref, então entregamos via callback onApi.
+  // centro vigente (prop) acessível dentro da API imperativa estável
+  const centerRef = useRef(null);
+  centerRef.current = center;
+
   const apiRef = useRef(null);
   if (!apiRef.current) {
     apiRef.current = {
@@ -153,6 +157,25 @@ export default function CemeteryMap({
           if (arr && arr.length === 4) return latLngsToCorners(arr);
         } catch (_) {}
         return null;
+      },
+      /**
+       * "Localizar": reenquadra o mapa no que importa — a ortofoto (mesmo em
+       * pleno posicionamento, lendo os cantos vivos) ou, na falta dela, o centro
+       * do cemitério. Evita o operador se perder ao arrastar/dar zoom.
+       */
+      locate() {
+        const map = mapRef.current;
+        const L = LRef.current;
+        if (!map || !L) return;
+        try {
+          const arr = overlayRef.current && overlayRef.current.getCorners();
+          if (arr && arr.length === 4) {
+            map.fitBounds(L.latLngBounds(arr), { padding: [40, 40], maxZoom: 21 });
+            return;
+          }
+        } catch (_) {}
+        const c = centerRef.current;
+        if (c) map.setView(c, Math.max(map.getZoom(), CEMETERY_ZOOM));
       },
     };
   }
