@@ -23,8 +23,9 @@ const DAY_START = 8;
 const DAY_END = 18;
 const HOUR_PX = 54;
 
-// getUTCDay(): 0=Dom … 6=Sáb. Trabalhamos em UTC para não deslocar os horários
-// (as datas vêm em ISO/UTC) e manter as cerimônias dentro da grade 08–18h.
+// getDay(): 0=Dom … 6=Sáb. Trabalhamos no fuso LOCAL — o MESMO do painel. As
+// datas chegam em ISO/UTC e são convertidas para a hora local; renderizar em UTC
+// fazia um sepultamento das 09:00 (BRT) aparecer como 12:00 na agenda pública.
 const DOW_LABEL = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 const MONTHS = [
   "janeiro", "fevereiro", "março", "abril", "maio", "junho",
@@ -47,18 +48,18 @@ function pad(n) {
 }
 
 function dateKey(d) {
-  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
 function hhmm(d) {
-  return `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-// Segunda-feira (00:00 UTC) da semana que contém `d`.
-function startOfWeekUTC(d) {
-  const x = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
-  const mondayOffset = (x.getUTCDay() + 6) % 7; // Seg = 0
-  x.setUTCDate(x.getUTCDate() - mondayOffset);
+// Segunda-feira (00:00 local) da semana que contém `d`.
+function startOfWeekLocal(d) {
+  const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const mondayOffset = (x.getDay() + 6) % 7; // Seg = 0
+  x.setDate(x.getDate() - mondayOffset);
   return x;
 }
 
@@ -114,7 +115,7 @@ export default function PublicAgenda({ cityName, tenantSlug }) {
   // mostram dados reais); sem eventos, ancora em hoje.
   const anchor = useMemo(() => {
     const base = events.length ? events[0].date : new Date();
-    return startOfWeekUTC(base);
+    return startOfWeekLocal(base);
   }, [events]);
 
   const todayKey = dateKey(new Date());
@@ -123,9 +124,9 @@ export default function PublicAgenda({ cityName, tenantSlug }) {
   const WEEK = useMemo(() => {
     return Array.from({ length: 7 }, (_, i) => {
       const d = new Date(anchor);
-      d.setUTCDate(anchor.getUTCDate() + i);
+      d.setDate(anchor.getDate() + i);
       const key = dateKey(d);
-      return { label: DOW_LABEL[d.getUTCDay()], date: pad(d.getUTCDate()), key, today: key === todayKey, dateObj: d };
+      return { label: DOW_LABEL[d.getDay()], date: pad(d.getDate()), key, today: key === todayKey, dateObj: d };
     });
   }, [anchor, todayKey]);
 
@@ -143,22 +144,22 @@ export default function PublicAgenda({ cityName, tenantSlug }) {
 
   // Mês ancorado — grade completa (Seg-primeiro), eventos casados por data.
   const MONTH_CELLS = useMemo(() => {
-    const year = anchor.getUTCFullYear();
+    const year = anchor.getFullYear();
     const monthDate = events.length ? events[0].date : anchor;
-    const month = monthDate.getUTCMonth();
-    const first = new Date(Date.UTC(year, month, 1));
-    const startDow = (first.getUTCDay() + 6) % 7; // Seg = 0
-    const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+    const month = monthDate.getMonth();
+    const first = new Date(year, month, 1);
+    const startDow = (first.getDay() + 6) % 7; // Seg = 0
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
     const total = Math.ceil((startDow + daysInMonth) / 7) * 7;
     const gridStart = new Date(first);
-    gridStart.setUTCDate(1 - startDow);
+    gridStart.setDate(1 - startDow);
     return Array.from({ length: total }, (_, i) => {
       const d = new Date(gridStart);
-      d.setUTCDate(gridStart.getUTCDate() + i);
+      d.setDate(gridStart.getDate() + i);
       const key = dateKey(d);
-      const inMonth = d.getUTCMonth() === month;
+      const inMonth = d.getMonth() === month;
       return {
-        day: d.getUTCDate(),
+        day: d.getDate(),
         muted: !inMonth,
         today: key === todayKey,
         key,
@@ -176,9 +177,9 @@ export default function PublicAgenda({ cityName, tenantSlug }) {
       const d = list[0].date;
       return {
         key,
-        date: pad(d.getUTCDate()),
-        label: DOW_LABEL[d.getUTCDay()],
-        month: MONTHS[d.getUTCMonth()],
+        date: pad(d.getDate()),
+        label: DOW_LABEL[d.getDay()],
+        month: MONTHS[d.getMonth()],
         today: key === todayKey,
         items: list,
       };
@@ -194,7 +195,7 @@ export default function PublicAgenda({ cityName, tenantSlug }) {
   const dayEvents = (dayIndex) => eventsByKey[WEEK[dayIndex]?.key] || [];
 
   // Faixa de datas no subtítulo (dinâmica).
-  const rangeLabel = `${WEEK[0].date} — ${WEEK[6].date} de ${MONTHS[WEEK[0].dateObj.getUTCMonth()]} de ${WEEK[0].dateObj.getUTCFullYear()}`;
+  const rangeLabel = `${WEEK[0].date} — ${WEEK[6].date} de ${MONTHS[WEEK[0].dateObj.getMonth()]} de ${WEEK[0].dateObj.getFullYear()}`;
 
   // Estados — a agenda (grade) é SEMPRE exibida; sem cerimônias, a grade
   // aparece vazia (ancorada na semana atual), igual ao painel.
