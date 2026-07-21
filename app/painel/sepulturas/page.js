@@ -333,12 +333,13 @@ export default function GravesListPage() {
           <div className={styles.desktopTable}>
             <DataTable
               columns={[
+                { key: "cemetery", label: "Cemitério" },
                 {
-                  key: "code",
-                  label: "Código",
+                  key: "block",
+                  label: "Quadra",
                   render: (row) => (
                     <span className={styles.codeCell}>
-                      <code className={styles.code}>{row.code}</code>
+                      <code className={styles.code}>{row.block}</code>
                       {!row.mapped && (
                         <span className={styles.unmapped} title="Sem demarcação no mapa">
                           <svg viewBox="0 0 14 14" fill="none">
@@ -350,28 +351,28 @@ export default function GravesListPage() {
                     </span>
                   ),
                 },
+                { key: "lot", label: "Lote" },
                 {
-                  key: "location",
-                  label: "Localização",
-                  render: (row) => (
-                    <span className={styles.location}>
-                      Quadra {row.block} <em>›</em> {row.street} <em>›</em> {row.lot}
-                    </span>
-                  ),
-                },
-                { key: "type", label: "Tipo" },
-                {
-                  key: "owner",
-                  label: "Concessionário",
+                  key: "buried",
+                  label: "Sepultado(s)",
                   render: (row) =>
-                    row.owner === "—" ? (
-                      <span className={styles.noOwner}>Sem concessão</span>
+                    row.buried.length === 0 ? (
+                      <span className={styles.noOwner}>—</span>
                     ) : (
                       <span className={styles.ownerCell}>
-                        <Avatar name={row.owner} size="sm" />
-                        {row.owner}
+                        <Avatar name={row.buried[0]} size="sm" />
+                        {row.buriedLabel}
                       </span>
                     ),
+                },
+                {
+                  key: "utilizacao",
+                  label: "Utilização",
+                  render: (row) => (
+                    <Badge tone={/perpet/i.test(row.utilizacao) ? "inverse" : "neutral"}>
+                      {row.utilizacao}
+                    </Badge>
+                  ),
                 },
                 {
                   key: "status",
@@ -382,7 +383,6 @@ export default function GravesListPage() {
                     </Badge>
                   ),
                 },
-                { key: "occupancy", label: "Ocupação", align: "right" },
                 {
                   key: "actions",
                   label: "",
@@ -409,17 +409,17 @@ export default function GravesListPage() {
             {rows.map((grave) => (
               <Link key={grave.id} href={`/painel/sepulturas/${grave.id}`} className={styles.mobileCard}>
                 <div className={styles.mobileCardTop}>
-                  <code className={styles.code}>{grave.code}</code>
+                  <code className={styles.code}>{grave.block} · {grave.lot}</code>
                   <Badge tone={statusMeta(grave.status, grave.statusName).tone} dot>
                     {statusMeta(grave.status, grave.statusName).label}
                   </Badge>
                 </div>
                 <div className={styles.mobileCardBody}>
                   <span className={styles.mobileCardLocation}>
-                    Quadra {grave.block} · {grave.street} · {grave.lot} — {grave.type}
+                    {grave.cemetery} — {grave.utilizacao}
                   </span>
                   <span className={styles.mobileCardOwner}>
-                    {grave.owner === "—" ? "Sem concessão" : grave.owner}
+                    {grave.buried.length ? grave.buriedLabel : "Sem sepultado"}
                   </span>
                 </div>
                 <div className={styles.mobileCardMeta}>
