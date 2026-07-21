@@ -104,6 +104,27 @@ export default function MapPage() {
     }
   }
 
+  // ---- posicionar por 4 pinos (alternativa a arrastar a imagem) ----
+  const [pinning, setPinning] = useState(false);
+  const [pinsDone, setPinsDone] = useState(0);
+  const CANTOS = ["superior esquerdo", "superior direito", "inferior direito", "inferior esquerdo"];
+
+  const onPinsChange = useCallback((qtd) => {
+    setPinsDone(qtd);
+    if (qtd >= 4) {
+      setPinning(false);
+      setOrthoMsg({
+        tone: "success",
+        text: "Ortofoto encaixada nos 4 pinos. Confira e ajuste arrastando, se precisar, antes de salvar.",
+      });
+    } else {
+      setOrthoMsg({
+        tone: "info",
+        text: `Clique no mapa onde fica o canto ${CANTOS[qtd]} DA IMAGEM (a borda da foto, não o muro do cemitério).`,
+      });
+    }
+  }, []);
+
   const desentortar = useCallback(() => {
     const cantos = mapApiRef.current?.resetShape?.();
     setOrthoMsg(
@@ -773,6 +794,21 @@ export default function MapPage() {
                         </Button>
                         {/* Sem isto, uma foto empenada por engano só se
                             recuperava apagando e reenviando. */}
+                        {/* Alternativa a arrastar: a imagem tapa justamente o
+                            que se precisa ver para alinhar. Pinando canto a
+                            canto dá para dar zoom em cada ponto e acertar. */}
+                        <Button
+                          variant={pinning ? "ghost" : "secondary"}
+                          size="sm"
+                          onClick={() => {
+                            const ligar = !pinning;
+                            setPinning(ligar);
+                            setPinsDone(0);
+                            if (!ligar) setOrthoMsg(null);
+                          }}
+                        >
+                          {pinning ? `Cancelar pinos (${pinsDone}/4)` : "Posicionar por pinos"}
+                        </Button>
                         <Button variant="secondary" size="sm" onClick={desentortar}>
                           Desentortar
                         </Button>
@@ -997,6 +1033,8 @@ export default function MapPage() {
               onGraveClick={onGraveClick}
               onOrthoError={onOrthoError}
               basemapVisible={positioning ? true : basemapVisible}
+              pinning={pinning}
+              onPinsChange={onPinsChange}
               markingEntrance={markingEntrance}
               entrance={entranceCoord}
               onEntrancePick={onEntrancePick}

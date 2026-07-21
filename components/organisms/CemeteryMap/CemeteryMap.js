@@ -109,6 +109,8 @@ export default function CemeteryMap({
   layers = { blocks: [], streets: [], lots: [] }, // camadas de quadra/rua/lote
   drawing = false,
   basemapVisible = true, // mapa de ruas por baixo da ortofoto
+  pinning = false, // clique no mapa define os 4 CANTOS da ortofoto
+  onPinsChange = null, // (qtd:number) => void — progresso da pinagem
   markingEntrance = false, // clique no mapa define a ENTRADA do cemitério
   entrance = null, // [lat, lng] já marcada — mostra o marcador
   focusGrave = null, // { id, nonce }
@@ -146,7 +148,7 @@ export default function CemeteryMap({
   });
 
   const cbRef = useRef({});
-  cbRef.current = { onCornersChange, onGravePolygon, onGraveClick, onOrthoError, onEntrancePick };
+  cbRef.current = { onCornersChange, onGravePolygon, onGraveClick, onOrthoError, onEntrancePick, onPinsChange };
 
   // Desentorta o overlay: retângulo alinhado ao norte, mesmo centro e tamanho,
   // na PROPORÇÃO REAL do arquivo. Usada pelo botão "Desentortar" e também no
@@ -498,6 +500,82 @@ export default function CemeteryMap({
       map.removeLayer(tiles);
     }
   }, [ready, basemapVisible]);
+
+  // ------------------------------- POSICIONAR POR PINOS (4 cliques no mapa)
+  //
+  // Arrastar a imagem é ruim justamente porque ela tapa o que se precisa
+  // enxergar para alinhar. Clicando canto a canto dá para dar zoom em cada
+  // ponto e acertar. É a MESMA transformação de 4 cantos de sempre — muda só
+  // a forma de informá-los.
+  const pinsRef = useRef([]);
+  const pinMarkersRef = useRef([]);
+  useEffect(() => {
+    const map = mapRef.current;
+    const L = LRef.current;
+    if (!ready || !map || !L) return undefined;
+
+    const limparPinos = () => {
+      pinMarkersRef.current.forEach((m) => map.removeLayer(m));
+      pinMarkersRef.current = [];
+      pinsRef.current = [];
+    };
+
+    if (!pinning) {
+      limparPinos();
+      map.getContainer().style.cursor = "";
+      return undefined;
+    }
+
+    limparPinos();
+    map.getContainer().style.cursor = "crosshair";
+    cbRef.current.onPinsChange && cbRef.current.onPinsChange(0);
+
+    const handler = (e) => {
+      const { lat, lng } = e.latlng || {};
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+      if (pinsRef.current.length >= 4) return;
+
+      pinsRef.current.push([lat, lng]);
+      const n = pinsRef.current.length;
+      const marker = L.marker([lat, lng], {
+        title: `Canto ${n}`,
+        icon: L.divIcon({
+          className: "",
+          html: `<div style="background:#0a4a8c;color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font:600 12px/1 sans-serif;box-shadow:0 0 0 2px #fff">${n}</div>`,
+          iconSize: [22, 22],
+          iconAnchor: [11, 11],
+        }),
+      }).addTo(map);
+      pinMarkersRef.current.push(marker);
+      cbRef.current.onPinsChange && cbRef.current.onPinsChange(n);
+
+      if (n === 4) {
+        // ordem pedida ao operador: superior-esq, superior-dir, inferior-dir,
+        // inferior-esq. O overlay espera [tl, tr, bl, br].
+        const [tl, tr, br, bl] = pinsRef.current;
+        const overlay = overlayRef.current;
+        if (overlay) {
+          try {
+            overlay.setCorners([
+              L.latLng(tl[0], tl[1]),
+              L.latLng(tr[0], tr[1]),
+              L.latLng(bl[0], bl[1]),
+              L.latLng(br[0], br[1]),
+            ]);
+            cbRef.current.onCornersChange
+              && cbRef.current.onCornersChange(latLngsToCorners(overlay.getCorners()), { dirty: true });
+          } catch (_) {}
+        }
+      }
+    };
+
+    map.on("click", handler);
+    return () => {
+      map.off("click", handler);
+      limparPinos();
+      map.getContainer().style.cursor = "";
+    };
+  }, [ready, pinning]);
 
   // --------------------------------------- marcar a ENTRADA (clique no mapa)
   //
