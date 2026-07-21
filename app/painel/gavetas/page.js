@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import styles from "./page.module.css";
 
 import Button from "@/components/atoms/Button/Button";
@@ -30,6 +30,7 @@ import {
   normalizeStatusSlug,
   frontStatusToApiSlug,
 } from "@/lib/api/resources/gavetas";
+import { createGrave, listGraves } from "@/lib/api/resources/graves";
 
 // Mesma identidade visual das situações de Sepulturas (chips/badges).
 const STATUS_META = {
@@ -53,6 +54,7 @@ export default function DrawersPage() {
   const [blockFilter, setBlockFilter] = useState("");
   const [page, setPage] = useState(1);
   const [detailId, setDetailId] = useState(null);
+  const [newOpen, setNewOpen] = useState(false);
 
   // ---- filtros de estrutura (cemitério + quadra) ----
   const { data: cemsData } = useResource(({ signal }) => listCemeteries({ signal }), []);
@@ -169,6 +171,18 @@ export default function DrawersPage() {
             Inventário de gavetas e nichos · {totalCount.toLocaleString("pt-BR")} unidades
           </p>
         </div>
+        <div className={styles.actions}>
+          <Button
+            onClick={() => setNewOpen(true)}
+            iconLeft={
+              <svg viewBox="0 0 16 16" fill="none">
+                <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+              </svg>
+            }
+          >
+            Nova gaveta
+          </Button>
+        </div>
       </header>
 
       <div className={styles.stats}>
@@ -240,7 +254,8 @@ export default function DrawersPage() {
       ) : rows.length === 0 ? (
         <EmptyState
           title="Nenhuma gaveta cadastrada"
-          message="Gavetas são unidades vinculadas a jazigos ou túmulos. Cadastre-as no módulo de Sepulturas (tipo Gaveta) para vê-las aqui."
+          message="Gavetas são unidades vinculadas a jazigos ou túmulos. Use 'Nova gaveta' para incluir a numeração numa sepultura existente."
+          action={<Button onClick={() => setNewOpen(true)}>Nova gaveta</Button>}
         />
       ) : (
         <>
@@ -290,7 +305,152 @@ export default function DrawersPage() {
       )}
 
       <DrawerDetail id={detailId} onClose={() => setDetailId(null)} onChanged={refetch} />
+      <NewDrawerModal open={newOpen} onClose={() => setNewOpen(false)} onCreated={refetch} />
     </div>
+  );
+}
+
+// -------- Nova gaveta: escolhe a sepultura PAI (busca) e inclui número(s) --------
+// A gaveta herda o lote do jazigo/túmulo pai (API), então basta pai + número.
+function NewDrawerModal({ open, onClose, onCreated }) {
+  const [parentSearch, setParentSearch] = useState("");
+  const [debounced, setDebounced] = useState("");
+  const [parent, setParent] = useState(null); // { id, code }
+  const [numero, setNumero] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [feedback, setFeedback] = useState(null);
+  const [added, setAdded] = useState([]); // números já incluídos nesta sessão
+
+  useEffect(() => {
+    if (!open) {
+      setParentSearch(""); setDebounced(""); setParent(null);
+      setNumero(""); setFeedback(null); setAdded([]);
+    }
+  }, [open]);
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(parentSearch.trim()), 300);
+    return () => clearTimeout(t);
+  }, [parentSearch]);
+
+  // busca jazigos/túmulos que podem receber gaveta (filtra pelo tipo no cliente)
+  const { data: parentData, loading: searching } = useResource(
+    ({ signal }) =>
+      debounced.length >= 2
+        ? listGraves({ search: debounced, perPage: 12 }, { signal })
+        : Promise.resolve({ data: [] }),
+    [debounced]
+  );
+  const parentResults = useMemo(
+    () => (parentData?.data ?? []).filter((g) => ["jazigo", "tumulo"].includes(g.unitType)),
+    [parentData]
+  );
+
+  async function incluir() {
+    const codes = numero.split(/[,\s]+/).map((s) => s.trim()).filter(Boolean);
+    if (!parent) { setFeedback({ tone: "danger", message: "Escolha a sepultura (jazigo/túmulo) primeiro." }); return; }
+    if (!codes.length) { setFeedback({ tone: "danger", message: "Informe o(s) número(s) da gaveta." }); return; }
+    setSaving(true); setFeedback(null);
+    const ok = [];
+    try {
+      for (const code of codes) {
+        // eslint-disable-next-line no-await-in-loop
+        await createGrave({ parentGraveId: parent.id, code, unitType: "gaveta" });
+        ok.push(code);
+      }
+      setAdded((prev) => [...prev, ...ok]);
+      setNumero("");
+      setFeedback({ tone: "success", message: `Gaveta(s) incluída(s): ${ok.join(", ")}.` });
+      onCreated?.();
+    } catch (e) {
+      setFeedback({
+        tone: ok.length ? "warning" : "danger",
+        message: `${ok.length ? `Incluídas: ${ok.join(", ")}. ` : ""}${e?.message || "Não foi possível incluir a gaveta."}`,
+      });
+      if (ok.length) { setAdded((prev) => [...prev, ...ok]); onCreated?.(); }
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      title="Nova gaveta"
+      subtitle="Escolha a sepultura (jazigo/túmulo) e inclua o número"
+      width={560}
+      footer={<Button variant="ghost" onClick={onClose}>Fechar</Button>}
+    >
+      <div className={styles.detailBody}>
+        {feedback && <Alert tone={feedback.tone}>{feedback.message}</Alert>}
+
+        <FormField label="Sepultura (jazigo ou túmulo)" required>
+          {parent ? (
+            <div className={styles.pickedParent}>
+              <code className={styles.code}>{parent.code}</code>
+              <button type="button" className={styles.detailLink} onClick={() => setParent(null)}>
+                trocar
+              </button>
+            </div>
+          ) : (
+            <>
+              <Input
+                placeholder="Buscar por código do jazigo/túmulo…"
+                value={parentSearch}
+                onChange={(e) => setParentSearch(e.target.value)}
+              />
+              {debounced.length >= 2 && (
+                <div className={styles.parentResults}>
+                  {searching ? (
+                    <span className={styles.emptyNote}>Buscando…</span>
+                  ) : parentResults.length === 0 ? (
+                    <span className={styles.emptyNote}>Nenhum jazigo/túmulo encontrado.</span>
+                  ) : (
+                    parentResults.map((g) => (
+                      <button
+                        key={g.id}
+                        type="button"
+                        className={styles.parentOption}
+                        onClick={() => { setParent({ id: g.id, code: g.code }); setParentSearch(""); }}
+                      >
+                        <code className={styles.code}>{g.code}</code>
+                        <span>{g.unitType === "tumulo" ? "Túmulo" : "Jazigo"}</span>
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+            </>
+          )}
+        </FormField>
+
+        <FormField label="Número(s) da gaveta" hint="Um ou vários, separados por vírgula (ex.: 1, 2, 3)">
+          <div className={styles.statusForm}>
+            <Input
+              placeholder="Ex.: 1, 2, 3"
+              value={numero}
+              onChange={(e) => setNumero(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); incluir(); } }}
+            />
+            <Button size="sm" loading={saving} disabled={!parent || !numero.trim()} onClick={incluir}>
+              Incluir gaveta
+            </Button>
+          </div>
+        </FormField>
+
+        {added.length > 0 && (
+          <section className={styles.detailSection}>
+            <span className={styles.sectionLabel}>Incluídas nesta sessão ({added.length})</span>
+            <ul className={styles.occupantList}>
+              {added.map((n, i) => (
+                <li key={`${n}-${i}`} className={styles.occupantRow}>Gaveta {n}</li>
+              ))}
+            </ul>
+          </section>
+        )}
+      </div>
+    </Modal>
   );
 }
 
