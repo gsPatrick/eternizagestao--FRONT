@@ -24,6 +24,7 @@ import { useResource, useMutation } from "@/lib/api/useResource";
 import {
   getConcession, renewConcession, transferConcession, terminateConcession,
 } from "@/lib/api/resources/concessions";
+import { listDocuments, fileHref, fetchDocumentPdf } from "@/lib/api/resources/documents";
 import {
   listAttachments,
   uploadAttachment,
@@ -40,6 +41,14 @@ const TRANSFER_REASONS = {
   decisao_judicial: "Decisão judicial",
   regularizacao: "Regularização",
   outro: "Outro",
+};
+
+// rótulos amigáveis dos documentos oficiais (tipo cru → texto)
+const DOC_TYPE_LABELS = {
+  certidao_perpetuidade: "Certidão de perpetuidade",
+  autorizacao_sepultamento: "Autorização de sepultamento",
+  contrato_concessao: "Contrato de concessão",
+  titulo_perpetuidade: "Título de perpetuidade",
 };
 
 const ACQUISITION_LABEL = {
@@ -106,6 +115,26 @@ export default function ConcessionDetailPage() {
     error: attachmentsError,
     refetch: refetchAttachments,
   } = useResource(({ signal }) => listAttachments({ type: "concession", id, signal }), [id]);
+  // DOCUMENTOS OFICIAIS emitidos para esta sepultura (ex.: Certidão de
+  // Perpetuidade) — gerados automaticamente pelo sistema, separados dos anexos.
+  const graveId = concession?.grave?.id || null;
+  const { data: officialData, loading: officialLoading, error: officialError } = useResource(
+    ({ signal }) => (graveId ? listDocuments({ graveId, perPage: 50 }, { signal }) : Promise.resolve({ data: [] })),
+    [graveId]
+  );
+  const officialDocs = officialData?.data ?? [];
+
+  async function downloadOfficial(doc) {
+    const direct = fileHref(doc.pdfUrl || doc.fileUrl);
+    if (doc.pdfUrl && direct) { window.open(direct, "_blank", "noopener"); return; }
+    try {
+      const url = await fetchDocumentPdf(doc.id);
+      window.open(url, "_blank", "noopener");
+    } catch {
+      if (direct) window.open(direct, "_blank", "noopener");
+    }
+  }
+
   const attachments = useMemo(
     () => (attachmentsData || []).map(toAttachmentView),
     [attachmentsData]
@@ -359,10 +388,40 @@ export default function ConcessionDetailPage() {
             </ul>
           </article>
 
-          {/* documentos */}
+          {/* documentos oficiais emitidos pelo sistema (ex.: certidão de perpetuidade) */}
           <article className={styles.card}>
             <header className={styles.cardHead}>
-              <h2 className={styles.cardTitle}>Documentos</h2>
+              <h2 className={styles.cardTitle}>Documentos oficiais</h2>
+            </header>
+            {officialLoading ? (
+              <Skeleton variant="row" count={2} />
+            ) : officialError ? (
+              <ErrorState onRetry={() => {}} />
+            ) : officialDocs.length === 0 ? (
+              <p className={styles.emptyNote}>
+                A certidão de perpetuidade é gerada automaticamente ao emitir uma concessão perpétua e aparece aqui para download.
+              </p>
+            ) : (
+              <ul className={styles.officialDocs}>
+                {officialDocs.map((doc) => (
+                  <li key={doc.id} className={styles.officialDocRow}>
+                    <span className={styles.officialDocName}>
+                      {DOC_TYPE_LABELS[doc.documentType] || doc.documentType}
+                      {doc.number ? ` · ${doc.number}` : ""}
+                    </span>
+                    <Button variant="ghost" size="sm" onClick={() => downloadOfficial(doc)}>
+                      Baixar
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </article>
+
+          {/* anexos manuais (contrato, etc.) */}
+          <article className={styles.card}>
+            <header className={styles.cardHead}>
+              <h2 className={styles.cardTitle}>Anexos</h2>
               <Button variant="ghost" size="sm" onClick={() => setUploadModal(true)}>Adicionar</Button>
             </header>
             <AttachmentList
