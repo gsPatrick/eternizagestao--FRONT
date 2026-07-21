@@ -7,6 +7,7 @@ import styles from "./page.module.css";
 import Button from "@/components/atoms/Button/Button";
 import Input from "@/components/atoms/Input/Input";
 import Select from "@/components/atoms/Select/Select";
+import Textarea from "@/components/atoms/Textarea/Textarea";
 import Badge from "@/components/atoms/Badge/Badge";
 import Avatar from "@/components/atoms/Avatar/Avatar";
 import FormField from "@/components/molecules/FormField/FormField";
@@ -38,12 +39,13 @@ const GENDER_LABEL = { f: "Feminino", m: "Masculino", o: "Outro" };
 
 const PER_PAGE = 30;
 const EMPTY_FORM = {
-  fullName: "", cpf: "", rg: "", gender: "", birthplace: "", motherName: "",
+  fullName: "", registrationNumber: "", cpf: "", rg: "", age: "", gender: "",
+  birthplace: "", motherName: "",
   fatherName: "", birthDate: "", deathDate: "", deathTime: "", causeOfDeath: "",
   maritalStatus: "", skinColor: "", voterId: "", deathPlace: "",
   attendingPhysician: "",
   deathCertificateNumber: "", deathCertificateRegistry: "", funeralHome: "",
-  responsiblePersonId: "",
+  responsiblePersonId: "", notes: "",
 };
 
 // "YYYY-MM-DD" (DATEONLY da API) → "DD/MM/YYYY"
@@ -218,6 +220,9 @@ export default function DeceasedListPage() {
       deathCertificateRegistry: form.deathCertificateRegistry || undefined,
       funeralHome: form.funeralHome || undefined,
       responsiblePersonId: form.responsiblePersonId || undefined,
+      registrationNumber: form.registrationNumber || undefined,
+      age: form.age || undefined,
+      notes: form.notes || undefined,
     };
     try {
       // validação do sepultamento vinculado (quando marcado)
@@ -514,6 +519,12 @@ export default function DeceasedListPage() {
             <FormField label="Nome completo" required className={styles.spanTwo}>
               <Input placeholder="Nome do sepultado" value={form.fullName} onChange={set("fullName")} />
             </FormField>
+            <FormField label="Matrícula" hint="Registro interno (opcional)">
+              <Input placeholder="Ex.: M2/12B" value={form.registrationNumber} onChange={set("registrationNumber")} />
+            </FormField>
+            <FormField label="Idade" hint="No falecimento">
+              <Input placeholder="Ex.: 75 anos" value={form.age} onChange={set("age")} />
+            </FormField>
             <FormField label="CPF">
               <Input placeholder="000.000.000-00" inputMode="numeric" value={form.cpf} onChange={(e) => setForm((f) => ({ ...f, cpf: maskCpf(e.target.value) }))} />
             </FormField>
@@ -620,6 +631,14 @@ export default function DeceasedListPage() {
                 type="file"
                 accept="application/pdf,image/*"
                 onChange={(e) => setCertFile(e.target.files?.[0] || null)}
+              />
+            </FormField>
+            <FormField label="Observação" className={styles.spanTwo}>
+              <Textarea
+                rows={2}
+                placeholder="Observações sobre o sepultado (opcional)"
+                value={form.notes}
+                onChange={set("notes")}
               />
             </FormField>
           </div>

@@ -87,6 +87,7 @@ export default function GravesListPage() {
     parentGraveId: "",
     utilizacao: UTILIZACAO_OPTIONS[0],
     carneiraPermission: "",
+    dataPermissao: "",
     notes: "",
   };
   const [gForm, setGForm] = useState(emptyGrave);
@@ -198,6 +199,7 @@ export default function GravesListPage() {
         tombType: tombType === "__free" ? tombTypeFree || undefined : tombType || undefined,
         utilizacao: gForm.utilizacao || undefined,
         carneiraPermission: gForm.carneiraPermission || undefined,
+        carneiraPermissionDate: gForm.dataPermissao || undefined,
         notes: gForm.notes || undefined,
       };
       const created = await createGrave(body);
@@ -566,6 +568,9 @@ export default function GravesListPage() {
                 <option value="Sim">Sim</option>
                 <option value="Não">Não</option>
               </Select>
+            </FormField>
+            <FormField label="Data da permissão">
+              <Input type="date" value={gForm.dataPermissao} onChange={(e) => setG("dataPermissao", e.target.value)} />
             </FormField>
             <FormField label="Proprietário" hint="Opcional — cria a concessão" className={styles.spanTwo}>
               <Select value={gForm.ownerPersonId} onChange={(e) => setG("ownerPersonId", e.target.value)}>
