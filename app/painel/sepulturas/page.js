@@ -78,6 +78,8 @@ export default function GravesListPage() {
   const emptyGrave = {
     quadra: "",
     lote: "",
+    quadraAnterior: "",
+    loteAnterior: "",
     ownerPersonId: "",
     code: "",
     capacity: "",
@@ -186,6 +188,8 @@ export default function GravesListPage() {
         cemeteryId: cemetery?.id,
         block: gForm.quadra.trim(),
         lot: gForm.lote.trim(),
+        previousBlock: gForm.quadraAnterior.trim() || undefined,
+        previousLot: gForm.loteAnterior.trim() || undefined,
         ownerPersonId: gForm.ownerPersonId || undefined,
         code: gForm.code.trim(),
         unitType: newType,
@@ -261,7 +265,7 @@ export default function GravesListPage() {
       <div className={styles.toolbar}>
         <div className={styles.searchBox}>
           <Input
-            placeholder="Buscar por código ou concessionário…"
+            placeholder="Buscar por código, sepultado ou proprietário…"
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             iconLeft={
@@ -481,6 +485,20 @@ export default function GravesListPage() {
                 placeholder="Ex.: 01"
                 value={gForm.lote}
                 onChange={(e) => setG("lote", e.target.value)}
+              />
+            </FormField>
+            <FormField label="Quadra anterior" hint="Opcional — nome no sistema antigo">
+              <Input
+                placeholder="Ex.: 04"
+                value={gForm.quadraAnterior}
+                onChange={(e) => setG("quadraAnterior", e.target.value)}
+              />
+            </FormField>
+            <FormField label="Lote anterior" hint="Opcional — nome no sistema antigo">
+              <Input
+                placeholder="Ex.: 01"
+                value={gForm.loteAnterior}
+                onChange={(e) => setG("loteAnterior", e.target.value)}
               />
             </FormField>
             <FormField label="Código da unidade" required hint="Único por cemitério">
