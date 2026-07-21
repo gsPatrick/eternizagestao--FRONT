@@ -35,7 +35,7 @@ import {
   TOMB_TYPE_OPTIONS,
   UTILIZACAO_OPTIONS,
 } from "@/lib/api/resources/graves";
-import { getStructure } from "@/lib/api/resources/cemeteries";
+import { listPeople } from "@/lib/api/resources/people";
 
 const STATUS_META = {
   livre: { label: "Livre", tone: "success" },
@@ -72,11 +72,13 @@ export default function GravesListPage() {
   const [tombTypeFree, setTombTypeFree] = useState("");
   const router = useRouter();
 
-  // formulário real de nova sepultura (vínculo à estrutura + campos oficiais)
+  // formulário real de nova sepultura — cadastro RÁPIDO: quadra e lote são
+  // DIGITADOS (a estrutura é criada/reaproveitada no backend); proprietário é
+  // opcional. Sem selects em cascata (pedido do cliente p/ cadastro em massa).
   const emptyGrave = {
-    blockId: "",
-    streetId: "",
-    lotId: "",
+    quadra: "",
+    lote: "",
+    ownerPersonId: "",
     code: "",
     capacity: "",
     statusSlug: "livre",
@@ -150,20 +152,12 @@ export default function GravesListPage() {
   );
   const blocks = blocksData ?? [];
 
-  // estrutura completa (quadra→rua→lote) para os selects em cascata do create
-  const { data: structData } = useResource(
-    ({ signal }) => (cemetery ? getStructure(cemetery.id, { signal }) : Promise.resolve(null)),
-    [cemetery?.id]
+  // pessoas cadastradas → caixa de seleção de PROPRIETÁRIO (opcional) no create
+  const { data: peopleData } = useResource(
+    ({ signal }) => listPeople({ perPage: 1000 }, { signal }),
+    []
   );
-  const structBlocks = structData?.blocks ?? [];
-  const streetOptions = useMemo(() => {
-    const b = structBlocks.find((x) => x.id === gForm.blockId);
-    return b?.streets ?? [];
-  }, [structBlocks, gForm.blockId]);
-  const lotOptions = useMemo(() => {
-    const s = streetOptions.find((x) => x.id === gForm.streetId);
-    return s?.lots ?? [];
-  }, [streetOptions, gForm.streetId]);
+  const people = peopleData?.data ?? [];
   // jazigos/túmulos existentes = pais possíveis para gaveta
   const parentOptions = useMemo(
     () => rows.filter((r) => ["jazigo", "tumulo"].includes(labelToUnitType(r.type) || r.unitType)),
@@ -181,15 +175,18 @@ export default function GravesListPage() {
 
   // Cria a sepultura de verdade. "demarcar" → abre o detalhe (mapa real) após criar.
   async function submitGrave({ demarcate = false } = {}) {
-    if (!gForm.lotId || !gForm.code.trim()) {
-      setCreateError("Informe a quadra/rua/lote e o código da unidade.");
+    if (!gForm.quadra.trim() || !gForm.lote.trim() || !gForm.code.trim()) {
+      setCreateError("Informe a quadra, o lote e o código da unidade.");
       return;
     }
     setSaving(true);
     setCreateError(null);
     try {
       const body = {
-        lotId: gForm.lotId,
+        cemeteryId: cemetery?.id,
+        block: gForm.quadra.trim(),
+        lot: gForm.lote.trim(),
+        ownerPersonId: gForm.ownerPersonId || undefined,
         code: gForm.code.trim(),
         unitType: newType,
         capacity: gForm.capacity ? Number(gForm.capacity) : undefined,
@@ -442,7 +439,7 @@ export default function GravesListPage() {
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         title="Nova sepultura"
-        subtitle="Dados e vínculo à estrutura do cemitério"
+        subtitle="Digite quadra e lote — a estrutura é criada automaticamente"
         width={620}
         footer={
           <>
@@ -450,14 +447,14 @@ export default function GravesListPage() {
             <Button
               variant="secondary"
               loading={saving}
-              disabled={!gForm.lotId || !gForm.code.trim()}
+              disabled={!gForm.quadra.trim() || !gForm.lote.trim() || !gForm.code.trim()}
               onClick={() => submitGrave({ demarcate: false })}
             >
               Cadastrar
             </Button>
             <Button
               loading={saving}
-              disabled={!gForm.lotId || !gForm.code.trim()}
+              disabled={!gForm.quadra.trim() || !gForm.lote.trim() || !gForm.code.trim()}
               onClick={() => submitGrave({ demarcate: true })}
             >
               Cadastrar e demarcar
@@ -472,40 +469,19 @@ export default function GravesListPage() {
                 <option value={cemetery?.id || ""}>{cemetery?.name || "Cemitério"}</option>
               </Select>
             </FormField>
-            <FormField label="Quadra" required>
-              <Select
-                value={gForm.blockId}
-                onChange={(e) => setGForm((f) => ({ ...f, blockId: e.target.value, streetId: "", lotId: "" }))}
-              >
-                <option value="" disabled>Selecione…</option>
-                {structBlocks.map((b) => (
-                  <option key={b.id} value={b.id}>Quadra {b.name || b.code}</option>
-                ))}
-              </Select>
+            <FormField label="Quadra" required hint="Digite — ex.: Q4P1C4">
+              <Input
+                placeholder="Ex.: Q4P1C4"
+                value={gForm.quadra}
+                onChange={(e) => setG("quadra", e.target.value)}
+              />
             </FormField>
-            <FormField label="Rua" required>
-              <Select
-                value={gForm.streetId}
-                onChange={(e) => setGForm((f) => ({ ...f, streetId: e.target.value, lotId: "" }))}
-                disabled={!gForm.blockId}
-              >
-                <option value="" disabled>{gForm.blockId ? "Selecione…" : "Escolha a quadra"}</option>
-                {streetOptions.map((s) => (
-                  <option key={s.id} value={s.id}>Rua {s.name || s.code}</option>
-                ))}
-              </Select>
-            </FormField>
-            <FormField label="Lote" required>
-              <Select
-                value={gForm.lotId}
-                onChange={(e) => setG("lotId", e.target.value)}
-                disabled={!gForm.streetId}
-              >
-                <option value="" disabled>{gForm.streetId ? "Selecione…" : "Escolha a rua"}</option>
-                {lotOptions.map((l) => (
-                  <option key={l.id} value={l.id}>Lote {l.code || l.name}</option>
-                ))}
-              </Select>
+            <FormField label="Lote" required hint="Digite — ex.: 01">
+              <Input
+                placeholder="Ex.: 01"
+                value={gForm.lote}
+                onChange={(e) => setG("lote", e.target.value)}
+              />
             </FormField>
             <FormField label="Código da unidade" required hint="Único por cemitério">
               <Input
@@ -571,6 +547,17 @@ export default function GravesListPage() {
                 <option value="">Não informado</option>
                 <option value="Sim">Sim</option>
                 <option value="Não">Não</option>
+              </Select>
+            </FormField>
+            <FormField label="Proprietário" hint="Opcional — cria a concessão" className={styles.spanTwo}>
+              <Select value={gForm.ownerPersonId} onChange={(e) => setG("ownerPersonId", e.target.value)}>
+                <option value="">Sem proprietário (pode definir depois)</option>
+                {people.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.fullName || p.name}
+                    {p.cpf ? ` — ${p.cpf}` : ""}
+                  </option>
+                ))}
               </Select>
             </FormField>
             <FormField label="Observação" className={styles.spanTwo}>
