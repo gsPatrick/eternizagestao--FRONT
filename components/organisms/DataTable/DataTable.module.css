@@ -79,3 +79,9 @@
     padding-right: var(--space-4);
   }
 }
+
+/* Códigos curtos (quadra/lote/gaveta/matrícula) nunca quebram no meio:
+   "B-R1-L3" partido em três linhas é ilegível. A tabela já rola no eixo X. */
+.nowrap {
+  white-space: nowrap;
+}

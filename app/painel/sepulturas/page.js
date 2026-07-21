@@ -394,10 +394,11 @@ export default function GravesListPage() {
           <div className={styles.desktopTable}>
             <DataTable
               columns={[
-                { key: "cemetery", label: "Cemitério" },
+                { key: "cemetery", label: "Cemitério", minWidth: 190 },
                 {
                   key: "block",
                   label: "Quadra",
+                  nowrap: true,
                   render: (row) => (
                     <span className={styles.codeCell}>
                       <code className={styles.code}>{row.block}</code>
@@ -412,7 +413,7 @@ export default function GravesListPage() {
                     </span>
                   ),
                 },
-                { key: "lot", label: "Lote" },
+                { key: "lot", label: "Lote", nowrap: true },
                 {
                   key: "buried",
                   label: "Sepultado(s)",

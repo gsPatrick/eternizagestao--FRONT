@@ -1,5 +1,16 @@
 import styles from "./DataTable.module.css";
 
+/**
+ * Classes da célula. `nowrap` existe para códigos curtos (quadra, lote, gaveta,
+ * matrícula): quebrados no meio viram "B-" / "R1-" / "L3" em três linhas e o
+ * operador não consegue ler o código de uma vez.
+ */
+function cellClass(col, css) {
+  return [col.align === "right" ? css.right : "", col.nowrap ? css.nowrap : ""]
+    .filter(Boolean)
+    .join(" ");
+}
+
 export default function DataTable({ columns = [], rows = [], caption, footer }) {
   return (
     <div className={styles.shell}>
@@ -9,7 +20,11 @@ export default function DataTable({ columns = [], rows = [], caption, footer }) 
           <thead>
             <tr>
               {columns.map((col) => (
-                <th key={col.key} className={col.align === "right" ? styles.right : ""}>
+                <th
+                  key={col.key}
+                  className={cellClass(col, styles)}
+                  style={col.minWidth ? { minWidth: col.minWidth } : undefined}
+                >
                   {col.label}
                 </th>
               ))}
@@ -19,7 +34,7 @@ export default function DataTable({ columns = [], rows = [], caption, footer }) 
             {rows.map((row, index) => (
               <tr key={row.id ?? index}>
                 {columns.map((col) => (
-                  <td key={col.key} className={col.align === "right" ? styles.right : ""}>
+                  <td key={col.key} className={cellClass(col, styles)}>
                     {col.render ? col.render(row) : row[col.key]}
                   </td>
                 ))}

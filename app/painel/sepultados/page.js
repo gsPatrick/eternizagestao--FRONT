@@ -382,11 +382,11 @@ export default function DeceasedListPage() {
   // Colunas espelhando a listagem do cliente: Cemitério · Quadra · Lote ·
   // Gaveta · Matrícula · Nome · Sexo · Falecimento · Sepultamento.
   const columns = [
-    { key: "cemetery", label: "Cemitério" },
-    { key: "block", label: "Quadra" },
-    { key: "lot", label: "Lote" },
-    { key: "gaveta", label: "Gaveta" },
-    { key: "registration", label: "Matrícula" },
+    { key: "cemetery", label: "Cemitério", minWidth: 190 },
+    { key: "block", label: "Quadra", nowrap: true },
+    { key: "lot", label: "Lote", nowrap: true },
+    { key: "gaveta", label: "Gaveta", nowrap: true },
+    { key: "registration", label: "Matrícula", nowrap: true },
     {
       key: "name",
       label: "Nome",
@@ -400,9 +400,9 @@ export default function DeceasedListPage() {
         </span>
       ),
     },
-    { key: "gender", label: "Sexo" },
-    { key: "death", label: "Data de falecimento" },
-    { key: "burial", label: "Data de sepultamento" },
+    { key: "gender", label: "Sexo", nowrap: true },
+    { key: "death", label: "Data de falecimento", nowrap: true },
+    { key: "burial", label: "Data de sepultamento", nowrap: true },
     {
       key: "location",
       label: "Situação",
