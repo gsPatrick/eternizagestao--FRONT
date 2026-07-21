@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import styles from "./page.module.css";
@@ -31,6 +31,7 @@ import {
   toAttachmentView,
 } from "@/lib/api/resources/attachments";
 import { todayISO } from "@/lib/date-local";
+import { listDocuments, fileHref, fetchDocumentPdf } from "@/lib/api/resources/documents";
 import {
   getGraveSummary,
   getGraveTimeline,
@@ -323,7 +324,46 @@ export default function GraveDetailPage() {
   const [actionError, setActionError] = useState(null);
   const [contractPreview, setContractPreview] = useState(null);
 
+  // CERTIDÃO REAL da sepultura — carregada da API (antes o estado só existia se
+  // você emitisse na mesma sessão, então registros ANTIGOS apareciam como "sem
+  // certidão" e o botão "Ver" abria um PDF de demonstração).
   const [certificate, setCertificate] = useState(null);
+  const {
+    data: certDocsData,
+    refetch: refetchCertDocs,
+  } = useResource(
+    ({ signal }) =>
+      id
+        ? listDocuments({ graveId: id, documentType: "certidao_perpetuidade", perPage: 20 }, { signal })
+        : Promise.resolve({ data: [] }),
+    [id]
+  );
+  useEffect(() => {
+    const docs = certDocsData?.data ?? [];
+    if (!docs.length) return;
+    // a mais recente vale (2ª via reemite com novo número)
+    const doc = docs[docs.length - 1];
+    setCertificate({
+      id: doc.id,
+      number: doc.formattedNumber || doc.number || "—",
+      reissues: doc.reissueCount || 0,
+      pdfUrl: doc.pdfUrl || null,
+      fileUrl: doc.fileUrl || null,
+    });
+  }, [certDocsData]);
+
+  // Abre o documento REAL (PDF assinado; senão regenera sob demanda; senão HTML).
+  async function openCertificate() {
+    if (!certificate?.id) return;
+    const direct = fileHref(certificate.pdfUrl || certificate.fileUrl);
+    if (certificate.pdfUrl && direct) { window.open(direct, "_blank", "noopener"); return; }
+    try {
+      const url = await fetchDocumentPdf(certificate.id);
+      window.open(url, "_blank", "noopener");
+    } catch {
+      if (direct) window.open(direct, "_blank", "noopener");
+    }
+  }
   const [exhumations, setExhumations] = useState({});
   const [maintForm, setMaintForm] = useState({ type: "reforma", description: "", requester: "" });
   const [exhumForm, setExhumForm] = useState({ reason: "", requester: "" });
@@ -481,13 +521,15 @@ export default function GraveDetailPage() {
       if (certificate) {
         await reissueDocument(certificate.id);
         setCertificate((c) => ({ ...c, reissues: c.reissues + 1 }));
+        refetchCertDocs();
       } else {
         const doc = await issueDocument({
           documentType: "certidao_perpetuidade",
           graveId: id,
           personId: concession?.personId,
         });
-        setCertificate({ id: doc?.id, number: doc?.documentNumber || doc?.number || "—", reissues: 0 });
+        setCertificate({ id: doc?.id, number: doc?.formattedNumber || doc?.number || "—", reissues: 0, pdfUrl: doc?.pdfUrl || null, fileUrl: doc?.fileUrl || null });
+        refetchCertDocs();
       }
       await refetchTimeline();
     } catch (e) {
@@ -725,7 +767,7 @@ export default function GraveDetailPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => setContractPreview({ name: `certidao-perpetuidade-${String(certificate.number).replace("/", "-")}.pdf`, category: "Certidão de Perpetuidade", url: DEMO_CERTIDAO_PDF })}
+                          onClick={openCertificate}
                         >
                           Ver
                         </Button>

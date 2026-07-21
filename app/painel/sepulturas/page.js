@@ -37,6 +37,7 @@ import {
   isPerpetualUse,
 } from "@/lib/api/resources/graves";
 import { listPeople } from "@/lib/api/resources/people";
+import { getStructure } from "@/lib/api/resources/cemeteries";
 
 const STATUS_META = {
   livre: { label: "Livre", tone: "success" },
@@ -77,6 +78,7 @@ export default function GravesListPage() {
   // DIGITADOS (a estrutura é criada/reaproveitada no backend); proprietário é
   // opcional. Sem selects em cascata (pedido do cliente p/ cadastro em massa).
   const emptyGrave = {
+    cemeteryId: "",
     quadra: "",
     lote: "",
     quadraAnterior: "",
@@ -149,7 +151,36 @@ export default function GravesListPage() {
 
   // cemitério + quadras reais para o filtro
   const { data: cemsData } = useResource(({ signal }) => listCemeteries({ signal }), []);
-  const cemetery = cemsData?.data?.[0];
+  const cemeteries = cemsData?.data ?? [];
+  // Cemitério do FORMULÁRIO: escolhido pelo operador (antes era fixo no 1º da
+  // lista, mesmo com vários cadastrados). Cai no primeiro só como padrão.
+  const formCemeteryId = gForm.cemeteryId || cemeteries[0]?.id || "";
+  const cemetery = cemeteries.find((c) => c.id === formCemeteryId) || cemeteries[0];
+
+  // Estrutura JÁ CADASTRADA do cemitério escolhido → sugestões de quadra/lote.
+  // Continua sendo campo de texto (cadastro rápido), mas agora oferece o que
+  // existe, evitando duplicar quadra/lote por digitação diferente.
+  const { data: structData } = useResource(
+    ({ signal }) => (formCemeteryId ? getStructure(formCemeteryId, { signal }) : Promise.resolve(null)),
+    [formCemeteryId]
+  );
+  const structBlocks = structData?.blocks ?? [];
+  const quadraOptions = useMemo(
+    () => structBlocks.map((b) => b.code || b.name).filter(Boolean),
+    [structBlocks]
+  );
+  const loteOptions = useMemo(() => {
+    const q = gForm.quadra.trim().toLowerCase();
+    const blocos = q
+      ? structBlocks.filter((b) => String(b.code || b.name || "").toLowerCase() === q)
+      : structBlocks;
+    const set = new Set();
+    blocos.forEach((b) => (b.streets || []).forEach((st) => (st.lots || []).forEach((l) => {
+      const v = l.code || l.name;
+      if (v) set.add(v);
+    })));
+    return [...set];
+  }, [structBlocks, gForm.quadra]);
   const { data: blocksData } = useResource(
     ({ signal }) => (cemetery ? listBlocks(cemetery.id, { signal }) : Promise.resolve([])),
     [cemetery?.id]
@@ -187,7 +218,7 @@ export default function GravesListPage() {
     setCreateError(null);
     try {
       const body = {
-        cemeteryId: cemetery?.id,
+        cemeteryId: formCemeteryId,
         block: gForm.quadra.trim(),
         lot: gForm.lote.trim(),
         previousBlock: gForm.quadraAnterior.trim() || undefined,
@@ -471,24 +502,45 @@ export default function GravesListPage() {
       >
         <form className={styles.form} onSubmit={(e) => { e.preventDefault(); submitGrave({ demarcate: false }); }}>
           <div className={styles.formGrid}>
-            <FormField label="Cemitério">
-              <Select value={cemetery?.id || ""} disabled>
-                <option value={cemetery?.id || ""}>{cemetery?.name || "Cemitério"}</option>
+            <FormField label="Cemitério" required>
+              <Select
+                value={formCemeteryId}
+                onChange={(e) => setGForm((f) => ({ ...f, cemeteryId: e.target.value, quadra: "", lote: "" }))}
+              >
+                {cemeteries.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
               </Select>
             </FormField>
-            <FormField label="Quadra" required hint="Digite — ex.: Q4P1C4">
+            <FormField
+              label="Quadra"
+              required
+              hint={quadraOptions.length ? "Escolha uma existente ou digite uma nova" : "Digite — ex.: Q4P1C4"}
+            >
               <Input
+                list="quadras-existentes"
                 placeholder="Ex.: Q4P1C4"
                 value={gForm.quadra}
                 onChange={(e) => setG("quadra", e.target.value)}
               />
+              <datalist id="quadras-existentes">
+                {quadraOptions.map((q) => (<option key={q} value={q} />))}
+              </datalist>
             </FormField>
-            <FormField label="Lote" required hint="Digite — ex.: 01">
+            <FormField
+              label="Lote"
+              required
+              hint={loteOptions.length ? "Escolha um existente ou digite um novo" : "Digite — ex.: 01"}
+            >
               <Input
+                list="lotes-existentes"
                 placeholder="Ex.: 01"
                 value={gForm.lote}
                 onChange={(e) => setG("lote", e.target.value)}
               />
+              <datalist id="lotes-existentes">
+                {loteOptions.map((l) => (<option key={l} value={l} />))}
+              </datalist>
             </FormField>
             <FormField label="Quadra anterior" hint="Opcional — nome no sistema antigo">
               <Input
