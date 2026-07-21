@@ -22,11 +22,15 @@ const DESKTOP_BASE = { width: 1440, height: 880 };
 const MOBILE_BASE = { width: 402, height: 800 };
 const INTERVAL = 4200;
 
-// Ordena as cidades para o carrossel: fora os tenants institucionais/demo,
+// Tenants que NUNCA entram na vitrine pública: institucional, demo e as cidades
+// de TESTE (ex.: "fantasma", usada para validar o sistema com o cliente).
+const HIDDEN_FROM_SHOWCASE = new Set(["eterniza", "demo", "fantasma"]);
+
+// Ordena as cidades para o carrossel: fora os tenants institucionais/demo/teste,
 // Guarulhos primeiro (cidade preferida/realçada), demais em seguida.
 function orderShowcase(list) {
   return (list || [])
-    .filter((t) => t.id !== "eterniza" && t.id !== "demo")
+    .filter((t) => !HIDDEN_FROM_SHOWCASE.has(t.id) && !HIDDEN_FROM_SHOWCASE.has(t.apiSubdomain))
     .sort((a, b) => (a.id === "guarulhos" ? -1 : b.id === "guarulhos" ? 1 : 0));
 }
 
