@@ -21,7 +21,7 @@ import ErrorState from "@/components/molecules/ErrorState/ErrorState";
 import EmptyState from "@/components/molecules/EmptyState/EmptyState";
 import { maskCpf } from "@/lib/masks";
 import { useResource, useMutation } from "@/lib/api/useResource";
-import { listDeceased, getLocationCounts, createDeceased, uploadDeathCertificate, deleteDeceased } from "@/lib/api/resources/deceased";
+import { listDeceased, getLocationCounts, createDeceased, uploadDeathCertificate, deleteDeceased, getDeceasedDeleteImpact } from "@/lib/api/resources/deceased";
 import { getUser } from "@/lib/api/session";
 import RowActions from "@/components/molecules/RowActions/RowActions";
 import ConfirmDelete from "@/components/molecules/ConfirmDelete/ConfirmDelete";
@@ -258,16 +258,33 @@ export default function DeceasedListPage() {
   const canDelete = ["admin", "super_admin"].includes(currentUser?.role);
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [deleteError, setDeleteError] = useState("");
-  const deleteM = useMutation(deleteDeceased);
+  const [deleteImpact, setDeleteImpact] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
-  async function doDelete() {
+  // Abre a confirmação já sabendo o que a exclusão arrasta junto.
+  async function askDelete(row) {
     setDeleteError("");
+    setDeleteImpact(null);
+    setConfirmDelete(row);
     try {
-      await deleteM.mutate(confirmDelete.id);
+      setDeleteImpact(await getDeceasedDeleteImpact(row.id));
+    } catch (_) {
+      /* sem o impacto o modal segue no modo simples */
+    }
+  }
+
+  async function doDelete(force = false) {
+    setDeleteError("");
+    setDeleting(true);
+    try {
+      await deleteDeceased(confirmDelete.id, { force });
       setConfirmDelete(null);
+      setDeleteImpact(null);
       refetch();
     } catch (e) {
       setDeleteError(e?.message || "Não foi possível excluir o sepultado.");
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -416,7 +433,7 @@ export default function DeceasedListPage() {
         <RowActions
           editHref={`/painel/sepultados/${row.id}`}
           canDelete={canDelete}
-          onDelete={() => { setDeleteError(""); setConfirmDelete(row); }}
+          onDelete={() => askDelete(row)}
           extra={
             <Link
               href={`/painel/sepultados/${row.id}`}
@@ -860,15 +877,14 @@ export default function DeceasedListPage() {
 
       <ConfirmDelete
         open={Boolean(confirmDelete)}
-        onClose={() => setConfirmDelete(null)}
+        onClose={() => { setConfirmDelete(null); setDeleteImpact(null); }}
         onConfirm={doDelete}
-        loading={deleteM.loading}
+        loading={deleting}
         title="Excluir sepultado"
         name={confirmDelete?.name}
-        description={
-          deleteError
-          || "Sepultados com sepultamento ativo não podem ser excluídos — registre a exumação antes. O registro fica arquivado no histórico."
-        }
+        impact={deleteImpact}
+        error={deleteError}
+        description="O sepultado sai das listagens. O registro fica arquivado no histórico."
       />
     </div>
   );

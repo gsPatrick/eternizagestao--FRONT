@@ -21,7 +21,7 @@ import Skeleton from "@/components/atoms/Skeleton/Skeleton";
 import ErrorState from "@/components/molecules/ErrorState/ErrorState";
 import { maskCpf } from "@/lib/masks";
 import { useResource, useMutation } from "@/lib/api/useResource";
-import { getDeceased, updateDeceased, uploadDeceasedPhoto, deleteDeceased } from "@/lib/api/resources/deceased";
+import { getDeceased, updateDeceased, uploadDeceasedPhoto, deleteDeceased, getDeceasedDeleteImpact } from "@/lib/api/resources/deceased";
 import { getUser } from "@/lib/api/session";
 import { listCartorios } from "@/lib/api/resources/cartorios";
 import { listFunerarias } from "@/lib/api/resources/funerarias";
@@ -256,15 +256,31 @@ export default function DeceasedDetailPage() {
   const canDelete = ["admin", "super_admin"].includes(currentUser?.role);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleteError, setDeleteError] = useState("");
-  const deleteM = useMutation(() => deleteDeceased(id));
+  const [deleteImpact, setDeleteImpact] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
-  async function doDelete() {
+  // Abre a confirmação já sabendo o que a exclusão arrasta junto.
+  async function askDelete() {
     setDeleteError("");
+    setDeleteImpact(null);
+    setConfirmDelete(true);
     try {
-      await deleteM.mutate();
+      setDeleteImpact(await getDeceasedDeleteImpact(id));
+    } catch (_) {
+      /* sem o impacto o modal segue no modo simples */
+    }
+  }
+
+  async function doDelete(force = false) {
+    setDeleteError("");
+    setDeleting(true);
+    try {
+      await deleteDeceased(id, { force });
       router.push("/painel/sepultados");
     } catch (e) {
       setDeleteError(e?.message || "Não foi possível excluir o sepultado.");
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -379,7 +395,7 @@ export default function DeceasedDetailPage() {
         <div className={styles.headActions}>
           <Button variant="secondary" onClick={openEdit}>Editar cadastro</Button>
           {canDelete && (
-            <Button variant="ghost" onClick={() => { setDeleteError(""); setConfirmDelete(true); }}>
+            <Button variant="ghost" onClick={askDelete}>
               Excluir
             </Button>
           )}
@@ -703,15 +719,14 @@ export default function DeceasedDetailPage() {
 
       <ConfirmDelete
         open={confirmDelete}
-        onClose={() => setConfirmDelete(false)}
+        onClose={() => { setConfirmDelete(false); setDeleteImpact(null); }}
         onConfirm={doDelete}
-        loading={deleteM.loading}
+        loading={deleting}
         title="Excluir sepultado"
         name={person?.name}
-        description={
-          deleteError
-          || "Sepultados com sepultamento ativo não podem ser excluídos — registre a exumação antes. O registro fica arquivado no histórico."
-        }
+        impact={deleteImpact}
+        error={deleteError}
+        description="O sepultado sai das listagens. O registro fica arquivado no histórico."
       />
     </div>
   );

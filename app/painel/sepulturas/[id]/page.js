@@ -50,6 +50,7 @@ import {
   reissueDocument,
   updateGrave,
   removeGrave,
+  getGraveDeleteImpact,
   normalizeStatusSlug,
   frontStatusToApiSlug,
   unitTypeLabel,
@@ -156,13 +157,26 @@ export default function GraveDetailPage() {
   const canDelete = ["admin", "super_admin"].includes(currentUser?.role);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleteError, setDeleteError] = useState("");
+  const [deleteImpact, setDeleteImpact] = useState(null);
   const [deleting, setDeleting] = useState(false);
 
-  async function doDelete() {
+  // Abre a confirmação já sabendo o que a exclusão arrasta junto.
+  async function askDelete() {
+    setDeleteError("");
+    setDeleteImpact(null);
+    setConfirmDelete(true);
+    try {
+      setDeleteImpact(await getGraveDeleteImpact(id));
+    } catch (_) {
+      /* sem o impacto o modal segue no modo simples */
+    }
+  }
+
+  async function doDelete(force = false) {
     setDeleteError("");
     setDeleting(true);
     try {
-      await removeGrave(id);
+      await removeGrave(id, { force });
       router.push("/painel/sepulturas");
     } catch (e) {
       setDeleteError(e?.message || "Não foi possível excluir a sepultura.");
@@ -624,7 +638,7 @@ export default function GraveDetailPage() {
           </Button>
           <Button onClick={() => setBurialModal(true)}>Sepultar aqui</Button>
           {canDelete && (
-            <Button variant="ghost" onClick={() => { setDeleteError(""); setConfirmDelete(true); }}>
+            <Button variant="ghost" onClick={askDelete}>
               Excluir
             </Button>
           )}
@@ -1299,15 +1313,14 @@ export default function GraveDetailPage() {
 
       <ConfirmDelete
         open={confirmDelete}
-        onClose={() => setConfirmDelete(false)}
+        onClose={() => { setConfirmDelete(false); setDeleteImpact(null); }}
         onConfirm={doDelete}
         loading={deleting}
         title="Excluir sepultura"
         name={GRAVE?.code}
-        description={
-          deleteError
-          || "A sepultura sai das listagens e do mapa. Sepulturas com sepultado ativo não podem ser excluídas."
-        }
+        impact={deleteImpact}
+        error={deleteError}
+        description="A sepultura sai das listagens e do mapa. O registro fica arquivado no histórico."
       />
     </div>
   );
