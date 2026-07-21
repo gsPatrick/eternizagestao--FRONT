@@ -30,6 +30,8 @@ import { listCartorios } from "@/lib/api/resources/cartorios";
 import { listFunerarias } from "@/lib/api/resources/funerarias";
 import { listPeople } from "@/lib/api/resources/people";
 import GravePicker, { graveLabel } from "@/components/organisms/GravePicker/GravePicker";
+import { registerPerformedExhumation } from "@/lib/api/resources/exhumations";
+import { listOssuaries, listNiches } from "@/lib/api/resources/ossuaries";
 import { todayISO } from "@/lib/date-local";
 
 const LOCATION_META = {
@@ -113,6 +115,11 @@ export default function DeceasedListPage() {
   const [pickedGrave, setPickedGrave] = useState(null);
   const [gravePickerOpen, setGravePickerOpen] = useState(false);
 
+  // Bloco "Exumação" do formulário: quando o operador marca que o sepultado JÁ
+  // foi exumado, registramos a exumação como realizada (a API percorre o fluxo
+  // oficial por dentro, então o registro é igual ao da tela de Exumações).
+  const [exhum, setExhum] = useState({ done: false, nicheId: "", number: "", date: "" });
+
   // Cartórios e Funerárias cadastrados (Básico) → dropdowns do sepultado.
   const { data: cartoriosData } = useResource(
     ({ signal }) => (modalOpen ? listCartorios({ perPage: 300 }, { signal }) : Promise.resolve({ data: [] })),
@@ -125,6 +132,28 @@ export default function DeceasedListPage() {
   );
   const funerarias = funerariasData?.data ?? [];
   // Pessoas cadastradas → dropdown de RESPONSÁVEL pela sepultura.
+  // Nichos do ossário disponíveis no cemitério da sepultura escolhida →
+  // opções de "Local do envio". Sem sepultura escolhida não há para onde enviar.
+  const exhumCemeteryId = pickedGrave?.cemetery?.id || pickedGrave?.cemeteryId || null;
+  const { data: ossuariesData } = useResource(
+    ({ signal }) => (exhumCemeteryId ? listOssuaries(exhumCemeteryId, { signal }) : Promise.resolve({ data: [] })),
+    [exhumCemeteryId]
+  );
+  const ossuaries = useMemo(() => ossuariesData?.data ?? ossuariesData ?? [], [ossuariesData]);
+  const { data: nichesData } = useResource(
+    async ({ signal }) => {
+      if (!ossuaries.length) return [];
+      const lists = await Promise.all(
+        ossuaries.map((o) => listNiches(o.id, { status: "livre", perPage: 500 }, { signal })
+          .then((r) => (r?.data ?? r ?? []).map((n) => ({ ...n, ossuaryName: o.name })))
+          .catch(() => []))
+      );
+      return lists.flat();
+    },
+    [ossuaries]
+  );
+  const freeNiches = nichesData ?? [];
+
   const { data: peopleData } = useResource(
     ({ signal }) => (modalOpen ? listPeople({ perPage: 1000 }, { signal }) : Promise.resolve({ data: [] })),
     [modalOpen]
@@ -245,6 +274,11 @@ export default function DeceasedListPage() {
   async function handleCreate() {
     setFormError("");
     if (!form.fullName.trim()) { setFormError("Informe o nome completo do sepultado."); return; }
+    // Exumar é dar baixa num sepultamento: sem sepultura escolhida não há o que exumar.
+    if (exhum.done && !burialForm.graveId) {
+      setFormError("Para registrar a exumação, escolha a sepultura de origem.");
+      return;
+    }
     const body = {
       fullName: form.fullName.trim(),
       cpf: form.cpf || undefined,
@@ -308,11 +342,32 @@ export default function DeceasedListPage() {
           refetch();
           return;
         }
+
+        // EXUMAÇÃO já ocorrida: só faz sentido depois do sepultamento gravado —
+        // é dele que a exumação dá baixa. Best-effort: o cadastro não se perde
+        // se o registro da exumação falhar, e o operador vê o motivo.
+        if (exhum.done && created?.id) {
+          try {
+            await registerPerformedExhumation({
+              deceasedId: created.id,
+              graveId: burialForm.graveId,
+              destinationType: exhum.nicheId ? "ossario" : "outro",
+              destinationOssuaryNicheId: exhum.nicheId || undefined,
+              authorizationNumber: exhum.number || undefined,
+              performedAt: exhum.date || undefined,
+            });
+          } catch (e) {
+            setFormError(
+              `Sepultado cadastrado, mas a exumação não foi registrada: ${e.message || "registre pelo menu Exumações"}.`
+            );
+          }
+        }
       }
       setModalOpen(false);
       setForm(EMPTY_FORM);
       setCertFile(null);
       setPickedGrave(null);
+      setExhum({ done: false, nicheId: "", number: "", date: "" });
       setBurialForm({ graveId: "", date: todayISO(), time: "" });
       refetch();
     } catch (e) {
@@ -741,6 +796,46 @@ export default function DeceasedListPage() {
                   )}
               </Select>
             </FormField>
+          </div>
+
+          <span className={styles.formSection}>Exumação</span>
+          <div className={styles.formGrid}>
+            <FormField label="Foi exumado?">
+              <Select
+                value={exhum.done ? "sim" : "nao"}
+                onChange={(e) => setExhum((x) => ({ ...x, done: e.target.value === "sim" }))}
+              >
+                <option value="nao">Não</option>
+                <option value="sim">Sim</option>
+              </Select>
+            </FormField>
+            {exhum.done && (
+              <>
+                <FormField
+                  label="Local do envio"
+                  hint={
+                    pickedGrave
+                      ? "Nichos livres do ossário deste cemitério"
+                      : "Escolha a sepultura acima para listar os nichos"
+                  }
+                >
+                  <Select value={exhum.nicheId} onChange={(e) => setExhum((x) => ({ ...x, nicheId: e.target.value }))}>
+                    <option value="">Selecione uma opção</option>
+                    {freeNiches.map((n) => (
+                      <option key={n.id} value={n.id}>
+                        {n.ossuaryName ? `${n.ossuaryName} · ` : ""}{n.code || n.name}
+                      </option>
+                    ))}
+                  </Select>
+                </FormField>
+                <FormField label="Número" hint="Nº da autorização de exumação">
+                  <Input value={exhum.number} onChange={(e) => setExhum((x) => ({ ...x, number: e.target.value }))} />
+                </FormField>
+                <FormField label="Data de envio">
+                  <Input type="date" value={exhum.date} onChange={(e) => setExhum((x) => ({ ...x, date: e.target.value }))} />
+                </FormField>
+              </>
+            )}
           </div>
 
           {formError && <Alert tone="danger">{formError}</Alert>}
