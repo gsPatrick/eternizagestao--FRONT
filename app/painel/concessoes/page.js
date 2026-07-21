@@ -24,6 +24,7 @@ import { useResource } from "@/lib/api/useResource";
 import { listConcessions, getConcessionsSummary, issueConcession } from "@/lib/api/resources/concessions";
 import { listGraves } from "@/lib/api/resources/graves";
 import { listPeople } from "@/lib/api/resources/people";
+import { todayISO } from "@/lib/date-local";
 
 // "Hoje" REAL — antes era fixo em 16/07/2026, congelando "vence em X meses".
 const TODAY = new Date();
@@ -102,7 +103,9 @@ export default function ConcessionsListPage() {
     graveId: "",
     personId: "",
     responsiblePersonId: "",
-    startDate: "2026-07-16",
+    // Início da concessão = HOJE (fuso local). Era "2026-07-16" fixo: toda
+    // concessão emitida depois disso nasceria com a data de emissão errada.
+    startDate: todayISO(),
     endDate: "",
     value: "",
     contractNumber: "",
@@ -474,9 +477,10 @@ export default function ConcessionsListPage() {
                 <Input type="date" value={form.endDate} onChange={(e) => setF("endDate", e.target.value)} />
               </FormField>
             )}
+            {/* placeholder com o ano corrente — não congela "2026" no exemplo */}
             <FormField label="Nº do contrato" hint="Opcional">
               <Input
-                placeholder="CON-2026-0001"
+                placeholder={`CON-${TODAY.getFullYear()}-0001`}
                 value={form.contractNumber}
                 onChange={(e) => setF("contractNumber", e.target.value)}
               />

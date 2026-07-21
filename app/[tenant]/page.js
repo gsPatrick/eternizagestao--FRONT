@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import TenantLanding from "@/components/templates/TenantLanding/TenantLanding";
-import { TENANTS, normalizeApiTenant, resolveTenant } from "@/lib/tenants";
+import { normalizeApiTenant, resolveTenant } from "@/lib/tenants";
 import { getPublicTenants } from "@/lib/api/resources/public";
 
 /**
@@ -20,22 +20,51 @@ export function generateStaticParams() {
   return [];
 }
 
-// Fonte da verdade: GET /public/tenants. Se a API falhar, cai no fallback
-// estático (nunca dá white-screen). Slug inexistente → notFound().
+// Fonte ÚNICA das cidades: GET /public/tenants. Se a API falhar, retorna null
+// (≠ lista vazia) e a página mostra um erro honesto — nunca uma lista estática
+// de prefeituras, que exibiria municípios que não são clientes.
+// Slug inexistente (com API no ar) → notFound().
 async function loadTenants() {
   try {
     const apiTenants = await getPublicTenants({ cache: "no-store" });
-    if (Array.isArray(apiTenants) && apiTenants.length) {
-      return apiTenants.map(normalizeApiTenant);
-    }
+    if (Array.isArray(apiTenants)) return apiTenants.map(normalizeApiTenant);
   } catch {
-    // offline / erro → fallback
+    // offline / erro → null (indisponibilidade, não "cidade inexistente")
   }
-  return TENANTS.filter((t) => t.id !== "eterniza");
+  return null;
+}
+
+// Estado honesto de indisponibilidade: não sabemos se a cidade existe porque o
+// serviço está fora. Um 404 aqui seria mentira; dados inventados, pior ainda.
+function ServicoIndisponivel() {
+  return (
+    <main
+      style={{
+        minHeight: "70vh",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 12,
+        padding: "48px 24px",
+        textAlign: "center",
+      }}
+    >
+      <h1 style={{ fontSize: 24, fontWeight: 600 }}>
+        Serviço temporariamente indisponível
+      </h1>
+      <p style={{ maxWidth: "52ch", lineHeight: 1.6, opacity: 0.75 }}>
+        Não foi possível carregar os dados desta cidade agora. Tente novamente em
+        alguns minutos.
+      </p>
+    </main>
+  );
 }
 
 export default async function TenantPublicPage({ params }) {
   const list = await loadTenants();
+  if (list === null) return <ServicoIndisponivel />;
+
   const tenant = resolveTenant(list, params.tenant);
   if (!tenant) notFound();
 

@@ -32,6 +32,7 @@ import {
   toAttachmentView,
 } from "@/lib/api/resources/attachments";
 import { todayISO } from "@/lib/date-local";
+import { listBillings, normalizeBilling, formatBRL } from "@/lib/api/resources/billings";
 import { listDocuments, fileHref, fetchDocumentPdf } from "@/lib/api/resources/documents";
 import {
   getGraveSummary,
@@ -87,6 +88,12 @@ const ACQUISITION_LABEL = {
   outro: "Outro",
 };
 
+// competência 'YYYY-MM' → 'MM/YYYY' (formato lido pelo operador)
+function monthLabel(period = "") {
+  const [y, m] = String(period).split("-");
+  return m && y ? `${m}/${y}` : String(period);
+}
+
 function yearsBetween(start = "", end = "") {
   const a = Number(String(start).slice(-4));
   const b = end ? Number(String(end).slice(-4)) : new Date().getFullYear();
@@ -94,8 +101,15 @@ function yearsBetween(start = "", end = "") {
   return diff === 1 ? "1 ano" : `${diff} anos`;
 }
 
-// financeiro-resumo vem da feature de billings (não integrada nesta tela)
-const FINANCE = [];
+// Situação da cobrança (vocabulário do resource de billings, já traduzido:
+// em_atraso → atraso) → rótulo + tom do Badge usado na aba Financeiro.
+const BILLING_STATUS_META = {
+  pendente: { label: "Pendente", tone: "warning" },
+  atraso: { label: "Em atraso", tone: "danger" },
+  pago: { label: "Pago", tone: "success" },
+  cancelado: { label: "Cancelada", tone: "neutral" },
+  estornado: { label: "Estornada", tone: "neutral" },
+};
 
 const TIMELINE_TONE = {
   pagamento: "success",
@@ -198,6 +212,24 @@ export default function GraveDetailPage() {
     ({ signal }) => getGraveConcessions(id, { signal }),
     [id]
   );
+  // Financeiro real da sepultura: a listagem de billings aceita filtro por
+  // graveId (billings.service.js → list/buildWhere), então a aba mostra as
+  // cobranças desta unidade em vez de um array vazio fixo.
+  const {
+    data: billingsData,
+    loading: billingsLoading,
+    error: billingsError,
+    refetch: refetchBillings,
+  } = useResource(
+    ({ signal }) =>
+      id ? listBillings({ graveId: id, perPage: 50 }, { signal }) : Promise.resolve({ data: [] }),
+    [id]
+  );
+  const finance = useMemo(
+    () => (billingsData?.data ?? []).map(normalizeBilling).filter(Boolean),
+    [billingsData]
+  );
+
   const { data: peopleData } = useResource(({ signal }) => listPeople({ perPage: 100 }, { signal }), []);
   const { data: deceasedData } = useResource(({ signal }) => listDeceased({ perPage: 100 }, { signal }), []);
 
@@ -717,23 +749,45 @@ export default function GraveDetailPage() {
                 },
                 {
                   label: "Financeiro",
-                  count: FINANCE.length,
-                  content: FINANCE.length ? (
+                  // count só aparece depois que a lista carregou (evita "0" enganoso)
+                  count: billingsLoading ? undefined : finance.length,
+                  content: billingsLoading ? (
+                    <Skeleton variant="line" count={3} />
+                  ) : billingsError ? (
+                    <ErrorState
+                      title="Não foi possível carregar o financeiro"
+                      onRetry={refetchBillings}
+                    />
+                  ) : finance.length ? (
                     <ul className={styles.list}>
-                      {FINANCE.map((item) => (
-                        <li key={item.period} className={styles.listItem}>
-                          <span className={styles.financeYear}>{item.period}</span>
-                          <div className={styles.listBody}>
-                            <span className={styles.listTitle}>{item.desc}</span>
-                            <span className={styles.listMeta}>Competência {item.period}</span>
-                          </div>
-                          <span className={styles.financeAmount}>{item.amount}</span>
-                          <Badge tone="success">Pago</Badge>
-                        </li>
-                      ))}
+                      {finance.map((item) => {
+                        const meta = BILLING_STATUS_META[item.status] || {
+                          label: item.status,
+                          tone: "neutral",
+                        };
+                        return (
+                          <li key={item.id} className={styles.listItem}>
+                            <div className={styles.listBody}>
+                              <span className={styles.listTitle}>
+                                {item.description || item.number || "Cobrança"}
+                              </span>
+                              <span className={styles.listMeta}>
+                                Vencimento {item.due || "—"}
+                                {item.period ? ` · competência ${monthLabel(item.period)}` : ""}
+                                {item.number ? ` · nº ${item.number}` : ""}
+                              </span>
+                            </div>
+                            <span className={styles.financeAmount}>{formatBRL(item.total)}</span>
+                            <Badge tone={meta.tone}>{meta.label}</Badge>
+                          </li>
+                        );
+                      })}
                     </ul>
                   ) : (
-                    <p className={styles.cardSub}>Sem lançamentos financeiros para esta sepultura.</p>
+                    <p className={styles.cardSub}>
+                      Sem lançamentos financeiros para esta sepultura.{" "}
+                      <Link href="/painel/cobrancas">Ver todas as cobranças</Link>
+                    </p>
                   ),
                 },
                 {

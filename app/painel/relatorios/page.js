@@ -173,7 +173,24 @@ const EXPORT_TYPE_LABEL = {
 const REMESSA_TYPES = new Set(["cartorio", "orgao_municipal"]);
 const STATUS_LABEL = { pendente: "Pendente", processando: "Processando", concluido: "Concluído", erro: "Falhou" };
 
-const DEFAULT_PARAMS = { from: "2026-07-01", to: "2026-07-16", cemeteryId: "", format: "pdf" };
+/**
+ * Período padrão dos relatórios: MÊS CORRENTE (dia 1 → hoje), no fuso local.
+ * Era fixo em 01/07/2026 → 16/07/2026, ou seja: em qualquer outro mês a tela
+ * abria filtrando um período que não é o que o operador quer ver.
+ * É uma função (e não uma constante) para que o período seja recalculado a cada
+ * abertura do filtro — uma aba deixada aberta na virada do mês continuaria com
+ * o mês anterior.
+ */
+function defaultParams() {
+  const iso = todayISO();
+  return { from: `${iso.slice(0, 7)}-01`, to: iso, cemeteryId: "", format: "pdf" };
+}
+
+// Rótulo "mês/ano" do mês corrente (ex.: "julho/2026") para as legendas.
+function currentMonthLabel() {
+  const now = new Date();
+  return `${new Intl.DateTimeFormat("pt-BR", { month: "long" }).format(now)}/${now.getFullYear()}`;
+}
 
 function fmtDate(iso) {
   return iso ? String(iso).slice(0, 10).split("-").reverse().join("/") : "";
@@ -264,10 +281,10 @@ function ReportPreview({ report, params }) {
 
 export default function ReportsPage() {
   const [paramsReport, setParamsReport] = useState(null);
-  const [params, setParams] = useState(DEFAULT_PARAMS);
+  const [params, setParams] = useState(defaultParams);
   const [previewReport, setPreviewReport] = useState(null);
   const [exportOpen, setExportOpen] = useState(false);
-  const [exportForm, setExportForm] = useState({ reportId: REPORTS[0].id, ...DEFAULT_PARAMS });
+  const [exportForm, setExportForm] = useState(() => ({ reportId: REPORTS[0].id, ...defaultParams() }));
   const [remessaLoading, setRemessaLoading] = useState(null);
   const [feedback, setFeedback] = useState(null);
 
@@ -306,7 +323,7 @@ export default function ReportsPage() {
   }
 
   function openParams(report) {
-    setParams(DEFAULT_PARAMS);
+    setParams(defaultParams());
     setParamsReport(report);
   }
 
@@ -445,7 +462,7 @@ export default function ReportsPage() {
           <p className={styles.subtitle}>Indicadores de ocupação, sepultamentos, arrecadação e remessas para órgãos públicos</p>
         </div>
         <div className={styles.actions}>
-          <Button onClick={() => { setExportForm({ reportId: REPORTS[0].id, ...DEFAULT_PARAMS }); setExportOpen(true); }}
+          <Button onClick={() => { setExportForm({ reportId: REPORTS[0].id, ...defaultParams() }); setExportOpen(true); }}
             iconLeft={
               <svg viewBox="0 0 16 16" fill="none">
                 <path d="M8 2v8m0 0 3-3m-3 3L5 7M3 12v1a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -458,9 +475,12 @@ export default function ReportsPage() {
       </header>
 
       <div className={styles.stats}>
-        <StatCard label="Gerados no mês" value={String(monthCount)} caption="julho/2026" />
+        {/* legenda derivada do mês corrente — monthCount já conta pelo mês de hoje */}
+        <StatCard label="Gerados no mês" value={String(monthCount)} caption={currentMonthLabel()} />
         <StatCard label="Exportações p/ órgãos públicos" value={String(orgCount)} caption="cartório e prefeitura" />
-        <StatCard label="Agendados" value="2" caption="remessas mensais automáticas" />
+        {/* Card "Agendados" removido: não existe agendamento de remessas na API
+            (data-exports expõe só GET /, GET /:id e POST /) — o valor "2" era
+            inventado. */}
         <StatCard label="Último gerado" value={lastGenerated ? lastGenerated.at : "—"} caption={lastGenerated ? lastGenerated.name : "nenhum relatório"} />
       </div>
 

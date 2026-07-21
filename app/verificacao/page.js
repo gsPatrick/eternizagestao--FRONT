@@ -11,8 +11,38 @@ import FormField from "@/components/molecules/FormField/FormField";
 import Alert from "@/components/molecules/Alert/Alert";
 import OtpInput from "@/components/molecules/OtpInput/OtpInput";
 import AuthVisual from "@/components/organisms/AuthVisual/AuthVisual";
+import { ApiError } from "@/lib/api/client";
+import {
+  requestPasswordReset,
+  verifyPasswordReset,
+  confirmPasswordReset,
+} from "@/lib/api/resources/sessions";
+import { getClientSubdomain } from "@/lib/tenant-subdomain";
 
 const RESEND_SECONDS = 30;
+
+// Traduz o erro da API numa mensagem clara. Mensagens honestas: nada de dizer
+// que deu certo quando a API recusou.
+function mapResetError(err, fallback) {
+  if (!(err instanceof ApiError)) {
+    return { tone: "danger", text: "Falha de conexão com o servidor. Tente novamente." };
+  }
+  if (err.code === "EMAIL_NOT_CONFIGURED" || err.status === 503) {
+    return {
+      tone: "danger",
+      title: "Envio de e-mail indisponível",
+      text: "Não foi possível enviar o código porque o provedor de e-mail da plataforma não está configurado. Procure o administrador do sistema para redefinir sua senha.",
+    };
+  }
+  if (err.status === 429) {
+    return {
+      tone: "warning",
+      title: "Muitas tentativas",
+      text: err.message || "Aguarde alguns minutos antes de tentar novamente.",
+    };
+  }
+  return { tone: "danger", text: err.message || fallback };
+}
 
 function maskEmail(email = "") {
   const [user, domain] = email.split("@");
@@ -42,6 +72,11 @@ function VerificationFlow() {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [passwordError, setPasswordError] = useState("");
+  // Erro da API mostrado em Alert (código inválido/expirado, rate limit, e-mail
+  // não configurado). Separado do erro inline do campo de senha.
+  const [apiError, setApiError] = useState(null);
+  // Cidade: `?t=` (modo path) ou cookie de subdomínio — mesma resolução do login.
+  const tenant = t || getClientSubdomain();
 
   useEffect(() => {
     if (step !== "code" || countdown <= 0) return;
@@ -49,16 +84,33 @@ function VerificationFlow() {
     return () => clearInterval(timer);
   }, [step, countdown]);
 
-  function verifyCode(event) {
+  // Confere o código na API antes de pedir a nova senha. 400 = inválido/expirado
+  // e o usuário PERMANECE nesta etapa.
+  async function verifyCode(event) {
     event.preventDefault();
+    // Acesso direto à URL sem `?email=` — não há o que verificar.
+    if (!email) {
+      setApiError({
+        tone: "danger",
+        text: "Não sabemos para qual e-mail o código foi enviado. Recomece pela tela “Esqueceu a senha?”.",
+      });
+      return;
+    }
+    setApiError(null);
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      await verifyPasswordReset({ email, code, tenant });
       setStep("reset");
-    }, 900);
+    } catch (err) {
+      setApiError(mapResetError(err, "Código inválido ou expirado. Peça um novo código."));
+    } finally {
+      setLoading(false);
+    }
   }
 
-  function resetPassword(event) {
+  // Efetiva a troca de senha na API. Só mostramos "senha redefinida" depois do
+  // 204 — antes disso nada foi salvo.
+  async function resetPassword(event) {
     event.preventDefault();
     if (password.length < 8) {
       setPasswordError("A senha deve ter no mínimo 8 caracteres.");
@@ -69,11 +121,45 @@ function VerificationFlow() {
       return;
     }
     setPasswordError("");
+    setApiError(null);
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      await confirmPasswordReset({ email, code, password, tenant });
       setStep("done");
-    }, 900);
+    } catch (err) {
+      const mapped = mapResetError(err, "Não foi possível redefinir a senha. Tente novamente.");
+      if (err instanceof ApiError && err.code === "WEAK_PASSWORD") {
+        // Problema é a senha: erro inline, sem perder a etapa.
+        setPasswordError(err.message || "Escolha uma senha mais forte.");
+      } else if (err instanceof ApiError && err.status === 400) {
+        // Código expirou/foi usado entre a verificação e a confirmação —
+        // devolve o usuário à etapa do código com a explicação.
+        setCode("");
+        setStep("code");
+        setApiError(mapped);
+      } else {
+        setApiError(mapped);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Reenvia o código de verdade (mesmo endpoint do "esqueci a senha"). O
+  // contador só reinicia se a API aceitou o pedido.
+  async function resendCode() {
+    if (!email) return;
+    setApiError(null);
+    setLoading(true);
+    try {
+      await requestPasswordReset({ email, origin, tenant });
+      setCode("");
+      setCountdown(RESEND_SECONDS);
+    } catch (err) {
+      setApiError(mapResetError(err, "Não foi possível reenviar o código. Tente novamente."));
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -103,18 +189,31 @@ function VerificationFlow() {
           </div>
 
           <form className={styles.form} onSubmit={verifyCode}>
-            <OtpInput value={code} onChange={setCode} />
+            <OtpInput
+              value={code}
+              invalid={Boolean(apiError)}
+              onChange={(v) => {
+                setCode(v);
+                if (apiError) setApiError(null);
+              }}
+            />
             <Button type="submit" size="lg" full loading={loading} disabled={code.length < 6}>
               Verificar código
             </Button>
           </form>
+
+          {apiError && (
+            <Alert tone={apiError.tone} title={apiError.title}>
+              {apiError.text}
+            </Alert>
+          )}
 
           <p className={styles.resend}>
             Não recebeu o código?{" "}
             {countdown > 0 ? (
               <span className={styles.resendWait}>Reenviar em {countdown}s</span>
             ) : (
-              <button type="button" className={styles.link} onClick={() => setCountdown(RESEND_SECONDS)}>
+              <button type="button" className={styles.link} onClick={resendCode} disabled={loading}>
                 Reenviar código
               </button>
             )}
@@ -167,6 +266,12 @@ function VerificationFlow() {
               Redefinir senha
             </Button>
           </form>
+
+          {apiError && (
+            <Alert tone={apiError.tone} title={apiError.title}>
+              {apiError.text}
+            </Alert>
+          )}
         </>
       )}
 
@@ -187,8 +292,10 @@ function VerificationFlow() {
             </p>
           </div>
 
+          {/* Só afirmamos o que o backend garante no contrato: o código é de uso
+              único e já foi invalidado. */}
           <Alert tone="success" title="Conta protegida">
-            Todas as sessões anteriores foram encerradas por segurança.
+            O código utilizado foi invalidado e não pode ser usado novamente.
           </Alert>
 
           <Button size="lg" full onClick={() => router.push(backToLogin)}>

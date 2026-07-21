@@ -67,6 +67,20 @@ function extractSubdomain(host) {
 }
 
 export function middleware(request) {
+  // /design-system é ferramenta INTERNA (paleta/componentes com dados fictícios).
+  // Não é linkada em lugar nenhum, mas responderia por URL direta em produção.
+  // Bloqueamos aqui, e não com notFound() dentro da page: a página é
+  // "use client" e pode ser pré-renderizada estaticamente, então a checagem no
+  // middleware é a única que roda em TODA requisição, antes de servir qualquer
+  // HTML. Em desenvolvimento a rota continua funcionando normalmente.
+  if (
+    process.env.NODE_ENV === "production" &&
+    request.nextUrl.pathname.startsWith("/design-system")
+  ) {
+    // rewrite para um path inexistente → Next serve a página 404 com status 404.
+    return NextResponse.rewrite(new URL("/rota-inexistente-design-system", request.url));
+  }
+
   const host = request.headers.get("host") || "";
   const hostname = host.split(":")[0].toLowerCase().trim();
 

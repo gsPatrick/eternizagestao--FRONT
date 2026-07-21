@@ -11,12 +11,41 @@ import FormField from "@/components/molecules/FormField/FormField";
 import Alert from "@/components/molecules/Alert/Alert";
 import AuthVisual from "@/components/organisms/AuthVisual/AuthVisual";
 import { normalizeEmail, isValidEmail } from "@/lib/masks";
+import { ApiError } from "@/lib/api/client";
+import { requestPasswordReset } from "@/lib/api/resources/sessions";
+import { getClientSubdomain } from "@/lib/tenant-subdomain";
+
+// Traduz o erro da API numa mensagem HONESTA para o usuário. Nunca fingimos que
+// o código foi enviado: se o provedor de e-mail não está configurado, dizemos.
+function mapRequestError(err) {
+  if (!(err instanceof ApiError)) {
+    return { tone: "danger", text: "Não foi possível enviar o código. Verifique sua conexão e tente novamente." };
+  }
+  if (err.code === "EMAIL_NOT_CONFIGURED" || err.status === 503) {
+    return {
+      tone: "danger",
+      title: "Envio de e-mail indisponível",
+      text: "Não foi possível enviar o código porque o provedor de e-mail da plataforma não está configurado. Procure o administrador do sistema para redefinir sua senha.",
+    };
+  }
+  if (err.status === 429) {
+    return {
+      tone: "warning",
+      title: "Muitas tentativas",
+      text: err.message || "Você pediu códigos demais em pouco tempo. Aguarde alguns minutos antes de tentar de novo.",
+    };
+  }
+  return { tone: "danger", text: err.message || "Não foi possível enviar o código. Tente novamente." };
+}
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  // Erro vindo da API (503/429/etc.) — mostrado em Alert, separado do erro de
+  // validação do campo (`error`), que é inline no FormField.
+  const [apiError, setApiError] = useState(null);
   // O fluxo de reset é SEMPRE separado por CIDADE (`t`) e por ORIGEM (`origin`:
   // admin da cidade vs família). Lemos ambos da URL e propagamos adiante.
   // `?t=` só existe no modo path; no subdomínio o cookie carrega a cidade.
@@ -29,18 +58,31 @@ export default function ForgotPasswordPage() {
   const loginPath = reset.origin === "portal" ? "/portal/login" : "/login";
   const backToLogin = `${loginPath}${reset.t ? `?t=${reset.t}` : ""}`;
 
-  function handleSubmit(event) {
+  // Pede o código à API DE VERDADE. Só avança para /verificacao se o backend
+  // aceitou o pedido (202) — se o e-mail não pôde ser enviado, o usuário fica
+  // aqui com a explicação, em vez de esperar um código que nunca chega.
+  async function handleSubmit(event) {
     event.preventDefault();
     if (!isValidEmail(email)) {
       setError("Informe um e-mail válido.");
       return;
     }
     setError("");
+    setApiError(null);
     setLoading(true);
-    setTimeout(() => {
+    try {
+      // A cidade vem do `?t=` (modo path) ou do cookie de subdomínio.
+      await requestPasswordReset({
+        email,
+        origin: reset.origin,
+        tenant: reset.t || getClientSubdomain(),
+      });
       const t = reset.t ? `&t=${reset.t}` : "";
       router.push(`/verificacao?email=${encodeURIComponent(email)}${t}&origin=${reset.origin}`);
-    }, 900);
+    } catch (err) {
+      setApiError(mapRequestError(err));
+      setLoading(false);
+    }
   }
 
   return (
@@ -88,6 +130,7 @@ export default function ForgotPasswordPage() {
                   onChange={(e) => {
                     setEmail(normalizeEmail(e.target.value));
                     if (error) setError("");
+                    if (apiError) setApiError(null);
                   }}
                   required
                 />
@@ -96,6 +139,12 @@ export default function ForgotPasswordPage() {
                 Enviar código
               </Button>
             </form>
+
+            {apiError && (
+              <Alert tone={apiError.tone} title={apiError.title}>
+                {apiError.text}
+              </Alert>
+            )}
 
             <Alert tone="info">
               Por segurança, o código expira em 10 minutos e só pode ser usado uma vez.

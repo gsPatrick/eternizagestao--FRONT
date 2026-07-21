@@ -306,37 +306,34 @@ export default function PortalCobrancasPage() {
                 </div>
 
                 {method === "pix" ? (
-                  <div className={styles.pane}>
-                    <div className={styles.qrWrap}>
-                      <svg className={styles.qr} viewBox="0 0 29 29" shapeRendering="crispEdges" aria-label="QR Code ilustrativo">
-                        <rect width="29" height="29" fill="#fff" />
-                        {/* finder patterns */}
-                        <path d="M0 0h7v7h-7z M1 1v5h5v-5z M2 2h3v3h-3z" fill="var(--color-navy)" fillRule="evenodd" />
-                        <path d="M22 0h7v7h-7z M23 1v5h5v-5z M24 2h3v3h-3z" fill="var(--color-navy)" fillRule="evenodd" />
-                        <path d="M0 22h7v7h-7z M1 23v5h5v-5z M2 24h3v3h-3z" fill="var(--color-navy)" fillRule="evenodd" />
-                        {/* módulos decorativos */}
-                        <g fill="var(--color-navy)">
-                          <rect x="9" y="1" width="1" height="1" /><rect x="11" y="1" width="1" height="1" /><rect x="13" y="2" width="1" height="1" />
-                          <rect x="15" y="1" width="1" height="1" /><rect x="17" y="2" width="1" height="1" /><rect x="19" y="1" width="1" height="1" />
-                          <rect x="9" y="3" width="1" height="1" /><rect x="12" y="4" width="1" height="1" /><rect x="14" y="3" width="1" height="1" /><rect x="18" y="4" width="1" height="1" />
-                          <rect x="1" y="9" width="1" height="1" /><rect x="3" y="9" width="1" height="1" /><rect x="5" y="10" width="1" height="1" /><rect x="2" y="11" width="1" height="1" />
-                          <rect x="9" y="9" width="3" height="3" /><rect x="14" y="9" width="1" height="1" /><rect x="16" y="10" width="1" height="1" /><rect x="18" y="9" width="1" height="1" />
-                          <rect x="20" y="10" width="1" height="1" /><rect x="22" y="9" width="1" height="1" /><rect x="24" y="10" width="1" height="1" /><rect x="26" y="9" width="1" height="1" />
-                          <rect x="9" y="13" width="1" height="1" /><rect x="11" y="14" width="1" height="1" /><rect x="13" y="13" width="2" height="2" /><rect x="17" y="14" width="1" height="1" />
-                          <rect x="19" y="13" width="1" height="1" /><rect x="21" y="14" width="1" height="1" /><rect x="23" y="13" width="1" height="1" /><rect x="25" y="14" width="1" height="1" /><rect x="27" y="13" width="1" height="1" />
-                          <rect x="1" y="14" width="1" height="1" /><rect x="3" y="15" width="1" height="1" /><rect x="5" y="14" width="1" height="1" />
-                          <rect x="9" y="17" width="1" height="1" /><rect x="11" y="18" width="1" height="1" /><rect x="14" y="17" width="1" height="1" /><rect x="16" y="18" width="1" height="1" /><rect x="18" y="17" width="1" height="1" />
-                          <rect x="20" y="18" width="1" height="1" /><rect x="22" y="17" width="2" height="2" /><rect x="26" y="18" width="1" height="1" />
-                          <rect x="1" y="18" width="1" height="1" /><rect x="4" y="19" width="1" height="1" /><rect x="9" y="20" width="1" height="1" /><rect x="12" y="21" width="1" height="1" />
-                          <rect x="9" y="23" width="1" height="1" /><rect x="11" y="24" width="1" height="1" /><rect x="13" y="23" width="1" height="1" /><rect x="15" y="24" width="2" height="2" /><rect x="18" y="23" width="1" height="1" />
-                          <rect x="20" y="24" width="1" height="1" /><rect x="22" y="23" width="1" height="1" /><rect x="24" y="24" width="1" height="1" /><rect x="26" y="23" width="1" height="1" /><rect x="28" y="24" width="1" height="1" />
-                          <rect x="9" y="26" width="1" height="1" /><rect x="12" y="27" width="1" height="1" /><rect x="14" y="26" width="1" height="1" /><rect x="17" y="27" width="1" height="1" /><rect x="19" y="26" width="1" height="1" /><rect x="21" y="27" width="1" height="1" /><rect x="23" y="26" width="2" height="2" /><rect x="27" y="27" width="1" height="1" />
-                        </g>
-                      </svg>
+                  !payment?.pixCode ? (
+                    // Sem PIX emitido pelo gateway: não há QR nem código para
+                    // mostrar. Dizemos a verdade em vez de exibir um QR vazio.
+                    <div className={styles.pane}>
+                      <Alert tone="info" title="PIX ainda não disponível">
+                        Esta cobrança ainda não teve o PIX emitido pela prefeitura.
+                        Procure a administração do cemitério para pagar ou aguarde
+                        o aviso de emissão — nada é perdido enquanto isso.
+                      </Alert>
                     </div>
+                  ) : (
+                  <div className={styles.pane}>
+                    {payment.pixQrImage ? (
+                      <div className={styles.qrWrap}>
+                        {/* QR REAL emitido pelo gateway. Antes havia aqui um SVG
+                            desenhado à mão, decorativo: quem escaneasse não pagava. */}
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          className={styles.qr}
+                          src={payment.pixQrImage}
+                          alt="QR Code do PIX desta cobrança"
+                        />
+                      </div>
+                    ) : null}
                     <p className={styles.paneHint}>
-                      Abra o app do seu banco, escolha pagar com PIX e leia o QR Code, ou copie o código
-                      abaixo.
+                      {payment.pixQrImage
+                        ? "Abra o app do seu banco, escolha pagar com PIX e leia o QR Code, ou copie o código abaixo."
+                        : "Abra o app do seu banco, escolha pagar com PIX e cole o código abaixo."}
                     </p>
                     <div className={styles.codeBox}>
                       <code className={styles.code}>{payment?.pixCode}</code>
@@ -357,19 +354,36 @@ export default function PortalCobrancasPage() {
                       {copied === "pix" ? "Copiado!" : "Copiar código PIX"}
                     </Button>
                   </div>
+                  )
+                ) : !payment?.boletoLine && !payment?.boletoUrl ? (
+                  // Boleto não emitido (ex.: gateway de pagamento ainda não
+                  // configurado pela prefeitura). Estado legítimo e comum — o
+                  // cidadão precisa saber disso, e não receber uma promessa de
+                  // download que nunca acontece.
+                  <div className={styles.pane}>
+                    <Alert tone="info" title="Boleto ainda não emitido">
+                      A prefeitura ainda não emitiu o boleto desta cobrança.
+                      Assim que for emitido, a linha digitável e o PDF aparecem
+                      aqui. Você também pode pagar presencialmente na
+                      administração do cemitério.
+                    </Alert>
+                  </div>
                 ) : (
                   <div className={styles.pane}>
                     <p className={styles.paneHint}>
-                      Use a linha digitável abaixo no app do seu banco ou baixe o boleto em PDF.
+                      {payment?.boletoLine
+                        ? "Use a linha digitável abaixo no app do seu banco ou baixe o boleto em PDF."
+                        : "Baixe o boleto em PDF para pagar no app do seu banco ou em uma agência."}
                     </p>
+                    {payment?.boletoLine && (
+                      <>
                     <div className={styles.codeBox}>
-                      <code className={styles.code}>{payment?.boletoLine}</code>
+                      <code className={styles.code}>{payment.boletoLine}</code>
                     </div>
                     <Button
                       variant="primary"
                       size="md"
                       full
-                      disabled={!payment?.boletoLine}
                       onClick={() => copy(payment.boletoLine, "boleto")}
                       iconLeft={
                         <svg viewBox="0 0 16 16" fill="none">
@@ -380,15 +394,16 @@ export default function PortalCobrancasPage() {
                     >
                       {copied === "boleto" ? "Copiado!" : "Copiar linha digitável"}
                     </Button>
+                      </>
+                    )}
+                    {/* PDF só é oferecido quando existe URL real do boleto —
+                        sem URL o botão simplesmente não aparece. */}
+                    {payment?.boletoUrl && (
                     <Button
                       variant="secondary"
                       size="md"
                       full
-                      onClick={() =>
-                        payment?.boletoUrl
-                          ? window.open(payment.boletoUrl, "_blank", "noopener")
-                          : window.alert("O download do boleto em PDF começará em instantes.")
-                      }
+                      onClick={() => window.open(payment.boletoUrl, "_blank", "noopener")}
                       iconLeft={
                         <svg viewBox="0 0 16 16" fill="none">
                           <path d="M8 2v8m0 0L5 7m3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -398,16 +413,21 @@ export default function PortalCobrancasPage() {
                     >
                       Baixar boleto (PDF)
                     </Button>
+                    )}
                   </div>
                 )}
 
-                <p className={styles.reassure}>
-                  <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                    <circle cx="8" cy="8" r="6.4" stroke="currentColor" strokeWidth="1.3" />
-                    <path d="M5.4 8.2l1.8 1.8 3.4-3.9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                  O pagamento é confirmado automaticamente em alguns minutos.
-                </p>
+                {/* a promessa de baixa automática só vale se existe algum meio
+                    de pagamento emitido — sem isso não há o que confirmar */}
+                {(payment?.pixCode || payment?.boletoLine || payment?.boletoUrl) && (
+                  <p className={styles.reassure}>
+                    <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                      <circle cx="8" cy="8" r="6.4" stroke="currentColor" strokeWidth="1.3" />
+                      <path d="M5.4 8.2l1.8 1.8 3.4-3.9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                    O pagamento é confirmado automaticamente em alguns minutos.
+                  </p>
+                )}
               </>
             )}
           </div>

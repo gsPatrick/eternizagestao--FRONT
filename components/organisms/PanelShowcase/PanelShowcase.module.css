@@ -54,6 +54,18 @@
   text-wrap: pretty;
 }
 
+/* Aviso de conteúdo ilustrativo — discreto, mas sempre legível (não é
+   decoração: é a ressalva de que os dados do painel são fictícios). */
+.demoNote {
+  margin-top: 12px;
+  max-width: 62ch;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--color-slate);
+  opacity: 0.85;
+  text-wrap: pretty;
+}
+
 /* ---------- palco do produto (estilo Linear) ---------- */
 .stage {
   position: relative;

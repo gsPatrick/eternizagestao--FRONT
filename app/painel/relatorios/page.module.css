@@ -415,9 +415,11 @@
 }
 
 /* ---------- específicos de concessões ---------- */
+/* 3 colunas desde a remoção do card "Agendados" (não havia agendamento real
+   de remessas na API) — com 4 colunas sobrava uma célula vazia. */
 .stats {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: var(--space-4);
 }
 

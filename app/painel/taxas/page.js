@@ -125,7 +125,10 @@ export default function FeesPage() {
   const [exportOpen, setExportOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
-  const [adjustForm, setAdjustForm] = useState({ value: "", reason: "IPCA 2026 (+4,8%)" });
+  // Motivo do reajuste começa VAZIO: o padrão anterior ("IPCA 2026 (+4,8%)") era
+  // um índice INVENTADO que iria para o histórico oficial de reajustes da taxa
+  // sem ninguém digitar nada. O operador informa o índice real.
+  const [adjustForm, setAdjustForm] = useState({ value: "", reason: "" });
   const [applyType, setApplyType] = useState("");
 
   // ---- dados da API ----
@@ -576,7 +579,8 @@ export default function FeesPage() {
                   <Button variant="secondary" loading={saving} onClick={toggleStatus}>
                     {detail.status === "ativa" ? "Suspender" : "Reativar"}
                   </Button>
-                  <Button variant="secondary" loading={saving} onClick={() => { setFormError(""); setAdjustForm({ value: String(detail.amount), reason: "IPCA 2026 (+4,8%)" }); setAdjustOpen(true); }}>
+                  {/* motivo sempre em branco — nada de índice pré-inventado */}
+                  <Button variant="secondary" loading={saving} onClick={() => { setFormError(""); setAdjustForm({ value: String(detail.amount), reason: "" }); setAdjustOpen(true); }}>
                     Reajustar valor
                   </Button>
                 </>
@@ -643,7 +647,11 @@ export default function FeesPage() {
             <Input value={adjustForm.value} onChange={(e) => setAdjustForm({ ...adjustForm, value: e.target.value })} inputMode="decimal" placeholder="R$ 0,00" />
           </FormField>
           <FormField label="Motivo / índice" required hint="Registrado no histórico de reajustes">
-            <Input value={adjustForm.reason} onChange={(e) => setAdjustForm({ ...adjustForm, reason: e.target.value })} />
+            <Input
+              value={adjustForm.reason}
+              onChange={(e) => setAdjustForm({ ...adjustForm, reason: e.target.value })}
+              placeholder="Ex.: IPCA do período, decreto municipal…"
+            />
           </FormField>
           <Alert tone="info">O novo valor vale a partir da próxima cobrança gerada.</Alert>
         </div>
@@ -674,7 +682,8 @@ export default function FeesPage() {
                 ))}
               </Select>
             </FormField>
-            <FormField label="Índice de reajuste" required hint="Ex.: +4,8% (IPCA 2026)">
+            {/* hint sem ano fixo — o índice é sempre informado pelo operador */}
+            <FormField label="Índice de reajuste" required hint="Ex.: +4,8% (índice do período)">
               <Input value={batchForm.percentText} onChange={(e) => setBatchForm({ ...batchForm, percentText: e.target.value })} placeholder="+4,8%" />
             </FormField>
           </div>

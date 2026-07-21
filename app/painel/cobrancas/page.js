@@ -40,7 +40,33 @@ import DataTable from "@/components/organisms/DataTable/DataTable";
 import ExportModal from "@/components/molecules/ExportModal/ExportModal";
 import FileViewer from "@/components/organisms/FileViewer/FileViewer";
 
-const TODAY = "16/07/2026";
+import { todayISO, toLocalISODate } from "@/lib/date-local";
+
+/**
+ * Datas dos formulários — nada de data fixa no código.
+ * `addDays` devolve YYYY-MM-DD no fuso LOCAL (via toLocalISODate); usar
+ * `toISOString()` aqui devolveria UTC e, depois das 21h no Brasil, gravaria o
+ * dia seguinte na baixa de pagamento e no vencimento.
+ */
+function addDays(days) {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return toLocalISODate(d);
+}
+
+// Vencimento padrão da nova cobrança: HOJE + 14 dias. Critério: prazo usual de
+// boleto emitido no balcão (duas semanas dão tempo de o pagador receber e pagar
+// sem cair em atraso), e é relativo a hoje — antes era "2026-07-30" fixo, que
+// já nasceria vencido em qualquer dia posterior.
+const DEFAULT_DUE_DAYS = 14;
+
+// Geração em lote: gera até o ÚLTIMO DIA DO MÊS SEGUINTE (competência corrente
+// + a próxima), em vez da data fixa "2026-08-31".
+function defaultGenerateUntil() {
+  const now = new Date();
+  // dia 0 do mês +2 = último dia do mês +1
+  return toLocalISODate(new Date(now.getFullYear(), now.getMonth() + 2, 0));
+}
 
 const STATUS_META = {
   pendente: { label: "Pendente", tone: "warning" },
@@ -91,9 +117,14 @@ export default function BillingsPage() {
   const [exportOpen, setExportOpen] = useState(false);
   const [preview, setPreview] = useState(null);
   const [copied, setCopied] = useState("");
-  const [payForm, setPayForm] = useState({ method: "pix", date: "2026-07-16" });
-  const [newForm, setNewForm] = useState({ payerPersonId: "", graveId: "", description: "", origin: "servico", amount: "", dueDate: "2026-07-30" });
-  const [genForm, setGenForm] = useState({ until: "2026-08-31" });
+  // Baixa de pagamento: data de HOJE (o operador registra o que acabou de
+  // receber). Era "2026-07-16" fixo — gravaria o pagamento com data errada.
+  const [payForm, setPayForm] = useState(() => ({ method: "pix", date: todayISO() }));
+  const [newForm, setNewForm] = useState(() => ({
+    payerPersonId: "", graveId: "", description: "", origin: "servico", amount: "",
+    dueDate: addDays(DEFAULT_DUE_DAYS),
+  }));
+  const [genForm, setGenForm] = useState(() => ({ until: defaultGenerateUntil() }));
   const [actionError, setActionError] = useState("");
 
   // ---- dados ao vivo ------------------------------------------------------
@@ -231,7 +262,10 @@ export default function BillingsPage() {
         dueDate: newForm.dueDate,
       });
       setNewOpen(false);
-      setNewForm({ payerPersonId: "", graveId: "", description: "", origin: "servico", amount: "", dueDate: "2026-07-30" });
+      setNewForm({
+        payerPersonId: "", graveId: "", description: "", origin: "servico", amount: "",
+        dueDate: addDays(DEFAULT_DUE_DAYS), // recalculado a cada limpeza do form
+      });
       await refreshAll();
     } catch (e) {
       setActionError(e.message);
@@ -437,7 +471,9 @@ export default function BillingsPage() {
                   <Button variant="danger" loading={cancelM.loading} disabled={detailBusy} onClick={cancel}>Cancelar</Button>
                   <span className={styles.footSpacer} />
                   <Button variant="secondary" loading={reissueM.loading} disabled={detailBusy} onClick={reissue}>2ª via</Button>
-                  <Button variant="secondary" disabled={detailBusy} onClick={() => setPayOpen(true)}>Registrar pagamento</Button>
+                  {/* Reabre a baixa sempre com a data de hoje (sessões longas
+                      podem atravessar a virada do dia). */}
+                  <Button variant="secondary" disabled={detailBusy} onClick={() => { setPayForm((f) => ({ ...f, date: todayISO() })); setPayOpen(true); }}>Registrar pagamento</Button>
                 </>
               )}
               {detail.status === "pago" && <span className={styles.footSpacer} />}

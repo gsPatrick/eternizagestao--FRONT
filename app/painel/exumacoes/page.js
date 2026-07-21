@@ -49,6 +49,10 @@ import {
 import { listCemeteries } from "@/lib/api/resources/graves";
 import { listDeceased } from "@/lib/api/resources/deceased";
 import { listPeople } from "@/lib/api/resources/people";
+import { todayISO, toLocalISODate } from "@/lib/date-local";
+
+// Ano corrente (fuso local) — usado nos rótulos de período dos indicadores.
+const CURRENT_YEAR = todayISO().slice(0, 4);
 
 // Resolve o nome digitado (solicitante) para o id de uma Pessoa real: tenta a
 // lista já carregada (match exato, case-insensitive) e, se não achar, busca na
@@ -101,7 +105,15 @@ export default function ExhumationsPage() {
   const [detail, setDetail] = useState(null); // id do processo aberto
   const [niche, setNiche] = useState(null); // nicho aberto
   const [uploadOpen, setUploadOpen] = useState(false);
-  const [scheduleDate, setScheduleDate] = useState("2026-08-14");
+  // Data do agendamento: sugere HOJE + 7 dias (fuso local). Critério: a exumação
+  // é marcada com alguns dias de antecedência para avisar a família e organizar a
+  // equipe; uma semana é o prazo praticado. Era "2026-08-14" fixo — a partir
+  // dessa data toda exumação seria agendada para um dia no passado.
+  const [scheduleDate, setScheduleDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 7);
+    return toLocalISODate(d);
+  });
   const [destForm, setDestForm] = useState({ type: "ossario", niche: "", detail: "" });
   const [selectedOssuary, setSelectedOssuary] = useState("");
   const [newForm, setNewForm] = useState({ deceasedId: "", requester: "", reason: "" });
@@ -432,7 +444,8 @@ export default function ExhumationsPage() {
                 <section className={styles.stats}>
                   <StatCard label="Em andamento" value={String(inProgress)} caption="solicitada → agendada" />
                   <StatCard label="Aguardando autorização" value={String(awaiting)} deltaTone="danger" caption="exigem análise" />
-                  <StatCard label="Realizadas no ano" value={String(stats.performedThisYear ?? 0)} caption="2026" />
+                  {/* legenda derivada do ano corrente — o valor vem de performedThisYear */}
+                  <StatCard label="Realizadas no ano" value={String(stats.performedThisYear ?? 0)} caption={CURRENT_YEAR} />
                   <StatCard label="Nichos livres" value={String(freeNiches.length)} caption={cemetery?.name || "Ossário"} />
                 </section>
 

@@ -8,7 +8,6 @@ import Input from "@/components/atoms/Input/Input";
 import Select from "@/components/atoms/Select/Select";
 import Textarea from "@/components/atoms/Textarea/Textarea";
 import Badge from "@/components/atoms/Badge/Badge";
-import Switch from "@/components/atoms/Switch/Switch";
 import Avatar from "@/components/atoms/Avatar/Avatar";
 import Skeleton from "@/components/atoms/Skeleton/Skeleton";
 import FormField from "@/components/molecules/FormField/FormField";
@@ -27,6 +26,8 @@ import {
   sendNotification,
   retryNotification,
   normalizeNotification,
+  getNotificationAutomations,
+  normalizeAutomation,
 } from "@/lib/api/resources/notifications";
 
 const NOTIF_TYPES = {
@@ -45,42 +46,6 @@ const NOTIF_STATUS = {
   lida: { label: "Lida", tone: "success" },
   erro: { label: "Erro", tone: "danger" },
 };
-
-const INITIAL_RULES = [
-  {
-    id: "vencimento", name: "Lembrete de vencimento", channel: "WhatsApp",
-    active: true, lastRun: "16/07/2026 06:00", daysBefore: 5,
-    template: "Olá, {{nome}}! A taxa de manutenção do jazigo {{jazigo}} vence em {{vencimento}}. Valor: {{valor}}. Emita a 2ª via em: {{link_2via}}",
-  },
-  {
-    id: "cobranca_vencida", name: "Cobrança vencida", channel: "WhatsApp",
-    active: true, lastRun: "16/07/2026 07:30",
-    desc: "Dispara no dia seguinte ao vencimento, com o valor atualizado e o link da 2ª via.",
-    template: "Olá, {{nome}}! A taxa de manutenção do jazigo {{jazigo}} venceu em {{vencimento}}. Valor atualizado: {{valor}}. Regularize em: {{link_2via}}",
-  },
-  {
-    id: "pagamento", name: "Pagamento confirmado", channel: "WhatsApp",
-    active: true, lastRun: "15/07/2026 14:22",
-    desc: "Enviado imediatamente após a baixa do pagamento, com o recibo emitido.",
-    template: "Olá, {{nome}}! Confirmamos o pagamento de {{valor}} referente à taxa do jazigo {{jazigo}}. Obrigado!",
-  },
-  {
-    id: "agendamento", name: "Lembrete de agendamento", channel: "WhatsApp",
-    active: true, lastRun: "16/07/2026 08:00",
-    desc: "Dispara 1 dia antes de velórios e sepultamentos agendados.",
-    template: "Olá, {{nome}}! Lembrete: o agendamento no jazigo {{jazigo}} é em {{data_agendamento}}, no Cemitério Municipal Jardim da Paz.",
-  },
-  {
-    id: "autorizacao", name: "Autorização emitida", channel: "WhatsApp e E-mail",
-    active: false, lastRun: "13/07/2026 16:05",
-    desc: "Avisa o interessado quando o documento é assinado eletronicamente, com o link de acesso.",
-    template: "Olá, {{nome}}! A autorização referente ao jazigo {{jazigo}} foi emitida e assinada eletronicamente. Acesse em: {{link_2via}}",
-  },
-];
-
-const RULE_VARIABLES = [
-  "{{nome}}", "{{jazigo}}", "{{valor}}", "{{vencimento}}", "{{link_2via}}", "{{data_agendamento}}",
-];
 
 const FILTERS = [
   { key: "todas", label: "Todas" },
@@ -142,16 +107,12 @@ const TIMELINE_STEPS = [
 const EMPTY_AVULSA = { to: "", channel: "whatsapp", message: "" };
 
 export default function NotificationsPage() {
-  const [rules, setRules] = useState(INITIAL_RULES);
   const [filter, setFilter] = useState("todas");
   const [query, setQuery] = useState("");
   const [detailId, setDetailId] = useState(null);
   const [avulsaOpen, setAvulsaOpen] = useState(false);
   const [avulsa, setAvulsa] = useState(EMPTY_AVULSA);
-  const [ruleEditing, setRuleEditing] = useState(null);
-  const [ruleOpen, setRuleOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState(null);
 
   // Lista real (a página não tem paginação visual — carrega o lote recente e
@@ -163,6 +124,20 @@ export default function NotificationsPage() {
   const notifs = useMemo(
     () => (data?.data ?? []).map(normalizeNotification).filter(Boolean),
     [data]
+  );
+
+  // Estado REAL do agendador — GET /notifications/automations (somente leitura).
+  const {
+    data: autoData,
+    loading: autoLoading,
+    error: autoError,
+    refetch: refetchAuto,
+  } = useResource(({ signal }) => getNotificationAutomations({ signal }), []);
+
+  const scheduler = autoData?.scheduler || null;
+  const automations = useMemo(
+    () => (autoData?.automations ?? []).map(normalizeAutomation).filter(Boolean),
+    [autoData]
   );
 
   const { mutate: doSend, loading: sending } = useMutation(sendNotification);
@@ -191,11 +166,6 @@ export default function NotificationsPage() {
       return true;
     });
   }, [notifs, filter, query]);
-
-  function withSaving(fn) {
-    setSaving(true);
-    setTimeout(() => { fn(); setSaving(false); }, 850);
-  }
 
   function flash(message, tone = "success") {
     setFeedback({ message, tone });
@@ -227,33 +197,6 @@ export default function NotificationsPage() {
     } catch (e) {
       flash(e.message || "Não foi possível reenviar a notificação.", "danger");
     }
-  }
-
-  function toggleRule(id) {
-    const rule = rules.find((r) => r.id === id);
-    setRules((prev) => prev.map((r) => (r.id === id ? { ...r, active: !r.active } : r)));
-    flash(rule.active ? `Automação "${rule.name}" pausada.` : `Automação "${rule.name}" ativada.`);
-  }
-
-  function changeDays(value) {
-    setRules((prev) => prev.map((r) => (r.id === "vencimento" ? { ...r, daysBefore: Number(value) } : r)));
-    flash(`Lembrete de vencimento agora dispara ${value} dias antes.`);
-  }
-
-  function saveRuleTemplate() {
-    withSaving(() => {
-      setRules((prev) => prev.map((r) => (r.id === ruleEditing.id ? { ...r, template: ruleEditing.template } : r)));
-      setRuleOpen(false);
-      setRuleEditing(null);
-      flash("Mensagem da automação atualizada.");
-    });
-  }
-
-  function ruleDesc(rule) {
-    if (rule.id === "vencimento") {
-      return `Dispara automaticamente ${rule.daysBefore} dias antes do vencimento da taxa de manutenção.`;
-    }
-    return rule.desc;
   }
 
   const columns = [
@@ -373,56 +316,131 @@ export default function NotificationsPage() {
     sentTabContent
   );
 
-  const rulesTab = (
+  // Aba Automações — RETRATO do que a API realmente agenda. Somente leitura:
+  // não existe endpoint para ligar/desligar nem para editar template, então a
+  // tela não oferece esses controles.
+  const scheduledCount = automations.filter((a) => a.scheduled).length;
+  const anyScheduled = scheduledCount > 0;
+
+  const rulesTabContent = (
     <div className={styles.tabContent}>
+      {scheduler && !scheduler.enabled && (
+        <Alert tone="danger" title="Avisos automáticos NÃO estão sendo enviados">
+          O agendador está desligado{scheduler.reason ? ` — ${scheduler.reason}` : ""}. Nenhuma
+          das rotinas abaixo dispara: cobranças vencidas e taxas a vencer não geram aviso
+          nenhum ao cidadão. Apenas os envios manuais (aba <strong>Enviadas</strong>)
+          funcionam.
+          {scheduler.howToEnable && <> {scheduler.howToEnable}</>}
+        </Alert>
+      )}
+
+      {/* Agendador no ar, mas sem rotina registrada: o worker nunca subiu. */}
+      {scheduler && scheduler.enabled && !anyScheduled && (
+        <Alert tone="warning" title="Nenhuma rotina está agendada">
+          O agendador está no ar, mas nenhuma das rotinas abaixo está registrada — ou seja,
+          nenhum aviso automático será disparado.
+          {scheduler.howToEnable && <> {scheduler.howToEnable}</>}
+        </Alert>
+      )}
+
+      {scheduler && scheduler.enabled && anyScheduled && (
+        <Alert tone="success" title="Agendador ativo">
+          O serviço de agendamento está no ar e dispara as rotinas abaixo nos horários
+          indicados.
+        </Alert>
+      )}
+
+      <div className={styles.stats}>
+        <StatCard
+          label="Rotinas automáticas"
+          value={String(automations.length)}
+          caption="rotinas existentes no sistema"
+        />
+        <StatCard
+          label="Agendadas agora"
+          value={String(scheduledCount)}
+          caption={scheduler?.enabled ? "registradas na fila" : "agendador desligado"}
+        />
+        <StatCard
+          label="Agendador"
+          value={scheduler?.enabled ? "Ativo" : "Desligado"}
+          caption={scheduler?.enabled ? "fila de execução no ar" : scheduler?.reason || "sem fila"}
+        />
+      </div>
+
       <div className={styles.typesHead}>
         <p className={styles.typesHint}>
-          Regras que disparam sozinhas conforme os eventos do sistema — vencimentos,
-          pagamentos, agendamentos e assinaturas. Variáveis entre <code>{"{{ }}"}</code> são
-          substituídas no envio.
+          Rotinas que o sistema executa sozinho, no horário indicado. Este é o estado real:
+          o que não estiver agendado simplesmente não dispara. Não há edição de mensagem
+          nem chave de liga/desliga — as rotinas são definidas na configuração do serviço.
         </p>
       </div>
+
       <div className={styles.ruleList}>
-        {rules.map((rule) => (
-          <article key={rule.id} className={`${styles.ruleCard} ${!rule.active ? styles.ruleCardInactive : ""}`}>
-            <div className={styles.ruleSwitch}>
-              <Switch checked={rule.active} onChange={() => toggleRule(rule.id)} />
-            </div>
+        {automations.map((rule) => (
+          <article
+            key={rule.key}
+            className={`${styles.ruleCard} ${!rule.scheduled ? styles.ruleCardInactive : ""}`}
+          >
             <div className={styles.ruleMain}>
               <span className={styles.ruleName}>{rule.name}</span>
-              <p className={styles.ruleDesc}>{ruleDesc(rule)}</p>
+              <p className={styles.ruleDesc}>{rule.description}</p>
               <div className={styles.ruleMeta}>
-                <span className={styles.ruleMetaItem}>
-                  <span className={rule.channel.includes("WhatsApp") ? styles.channelWhatsapp : styles.channelEmail}>
-                    <WhatsAppIcon />
+                {rule.schedule && (
+                  <span className={styles.ruleMetaItem}>Horário: {rule.schedule}</span>
+                )}
+                {rule.channelsLabel && (
+                  <span className={styles.ruleMetaItem}>
+                    <span className={rule.hasWhatsapp ? styles.channelWhatsapp : styles.channelEmail}>
+                      {rule.hasWhatsapp ? <WhatsAppIcon /> : <MailIcon />}
+                    </span>
+                    {rule.channelsLabel}
                   </span>
-                  {rule.channel}
+                )}
+                {rule.nextRun && (
+                  <span className={styles.ruleMetaItem}>Próxima execução: {rule.nextRun}</span>
+                )}
+                {/* Sem carimbo confiável, a tela DIZ que não há registro — nunca inventa. */}
+                <span className={styles.ruleMetaItem}>
+                  {rule.lastRun
+                    ? `Última execução: ${rule.lastRun}${
+                        rule.lastRunNotified !== null ? ` · ${rule.lastRunNotified} aviso(s)` : ""
+                      }`
+                    : "Sem registro de execução"}
                 </span>
-                <span className={styles.ruleMetaItem}>Última execução: {rule.lastRun}</span>
-                {rule.active ? <Badge tone="success" dot>Ativa</Badge> : <Badge tone="neutral">Pausada</Badge>}
+                {rule.scheduled ? (
+                  <Badge tone="success" dot>Agendada</Badge>
+                ) : (
+                  <Badge tone="danger">Não agendada</Badge>
+                )}
               </div>
-              {rule.id === "vencimento" && (
-                <div className={styles.ruleDays}>
-                  <span>Antecedência</span>
-                  <div className={styles.ruleDaysSelect}>
-                    <Select value={String(rule.daysBefore)} onChange={(e) => changeDays(e.target.value)}>
-                      <option value="3">3 dias antes</option>
-                      <option value="5">5 dias antes</option>
-                      <option value="10">10 dias antes</option>
-                    </Select>
-                  </div>
-                </div>
+              {rule.lastRunError && (
+                <p className={styles.ruleDesc}>Último erro: {rule.lastRunError}</p>
               )}
-            </div>
-            <div className={styles.ruleActions}>
-              <Button variant="secondary" size="sm" onClick={() => { setRuleEditing({ ...rule }); setRuleOpen(true); }}>
-                Editar mensagem
-              </Button>
             </div>
           </article>
         ))}
       </div>
     </div>
+  );
+
+  const rulesTab = autoLoading ? (
+    <div className={styles.tabContent}>
+      <Skeleton variant="row" count={3} />
+    </div>
+  ) : autoError ? (
+    <div className={styles.tabContent}>
+      <ErrorState onRetry={refetchAuto} />
+    </div>
+  ) : !automations.length ? (
+    <div className={styles.tabContent}>
+      <EmptyState
+        title="Nenhuma rotina automática configurada"
+        message="Este sistema não tem nenhuma automação de aviso registrada. Os envios continuam disponíveis manualmente, pela aba Enviadas."
+      />
+    </div>
+  ) : (
+    rulesTabContent
   );
 
   return (
@@ -459,7 +477,7 @@ export default function NotificationsPage() {
       <Tabs
         items={[
           { label: "Enviadas", count: notifs.length, content: sentTab },
-          { label: "Automações", count: rules.length, content: rulesTab },
+          { label: "Automações", count: automations.length, content: rulesTab },
         ]}
       />
 
@@ -567,51 +585,6 @@ export default function NotificationsPage() {
             acompanhamento de entrega e leitura.
           </Alert>
         </div>
-      </Modal>
-
-      {/* ---------- editar mensagem da automação ---------- */}
-      <Modal
-        open={ruleOpen}
-        onClose={() => { setRuleOpen(false); setRuleEditing(null); }}
-        title="Editar mensagem"
-        subtitle={ruleEditing?.name || ""}
-        width={620}
-        footer={
-          <>
-            <Button variant="ghost" onClick={() => { setRuleOpen(false); setRuleEditing(null); }}>Cancelar</Button>
-            <Button loading={saving} disabled={!ruleEditing?.template?.trim()} onClick={saveRuleTemplate}>
-              Salvar mensagem
-            </Button>
-          </>
-        }
-      >
-        {ruleEditing && (
-          <div className={styles.form}>
-            <FormField label="Modelo da mensagem" required hint="use as variáveis abaixo — substituídas no envio">
-              <Textarea
-                rows={5}
-                value={ruleEditing.template}
-                onChange={(e) => setRuleEditing({ ...ruleEditing, template: e.target.value })}
-                placeholder="Olá, {{nome}}! …"
-              />
-            </FormField>
-            <div className={styles.varsBox}>
-              <span className={styles.sectionLabel}>Variáveis disponíveis</span>
-              <div className={styles.varsList}>
-                {RULE_VARIABLES.map((v) => (
-                  <button
-                    key={v}
-                    type="button"
-                    className={styles.varChip}
-                    onClick={() => setRuleEditing({ ...ruleEditing, template: `${ruleEditing.template} ${v}`.trim() })}
-                  >
-                    {v}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
       </Modal>
 
       <ExportModal

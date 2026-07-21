@@ -29,8 +29,18 @@ import {
   adaptDocument, adaptTemplate, adaptSignature, fetchDocumentPdf,
   getDocumentSettings, updateDocumentSettings,
 } from "@/lib/api/resources/documents";
+import { getUser } from "@/lib/api/session";
+import { todayISO } from "@/lib/date-local";
 
-const YEAR = 2026;
+// Ano da numeração/consulta de documentos. ERA FIXO em 2026 — a partir de
+// 01/01/2027 a tela abriria VAZIA (os documentos existem na API, mas nunca eram
+// buscados). Agora o padrão é o ano CORRENTE (fuso local, via todayISO) e o
+// operador pode voltar em anos anteriores pelo seletor do cabeçalho.
+const CURRENT_YEAR = Number(todayISO().slice(0, 4));
+
+// Anos oferecidos no seletor: o corrente e os 5 anteriores (arquivo consultável
+// sem precisar de configuração; a numeração sequencial é por tipo e ano).
+const YEAR_OPTIONS = Array.from({ length: 6 }, (_, i) => CURRENT_YEAR - i);
 
 const DOC_TYPES = {
   certidao_perpetuidade: { label: "Certidão de Perpetuidade", short: "CP", tone: "navy" },
@@ -103,10 +113,20 @@ function docLabel(d) {
   return `${safeType(d.type).short} ${d.formattedNumber}`;
 }
 
+// Ano da numeração de um documento, lido do próprio formattedNumber
+// ("0007/2026" → "2026"). Nada de ano fixo: um documento de 2026 continua
+// exibindo 2026 quando a tela for aberta em 2027.
+function numberYear(d) {
+  const y = String(d?.formattedNumber || "").split("/")[1];
+  return y || String(CURRENT_YEAR);
+}
+
 // Rótulo do documento original de uma 2ª via, quando a associação está disponível.
+// A API não devolve o formattedNumber do original na listagem, só o número; o ano
+// usado é o da própria 2ª via (caso normal — a reemissão é do mesmo exercício).
 function originalLabel(d) {
   if (d.originalType != null && d.originalNumber != null) {
-    return `${safeType(d.originalType).short} ${String(d.originalNumber).padStart(4, "0")}/${YEAR}`;
+    return `${safeType(d.originalType).short} ${String(d.originalNumber).padStart(4, "0")}/${numberYear(d)}`;
   }
   return null;
 }
@@ -119,6 +139,9 @@ export default function DocumentsPage() {
   const SIGNATURE_ENABLED = false;
 
   const [filter, setFilter] = useState("todos");
+  // Ano consultado — começa no ano corrente (nunca em um ano fixo no código) e o
+  // operador pode voltar para consultar o arquivo de exercícios anteriores.
+  const [year, setYear] = useState(CURRENT_YEAR);
   const [query, setQuery] = useState("");
   const [detailId, setDetailId] = useState(null);
 
@@ -128,7 +151,20 @@ export default function DocumentsPage() {
   const [issueForm, setIssueForm] = useState({ graveCode: "", personName: "", obs: "" });
 
   const [signTarget, setSignTarget] = useState(null);
-  const [signer, setSigner] = useState({ name: "Dra. Regina Fontes", role: "Diretora do órgão gestor", email: "regina@prefeitura.gov.br" });
+  // Signatário começa VAZIO — o padrão anterior era uma pessoa fictícia
+  // ("Dra. Regina Fontes / regina@prefeitura.gov.br") que iria para produção e
+  // poderia ser enviada para assinatura sem ninguém perceber. Ao abrir o modal
+  // pré-preenchemos com o usuário LOGADO (nome/e-mail reais da sessão); o cargo
+  // fica em branco porque o `role` da sessão é o papel de acesso do sistema
+  // (admin/operador), não o cargo funcional que vai no documento.
+  const [signer, setSigner] = useState({ name: "", role: "", email: "" });
+
+  // Abre o envio para assinatura já com os dados do usuário logado.
+  function openSignature(doc) {
+    const u = getUser();
+    setSigner({ name: u?.name || "", role: "", email: u?.email || "" });
+    setSignTarget(doc);
+  }
 
   const [tplEditing, setTplEditing] = useState(null);
   const [tplOpen, setTplOpen] = useState(false);
@@ -141,7 +177,7 @@ export default function DocumentsPage() {
   const [preview, setPreview] = useState(null); // arquivo aberto no FileViewer (modal)
 
   // ---- dados ----
-  const docsRes = useResource(({ signal }) => listDocuments({ perPage: 200, year: YEAR }, { signal }), []);
+  const docsRes = useResource(({ signal }) => listDocuments({ perPage: 200, year }, { signal }), [year]);
   const tplRes = useResource(({ signal }) => listTemplates({ perPage: 200 }, { signal }), []);
   // Texto legal por cidade (injetado nos modelos oficiais como {{texto_legal}}).
   const legalRes = useResource(({ signal }) => getDocumentSettings({ signal }), []);
@@ -210,8 +246,10 @@ export default function DocumentsPage() {
     return max + 1;
   }
 
+  // Prévia do próximo número. Sempre no ano CORRENTE — a emissão acontece hoje,
+  // mesmo que o operador esteja consultando o arquivo de um ano anterior.
   function previewNumber(type) {
-    return `${safeType(type).short} ${String(nextNumber(type)).padStart(4, "0")}/${YEAR}`;
+    return `${safeType(type).short} ${String(nextNumber(type)).padStart(4, "0")}/${CURRENT_YEAR}`;
   }
 
   function flash(message, tone = "success") {
@@ -420,8 +458,8 @@ export default function DocumentsPage() {
     documentsTab = (
       <div className={styles.tabContent}>
         <EmptyState
-          title="Nenhum documento emitido"
-          message="Emita certidões, autorizações e recibos com numeração sequencial automática."
+          title={`Nenhum documento emitido em ${year}`}
+          message="Emita certidões, autorizações e recibos com numeração sequencial automática — ou troque o ano no cabeçalho para consultar exercícios anteriores."
           action={<Button onClick={openIssue}>Emitir documento</Button>}
         />
       </div>
@@ -512,7 +550,7 @@ export default function DocumentsPage() {
                 <span className={styles.typeName}>{tpl.name}</span>
                 <p className={styles.typeDesc}>{tpl.content.slice(0, 90)}…</p>
                 <div className={styles.typeMeta}>
-                  <span className={styles.typeUse}>{tpl.uses} emissões · numeração {safeType(tpl.type).short}-####/{YEAR}</span>
+                  <span className={styles.typeUse}>{tpl.uses} emissões · numeração {safeType(tpl.type).short}-####/{CURRENT_YEAR}</span>
                   <span className={styles.typeUse}>atualizado {tpl.updated}</span>
                 </div>
                 <Button variant="secondary" size="sm" onClick={() => { setTplEditing({ ...tpl }); setTplOpen(true); }}>
@@ -534,6 +572,18 @@ export default function DocumentsPage() {
           <p className={styles.subtitle}>Certidões, autorizações e recibos com numeração sequencial</p>
         </div>
         <div className={styles.actions}>
+          {/* Ano do exercício consultado — fica no cabeçalho (e não na barra da
+              lista) para continuar acessível quando o ano selecionado não tiver
+              nenhum documento e a tela cair no estado vazio. */}
+          <Select
+            value={String(year)}
+            onChange={(e) => setYear(Number(e.target.value))}
+            aria-label="Ano de emissão dos documentos"
+          >
+            {YEAR_OPTIONS.map((y) => (
+              <option key={y} value={y}>{y}</option>
+            ))}
+          </Select>
           <Button variant="secondary" onClick={openLegal}
             iconLeft={
               <svg viewBox="0 0 16 16" fill="none">
@@ -566,7 +616,7 @@ export default function DocumentsPage() {
       </header>
 
       <div className={styles.stats}>
-        <StatCard label="Emitidos em 2026" value={String(docs.length)} caption="todos os tipos" />
+        <StatCard label={`Emitidos em ${year}`} value={String(docs.length)} caption="todos os tipos" />
         {/* StatCards de assinatura guardados pelo feature flag de assinatura eletrônica. */}
         {SIGNATURE_ENABLED && (
           <StatCard label="Aguardando assinatura" value={String(counts.aguardando_assinatura)} caption="no provedor eletrônico" />
@@ -597,7 +647,7 @@ export default function DocumentsPage() {
           detail && (
             <>
               {SIGNATURE_ENABLED && detail.status === "emitido" && (
-                <Button variant="secondary" onClick={() => setSignTarget(detail)}>
+                <Button variant="secondary" onClick={() => openSignature(detail)}>
                   Enviar para assinatura
                 </Button>
               )}

@@ -7,35 +7,75 @@ import styles from "./PanelShowcase.module.css";
 import PanelShell from "@/components/organisms/PanelShell/PanelShell";
 import { DashboardView } from "@/app/painel/DashboardView";
 import TenantTheme from "@/components/providers/TenantTheme/TenantTheme";
-import { TENANTS, normalizeApiTenant } from "@/lib/tenants";
-import { getPublicTenants } from "@/lib/api/resources/public";
 import { makeDashboardDemo } from "@/lib/mock/dashboard-demo";
 
 /**
  * Quarta seção — carrossel white label. O MESMO painel real (PanelShell +
- * dashboard) re-skinado ao vivo para cada prefeitura: cada slide tem cor,
- * marca e subdomínio próprios, mostrando que são sistemas independentes.
+ * dashboard) re-skinado ao vivo: cada slide tem cor, marca e subdomínio
+ * próprios, mostrando que são sistemas independentes.
  * O painel fica montado; só troca o TenantTheme (variáveis CSS) — sem remount.
+ *
+ * ATENÇÃO (regra de produção): o painel desta vitrine é 100% ILUSTRATIVO
+ * (receita, inadimplência, devedores etc. são inventados). Por isso ele NUNCA
+ * pode ser exibido com o nome/cor de um MUNICÍPIO REAL vindo de
+ * `GET /public/tenants` — o visitante leria números fictícios como se fossem
+ * daquela prefeitura. As marcas abaixo são propositalmente genéricas e a seção
+ * traz um selo visível de "demonstração". Não reconectar à API pública aqui.
  */
 
 const DESKTOP_BASE = { width: 1440, height: 880 };
 const MOBILE_BASE = { width: 402, height: 800 };
 const INTERVAL = 4200;
 
-// Tenants que NUNCA entram na vitrine pública: institucional, demo e as cidades
-// de TESTE (ex.: "fantasma", usada para validar o sistema com o cliente).
-const HIDDEN_FROM_SHOWCASE = new Set(["eterniza", "demo", "fantasma"]);
-
-// Ordena as cidades para o carrossel: fora os tenants institucionais/demo/teste,
-// Guarulhos primeiro (cidade preferida/realçada), demais em seguida.
-function orderShowcase(list) {
-  return (list || [])
-    .filter((t) => !HIDDEN_FROM_SHOWCASE.has(t.id) && !HIDDEN_FROM_SHOWCASE.has(t.apiSubdomain))
-    .sort((a, b) => (a.id === "guarulhos" ? -1 : b.id === "guarulhos" ? 1 : 0));
-}
-
-// Fallback estático (usado até a API responder ou se ela falhar).
-const FALLBACK_SHOWCASE = orderShowcase(TENANTS);
+// Marcas ILUSTRATIVAS do carrossel — nomes genéricos, sem qualquer relação com
+// cidades ou clientes reais. Servem só para demonstrar a troca de identidade
+// visual (white label). Mesmo shape que `normalizeApiTenant` produz.
+const SHOWCASE_BRANDS = [
+  {
+    id: "demo-1",
+    name: "Sua Cidade",
+    brandLead: "Sua Cidade",
+    brandTail: "Cemitérios",
+    subdomain: "suacidade.eternizagestao.com.br",
+    accent: "#032e59",
+    accentRgb: "3, 46, 89",
+    accentBright: "#0a4a8c",
+    accentDeep: "#02223f",
+  },
+  {
+    id: "demo-2",
+    name: "Município Exemplo",
+    brandLead: "Exemplo",
+    brandTail: "Memorial",
+    subdomain: "exemplo.eternizagestao.com.br",
+    accent: "#1a5c3a",
+    accentRgb: "26, 92, 58",
+    accentBright: "#288a58",
+    accentDeep: "#123f28",
+  },
+  {
+    id: "demo-3",
+    name: "Cidade Modelo",
+    brandLead: "Modelo",
+    brandTail: "Cemitérios",
+    subdomain: "modelo.eternizagestao.com.br",
+    accent: "#5b3a8c",
+    accentRgb: "91, 58, 140",
+    accentBright: "#7a52b8",
+    accentDeep: "#412963",
+  },
+  {
+    id: "demo-4",
+    name: "Prefeitura Demonstração",
+    brandLead: "Demonstração",
+    brandTail: "Memorial",
+    subdomain: "demonstracao.eternizagestao.com.br",
+    accent: "#0f6b6b",
+    accentRgb: "15, 107, 107",
+    accentBright: "#189494",
+    accentDeep: "#0a4a4a",
+  },
+];
 
 export default function PanelShowcase() {
   const frameRef = useRef(null);
@@ -45,7 +85,9 @@ export default function PanelShowcase() {
   const [index, setIndex] = useState(0);
   const [swapping, setSwapping] = useState(false);
   const [paused, setPaused] = useState(false);
-  const [showcase, setShowcase] = useState(FALLBACK_SHOWCASE); // cidades: API → fallback
+  // Marcas fixas e ilustrativas — de propósito NÃO vêm de `GET /public/tenants`
+  // (ver comentário no topo: os números do painel são fictícios).
+  const showcase = SHOWCASE_BRANDS;
 
   // Painel da vitrine: 100% MOCKADO (sem API). Gerado no cliente pra manter a
   // agenda em "hoje" e a atividade recente com tempos relativos corretos.
@@ -53,24 +95,6 @@ export default function PanelShowcase() {
 
   useEffect(() => {
     setReady(true);
-  }, []);
-
-  // FONTE das cidades: API pública. Se falhar/estiver offline, mantém o fallback.
-  useEffect(() => {
-    let alive = true;
-    getPublicTenants()
-      .then((apiTenants) => {
-        if (!alive || !Array.isArray(apiTenants) || apiTenants.length === 0) return;
-        const ordered = orderShowcase(apiTenants.map(normalizeApiTenant));
-        if (ordered.length) {
-          setShowcase(ordered);
-          setIndex(0);
-        }
-      })
-      .catch(() => {}); // erro → segue com o fallback estático
-    return () => {
-      alive = false;
-    };
   }, []);
 
   // avança sozinho; troca com um crossfade rápido enquanto o tema muda
@@ -117,6 +141,12 @@ export default function PanelShowcase() {
           <p className={styles.sub}>
             Cada prefeitura no seu subdomínio, com a sua marca e as suas cores.
             É o mesmo sistema — vestido para cada cidade.
+          </p>
+          {/* Selo obrigatório: deixa explícito que marcas e números da vitrine
+              são ilustrativos — nada aqui pertence a um município real. */}
+          <p className={styles.demoNote}>
+            Demonstração ilustrativa: as marcas e os números exibidos no painel
+            abaixo são fictícios e não representam nenhum município ou cliente real.
           </p>
         </div>
 

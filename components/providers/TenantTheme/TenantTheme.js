@@ -3,8 +3,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import {
   DEFAULT_TENANT,
-  TENANTS,
-  getTenant,
   normalizeApiTenant,
   resolveTenant,
   themeVarsFor,
@@ -18,10 +16,11 @@ import styles from "./TenantTheme.module.css";
  * (painel, portal, login, consulta). A landing institucional não é envolvida,
  * então mantém o navy padrão. As cores semânticas (sucesso/erro) não mudam.
  *
- * A FONTE das cidades é a API (`GET /public/tenants`), resolvida no cliente
- * por slug/subdomínio. `lib/tenants.js` é só o FALLBACK (navy + cidades
- * conhecidas): se a API falhar/estiver offline, cai no fallback e nunca dá
- * white-screen. Há um seletor de demonstração para visualizar cada marca.
+ * A FONTE ÚNICA das cidades é a API (`GET /public/tenants`), resolvida no
+ * cliente por slug/subdomínio. Se a API falhar/estiver offline, a lista fica
+ * VAZIA e o tema cai no navy institucional (DEFAULT_TENANT) — nunca em uma
+ * lista de prefeituras estática, que exibiria municípios que não são clientes.
+ * O seletor de demonstração some quando não há cidades para listar.
  */
 
 const STORAGE_KEY = "eterniza:tenant";
@@ -66,7 +65,7 @@ export default function TenantTheme({
   // tenantProp: chamador já resolveu o tenant (ex.: PanelShowcase) → não busca.
   // forcedTenantId: quando o tenant vem da URL (/guarulhos) e não do seletor.
   const [tenantId, setTenantId] = useState(forcedTenantId || DEFAULT_TENANT.id);
-  const [list, setList] = useState(TENANTS); // fallback estático até a API responder
+  const [list, setList] = useState([]); // só a API popula (sem lista inventada)
   const [open, setOpen] = useState(false);
 
   // Fonte da verdade: cidades da API. Se falhar, mantém o fallback (sem crash).
@@ -78,7 +77,7 @@ export default function TenantTheme({
         if (!alive || !Array.isArray(apiTenants) || apiTenants.length === 0) return;
         setList(apiTenants.map(normalizeApiTenant));
       })
-      .catch(() => {}); // offline / erro → segue com o fallback estático
+      .catch(() => {}); // offline / erro → lista vazia (tema navy institucional)
     return () => {
       alive = false;
     };
@@ -106,10 +105,11 @@ export default function TenantTheme({
   }
 
   const activeId = forcedTenantId || tenantId;
-  // resolve na lista da API (ou fallback), e por último cai no DEFAULT navy.
-  const tenant =
-    tenantProp || resolveTenant(list, activeId) || getTenant(activeId);
-  const canSwitch = showSwitcher && !forcedTenantId && !tenantProp;
+  // resolve na lista viva da API; sem match (ou API fora) cai no navy institucional.
+  const tenant = tenantProp || resolveTenant(list, activeId) || DEFAULT_TENANT;
+  // Sem cidades carregadas não há o que trocar → esconde o seletor de demo.
+  const canSwitch =
+    showSwitcher && !forcedTenantId && !tenantProp && list.length > 0;
 
   const themeVars = themeVarsFor(tenant);
 
