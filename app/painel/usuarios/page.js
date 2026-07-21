@@ -81,7 +81,7 @@ const PERMISSIONS = [
     ],
   },
   {
-    resource: "Sepultamentos & exumações", desc: "Registros, agendamentos e autorizações",
+    resource: "Sepultados & exumações", desc: "Registros, agendamentos e autorizações",
     actions: [
       { label: "Visualizar", a: true, o: true, c: true },
       { label: "Registrar / agendar", a: true, o: true, c: false },

@@ -24,7 +24,7 @@ import { useResource, useMutation } from "@/lib/api/useResource";
 import { getDeceased, updateDeceased, uploadDeceasedPhoto, deleteDeceased } from "@/lib/api/resources/deceased";
 import { getUser } from "@/lib/api/session";
 import ConfirmDelete from "@/components/molecules/ConfirmDelete/ConfirmDelete";
-import { listDocuments, fileHref, fetchDocumentPdf } from "@/lib/api/resources/documents";
+import { listDocuments, fileHref, fetchDocumentPdf, reissueDocument } from "@/lib/api/resources/documents";
 
 // Ícone de documento reutilizado nos botões de download (padrão do sistema).
 function DocIcon() {
@@ -148,7 +148,7 @@ export default function DeceasedDetailPage() {
 
   // anexos reais do sepultado (attachableType = deceased) — fetch/loading/erro
   // documentos oficiais deste sepultado (autorização de sepultamento etc.)
-  const { data: docsData } = useResource(
+  const { data: docsData, refetch: refetchDocs } = useResource(
     ({ signal }) => listDocuments({ deceasedId: id, perPage: 50 }, { signal }),
     [id]
   );
@@ -214,6 +214,25 @@ export default function DeceasedDetailPage() {
   }
 
   const { mutate: submitUpdate, loading: saving } = useMutation((body) => updateDeceased(id, body));
+
+  // ---- 2ª via de documento oficial ----
+  // Veio da tela de Sepultamentos (removida): a reemissão da autorização agora
+  // vive junto do sepultado, que é onde o operador procura o documento.
+  const [reissuing, setReissuing] = useState(null); // id do documento
+  const [docError, setDocError] = useState("");
+
+  async function reissueDoc(doc) {
+    setDocError("");
+    setReissuing(doc.id);
+    try {
+      await reissueDocument(doc.id);
+      refetchDocs();
+    } catch (e) {
+      setDocError(e?.message || "Não foi possível emitir a 2ª via.");
+    } finally {
+      setReissuing(null);
+    }
+  }
 
   // ---- exclusão do sepultado (RBAC + confirmação) ----
   const router = useRouter();
@@ -511,18 +530,29 @@ export default function DeceasedDetailPage() {
                         </span>
                       </span>
                     </span>
-                    <button type="button" className={styles.docLink} onClick={() => downloadDoc(doc)}>
-                      <DocIcon /> Baixar
-                    </button>
+                    <span style={{ display: "inline-flex", gap: 4 }}>
+                      <button type="button" className={styles.docLink} onClick={() => downloadDoc(doc)}>
+                        <DocIcon /> Baixar
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.docLink}
+                        disabled={reissuing === doc.id}
+                        onClick={() => reissueDoc(doc)}
+                      >
+                        {reissuing === doc.id ? "Emitindo…" : "2ª via"}
+                      </button>
+                    </span>
                   </li>
                 ))}
               </ul>
             ) : (
               <p className={styles.small} style={{ color: "var(--color-slate)" }}>
-                A autorização de sepultamento é gerada automaticamente ao registrar o
-                sepultamento e aparece aqui para download.
+                A autorização de sepultamento é gerada automaticamente ao cadastrar o
+                sepultado e aparece aqui para download.
               </p>
             )}
+            {docError && <Alert tone="danger">{docError}</Alert>}
           </article>
 
           <article className={styles.card}>

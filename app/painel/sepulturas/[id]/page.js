@@ -615,7 +615,7 @@ export default function GraveDetailPage() {
           <Button variant={blocked ? "secondary" : "danger"} onClick={() => setBlockModal(true)}>
             {blocked ? "Desbloquear" : "Bloquear"}
           </Button>
-          <Button onClick={() => setBurialModal(true)}>Registrar sepultamento</Button>
+          <Button onClick={() => setBurialModal(true)}>Sepultar aqui</Button>
           {canDelete && (
             <Button variant="ghost" onClick={() => { setDeleteError(""); setConfirmDelete(true); }}>
               Excluir
@@ -982,7 +982,7 @@ export default function GraveDetailPage() {
       <Modal
         open={burialModal}
         onClose={() => setBurialModal(false)}
-        title="Registrar sepultamento"
+        title="Sepultar nesta sepultura"
         subtitle={`${GRAVE.code} · ${freeDrawers.length} gaveta(s) disponível(is)`}
         width={620}
         footer={

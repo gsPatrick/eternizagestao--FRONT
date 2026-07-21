@@ -36,7 +36,7 @@ const CATEGORIES = {
 
 const REPORTS = [
   { id: "ocupacao", category: "operacional", name: "Ocupação por cemitério e quadra", desc: "Jazigos ocupados, livres e taxa de ocupação por quadra." },
-  { id: "sepultamentos", category: "operacional", name: "Sepultamentos por período", desc: "Relação de sepultamentos realizados no intervalo escolhido." },
+  { id: "sepultamentos", category: "operacional", name: "Sepultados por período", desc: "Relação de sepultados registrados no intervalo escolhido." },
   { id: "exumacoes", category: "operacional", name: "Exumações por destino", desc: "Exumações agrupadas por destino dos restos mortais." },
   { id: "velorios", category: "operacional", name: "Agenda de velórios", desc: "Reservas de salas de velório confirmadas e realizadas no período." },
   { id: "arrecadacao", category: "financeiro", name: "Arrecadação por período e taxa", desc: "Valores emitidos e recebidos por tipo de taxa." },
@@ -165,7 +165,7 @@ const EXPORT_TYPE_LABEL = {
   orgao_municipal: "Remessa — Prefeitura / Órgão Municipal",
   ocupacao: "Ocupação por cemitério e quadra",
   financeiro: "Arrecadação (financeiro)",
-  sepultamentos: "Sepultamentos por período",
+  sepultamentos: "Sepultados por período",
   exumacoes: "Exumações por destino",
   inadimplencia: "Inadimplência (aging)",
   outro: "Exportação de dados",

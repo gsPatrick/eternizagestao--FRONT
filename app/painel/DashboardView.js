@@ -205,7 +205,7 @@ export function DashboardView({ data }) {
           <Link href="/painel/cobrancas">
             <Button variant="secondary">Gerar cobranças</Button>
           </Link>
-          <Link href="/painel/sepultamentos?novo=1">
+          <Link href="/painel/sepultados?novo=1">
             <Button
               iconLeft={
                 <svg viewBox="0 0 16 16" fill="none">
@@ -213,7 +213,7 @@ export function DashboardView({ data }) {
                 </svg>
               }
             >
-              Registrar sepultamento
+              Novo sepultado
             </Button>
           </Link>
         </div>
@@ -234,7 +234,7 @@ export function DashboardView({ data }) {
           deltaTone="danger"
           caption={`${finance.overdueCount} cobranças vencidas`}
         />
-        <StatCard label="Sepultamentos" value={fmtInt(data?.burialsThisMonth)} caption="no mês" />
+        <StatCard label="Sepultados" value={fmtInt(data?.burialsThisMonth)} caption="no mês" />
       </section>
 
       <section className={styles.mainGrid}>
