@@ -19,6 +19,7 @@ import { useResource, useMutation } from "@/lib/api/useResource";
 import { getUser } from "@/lib/api/session";
 import {
   listCemeteries,
+  updateCemetery,
   adaptCemetery,
   getStructure,
   setStructureGeometry,
@@ -263,8 +264,40 @@ export default function MapPage() {
     return () => ac.abort();
   }, [ctx?.center, cem?.raw]);
 
-  // centro: contexto → endereço → entrada do cemitério → média → default
+  // ---- ENTRADA do cemitério, marcada AQUI (sobre a ortofoto), não no cadastro
+  const [markingEntrance, setMarkingEntrance] = useState(false);
+  const [savingEntrance, setSavingEntrance] = useState(false);
+  const entranceCoord = useMemo(() => {
+    const lat = cem?.raw?.entranceLatitude;
+    const lng = cem?.raw?.entranceLongitude;
+    return lat != null && lng != null ? [Number(lat), Number(lng)] : null;
+  }, [cem?.raw]);
+
+  const onEntrancePick = useCallback(async (coord) => {
+    if (!cem?.id) return;
+    setSavingEntrance(true);
+    try {
+      await updateCemetery(cem.id, {
+        entranceLatitude: coord[0],
+        entranceLongitude: coord[1],
+      });
+      setMarkingEntrance(false);
+      setOrthoMsg({ tone: "success", text: "Entrada do cemitério marcada. Ela é a origem das rotas do visitante." });
+      await cemsState.refetch();
+    } catch (e) {
+      setOrthoMsg({ tone: "danger", text: e?.message || "Não foi possível salvar a entrada." });
+    } finally {
+      setSavingEntrance(false);
+    }
+  }, [cem?.id]);
+
+  // Centro: a ORTOFOTO POSICIONADA é o mapa do cemitério — ela tem prioridade
+  // sobre tudo. Só depois vem a entrada, o endereço e os fallbacks.
   const center = useMemo(() => {
+    const c = activeOrtho?.corners;
+    if (c && c.tl && c.br) {
+      return [(c.tl[0] + c.br[0]) / 2, (c.tl[1] + c.br[1]) / 2];
+    }
     if (ctx?.center) return ctx.center;
     if (addressCenter) return addressCenter;
     const lat = cem?.raw?.entranceLatitude;
@@ -274,7 +307,7 @@ export default function MapPage() {
       .map((c) => [c.raw?.entranceLatitude, c.raw?.entranceLongitude])
       .filter(([a, b]) => a != null && b != null);
     return averageCenter(all);
-  }, [ctx, cem, cemeteries, addressCenter]);
+  }, [ctx, cem, cemeteries, addressCenter, activeOrtho]);
 
   // objeto de ortofoto entregue ao mapa (rev força remontar na revert)
   const orthoForMap = useMemo(() => {
@@ -667,6 +700,37 @@ export default function MapPage() {
                         Posicionar ortofoto
                       </Button>
                     ))}
+
+                  {/* ENTRADA: marcada aqui, sobre a ortofoto já posicionada — é o
+                      único jeito de acertar o portão de verdade. Saiu do cadastro
+                      do cemitério, onde era pedida antes de existir mapa. */}
+                  {canEdit && !positioning && (
+                    markingEntrance ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        loading={savingEntrance}
+                        onClick={() => setMarkingEntrance(false)}
+                      >
+                        Cancelar marcação
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => {
+                          setDrawing(false);
+                          setMarkingEntrance(true);
+                          setOrthoMsg({
+                            tone: "info",
+                            text: "Clique no mapa, sobre o portão do cemitério, para marcar a entrada.",
+                          });
+                        }}
+                      >
+                        {entranceCoord ? "Remarcar entrada" : "Marcar entrada"}
+                      </Button>
+                    )
+                  )}
                 </>
               )}
               {/* Sem entrada marcada: a entrada é definida CLICANDO no mapa, então
@@ -840,6 +904,9 @@ export default function MapPage() {
               onGravePolygon={onGravePolygon}
               onGraveClick={onGraveClick}
               onOrthoError={onOrthoError}
+              markingEntrance={markingEntrance}
+              entrance={entranceCoord}
+              onEntrancePick={onEntrancePick}
               height="100%"
             />
 

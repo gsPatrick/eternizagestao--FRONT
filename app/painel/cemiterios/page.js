@@ -11,7 +11,6 @@ import FormField from "@/components/molecules/FormField/FormField";
 import Modal from "@/components/molecules/Modal/Modal";
 import Alert from "@/components/molecules/Alert/Alert";
 import StatCard from "@/components/molecules/StatCard/StatCard";
-import EntrancePicker from "@/components/molecules/EntrancePicker/EntrancePicker";
 import Skeleton from "@/components/atoms/Skeleton/Skeleton";
 import ErrorState from "@/components/molecules/ErrorState/ErrorState";
 import EmptyState from "@/components/molecules/EmptyState/EmptyState";
@@ -42,7 +41,6 @@ export default function CemeteriesPage() {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("todos");
   const [newCemOpen, setNewCemOpen] = useState(false);
-  const [entrance, setEntrance] = useState(null);
   const [form, setForm] = useState({ name: "", code: "", city: "", address: "" });
   const [formError, setFormError] = useState(null);
 
@@ -86,7 +84,10 @@ export default function CemeteriesPage() {
 
   async function createNewCemetery() {
     setFormError(null);
-    // entrance já é [lat, lng] real (clique no mapa OSM do LocationPicker).
+    // A ENTRADA não é pedida aqui: ela é a origem das rotas do visitante e só dá
+    // para acertar o portão CLICANDO sobre a ortofoto já posicionada. Pedi-la no
+    // cadastro invertia a ordem — exigia o ponto antes de existir mapa. Agora é
+    // marcada em Mapa, depois de enviar e posicionar a ortofoto.
     const { addressCity, addressState } = parseCityUf(form.city);
     const body = {
       name: form.name?.trim(),
@@ -94,8 +95,6 @@ export default function CemeteriesPage() {
       addressStreet: form.address?.trim() || undefined,
       addressCity,
       addressState,
-      entranceLatitude: entrance ? entrance[0] : undefined,
-      entranceLongitude: entrance ? entrance[1] : undefined,
     };
     if (!body.name) {
       setFormError("Informe o nome do cemitério.");
@@ -279,15 +278,14 @@ export default function CemeteriesPage() {
                 onChange={(e) => setForm({ ...form, address: e.target.value })}
               />
             </FormField>
-            <FormField label="Entrada do cemitério" hint="Origem das rotas GPS do visitante" className={styles.spanTwo}>
-              <EntrancePicker value={entrance} onChange={setEntrance} />
-            </FormField>
           </div>
           {formError && <Alert tone="danger">{formError}</Alert>}
           <Alert tone="info">
             Depois do cadastro: abra o cemitério para configurar <strong>logotipo, cores e
-            órgão gestor</strong>, importar a <strong>ortofoto</strong> e montar a estrutura
-            de quadras, ruas e lotes.
+            órgão gestor</strong>. No <strong>Mapa</strong>, envie a <strong>ortofoto</strong>,
+            posicione-a e então marque a <strong>entrada</strong> clicando sobre o portão —
+            é ela que origina as rotas do visitante. Por fim, monte a estrutura de
+            quadras, ruas e lotes.
           </Alert>
         </div>
       </Modal>

@@ -108,6 +108,8 @@ export default function CemeteryMap({
   graves = [],
   layers = { blocks: [], streets: [], lots: [] }, // camadas de quadra/rua/lote
   drawing = false,
+  markingEntrance = false, // clique no mapa define a ENTRADA do cemitério
+  entrance = null, // [lat, lng] já marcada — mostra o marcador
   focusGrave = null, // { id, nonce }
   statusColors = {},
   canEdit = false,
@@ -116,6 +118,7 @@ export default function CemeteryMap({
   onCornersChange,
   onGravePolygon,
   onGraveClick,
+  onEntrancePick, // (latlng:[lat,lng]) => void
   height = "100%",
 }) {
   const containerRef = useRef(null);
@@ -141,7 +144,7 @@ export default function CemeteryMap({
   });
 
   const cbRef = useRef({});
-  cbRef.current = { onCornersChange, onGravePolygon, onGraveClick, onOrthoError };
+  cbRef.current = { onCornersChange, onGravePolygon, onGraveClick, onOrthoError, onEntrancePick };
 
   // API imperativa estável (usada no "Salvar posição"). next/dynamic não
   // encaminha ref, então entregamos via callback onApi.
@@ -417,6 +420,48 @@ export default function CemeteryMap({
       }
     } catch (_) {}
   }, [ready, drawing, canEdit]);
+
+  // --------------------------------------- marcar a ENTRADA (clique no mapa)
+  //
+  // A entrada é a origem das rotas do visitante. Marcá-la SOBRE a ortofoto já
+  // posicionada é o único jeito de acertar o portão de verdade — por isso este
+  // modo vive aqui, no mapa real, e não no cadastro do cemitério.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map) return;
+    if (!markingEntrance) {
+      map.getContainer().style.cursor = "";
+      return undefined;
+    }
+    map.getContainer().style.cursor = "crosshair";
+    const handler = (e) => {
+      const { lat, lng } = e.latlng || {};
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        cbRef.current.onEntrancePick && cbRef.current.onEntrancePick([lat, lng]);
+      }
+    };
+    map.on("click", handler);
+    return () => {
+      map.off("click", handler);
+      map.getContainer().style.cursor = "";
+    };
+  }, [ready, markingEntrance]);
+
+  // marcador da entrada já definida
+  const entranceMarkerRef = useRef(null);
+  useEffect(() => {
+    const map = mapRef.current;
+    const L = LRef.current;
+    if (!ready || !map || !L) return;
+    if (entranceMarkerRef.current) {
+      map.removeLayer(entranceMarkerRef.current);
+      entranceMarkerRef.current = null;
+    }
+    if (!entrance) return;
+    entranceMarkerRef.current = L.marker(entrance, { title: "Entrada do cemitério" })
+      .addTo(map)
+      .bindTooltip("Entrada do cemitério", { direction: "top" });
+  }, [ready, entrance]);
 
   // ------------------------------------------------- renderizar sepulturas
   useEffect(() => {
