@@ -78,6 +78,18 @@ export default function MapPage() {
     mapApiRef.current = api;
   }, []);
 
+  // Volta a ortofoto a um retângulo alinhado ao norte, na proporção real do
+  // arquivo, mantendo centro e tamanho. Serve para recuperar de uma distorção
+  // acidental sem ter que apagar e reenviar a imagem.
+  const desentortar = useCallback(() => {
+    const cantos = mapApiRef.current?.resetShape?.();
+    setOrthoMsg(
+      cantos
+        ? { tone: "info", text: "Forma redefinida. Arraste para reposicionar e salve." }
+        : { tone: "danger", text: "Não foi possível redefinir a forma da ortofoto." }
+    );
+  }, []);
+
   const [cemetery, setCemetery] = useState(null);
   const [query, setQuery] = useState("");
 
@@ -701,6 +713,11 @@ export default function MapPage() {
                         >
                           Salvar posição
                         </Button>
+                        {/* Sem isto, uma foto empenada por engano só se
+                            recuperava apagando e reenviando. */}
+                        <Button variant="secondary" size="sm" onClick={desentortar}>
+                          Desentortar
+                        </Button>
                         <Button variant="ghost" size="sm" onClick={cancelPositioning}>
                           Cancelar
                         </Button>
@@ -950,8 +967,8 @@ export default function MapPage() {
             {positioning && (
               <div className={styles.banner}>
                 <span className={styles.bannerText}>
-                  <strong>Posicionando ortofoto</strong> — arraste, escale e rotacione os
-                  cantos para alinhar sobre o cemitério
+                  <strong>Posicionando ortofoto</strong> — arraste para mover; use a barra
+                  do overlay para escalar, girar ou distorcer
                 </span>
                 <div className={styles.bannerActions}>
                   <Button variant="ghost" size="sm" onClick={cancelPositioning}>

@@ -148,6 +148,48 @@ export default function CemeteryMap({
   const cbRef = useRef({});
   cbRef.current = { onCornersChange, onGravePolygon, onGraveClick, onOrthoError, onEntrancePick };
 
+  // Desentorta o overlay: retângulo alinhado ao norte, mesmo centro e tamanho,
+  // na PROPORÇÃO REAL do arquivo. Usada pelo botão "Desentortar" e também no
+  // primeiro posicionamento — os cantos iniciais vinham do formato da TELA, o
+  // que já entregava a foto esticada antes de o operador encostar nela.
+  const resetOverlayShapeRef = useRef(() => null);
+  resetOverlayShapeRef.current = () => {
+    const overlay = overlayRef.current;
+    const L = LRef.current;
+    const map = mapRef.current;
+    if (!overlay || !L || !map) return null;
+    try {
+      const arr = overlay.getCorners();
+      if (!arr || arr.length !== 4) return null;
+
+      const pts = arr.map((c) => map.latLngToLayerPoint(c));
+      const cx = pts.reduce((a, p) => a + p.x, 0) / 4;
+      const cy = pts.reduce((a, p) => a + p.y, 0) / 4;
+      const width = Math.max(...pts.map((p) => p.x)) - Math.min(...pts.map((p) => p.x));
+
+      const img = overlay.getElement && overlay.getElement();
+      const ratio = img && img.naturalWidth && img.naturalHeight
+        ? img.naturalHeight / img.naturalWidth
+        : 0.75;
+      const half = Math.max(width, 40) / 2;
+      const halfH = half * ratio;
+
+      const toLatLng = (x, y) => map.layerPointToLatLng(L.point(x, y));
+      overlay.setCorners([
+        toLatLng(cx - half, cy - halfH), // tl
+        toLatLng(cx + half, cy - halfH), // tr
+        toLatLng(cx - half, cy + halfH), // bl
+        toLatLng(cx + half, cy + halfH), // br
+      ]);
+      const atualizados = latLngsToCorners(overlay.getCorners());
+      cbRef.current.onCornersChange
+        && cbRef.current.onCornersChange(atualizados, { dirty: true });
+      return atualizados;
+    } catch (_) {
+      return null;
+    }
+  };
+
   // API imperativa estável (usada no "Salvar posição"). next/dynamic não
   // encaminha ref, então entregamos via callback onApi.
   // centro vigente (prop) acessível dentro da API imperativa estável
@@ -157,6 +199,16 @@ export default function CemeteryMap({
   const apiRef = useRef(null);
   if (!apiRef.current) {
     apiRef.current = {
+      /**
+       * Desentorta: volta a um retângulo alinhado ao norte, no MESMO centro e
+       * tamanho aproximado, respeitando a proporção real do arquivo.
+       * Sem isto, uma vez empenada não havia como recuperar a foto — só
+       * apagando e reenviando.
+       */
+      resetShape() {
+        return resetOverlayShapeRef.current();
+      },
+
       getLiveCorners() {
         try {
           const arr = overlayRef.current && overlayRef.current.getCorners();
@@ -327,7 +379,11 @@ export default function CemeteryMap({
 
     const overlay = L.distortableImageOverlay(orthophoto.fileUrl, {
       corners: cornersToLatLngs(L, corners),
-      mode: "distort",
+      // ARRASTAR como modo inicial. O padrão do plugin é "distort": qualquer
+      // toque empenava a foto num losango, e georreferenciar virava um martírio.
+      // A distorção continua disponível na barra do próprio overlay, para a
+      // correção fina de perspectiva — mas deixa de ser o comportamento padrão.
+      mode: "drag",
       editable: editableNow,
       selected: editableNow,
       suppressToolbar: !editableNow,
@@ -355,6 +411,11 @@ export default function CemeteryMap({
     // ausente no build) ou URL assinada expirada.
     overlay.on("load", () => {
       console.info("[ortofoto] imagem carregada:", orthophoto.fileUrl);
+      // Ainda não posicionada: ajusta à proporção real do arquivo. Os cantos
+      // default vêm do formato da viewport, então a foto entrava esticada.
+      if (!orthophoto.corners) {
+        setTimeout(() => resetOverlayShapeRef.current(), 0);
+      }
     });
     overlay.on("error", () => {
       cbRef.current.onOrthoError && cbRef.current.onOrthoError(orthophoto.fileUrl);
