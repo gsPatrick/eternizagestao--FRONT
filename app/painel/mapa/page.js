@@ -105,6 +105,11 @@ export default function MapPage() {
   }
 
   // ---- posicionar por 4 pinos (alternativa a arrastar a imagem) ----
+  // Ortofoto recém-enviada SEM georreferência: precisa ganhar uma posição
+  // inicial automática. Sem cantos ela não aparece em nenhum outro mapa —
+  // e, para o operador, subir a ortofoto JÁ deveria bastar: ela é o mapa do
+  // cemitério, não um rascunho aguardando aprovação.
+  const autoPosicionarRef = useRef(null);
   const [pinning, setPinning] = useState(false);
   const [pinsDone, setPinsDone] = useState(0);
   const CANTOS = ["superior esquerdo", "superior direito", "inferior direito", "inferior esquerdo"];
@@ -414,6 +419,14 @@ export default function MapPage() {
       // alinhamento nesse caso só convidaria o operador a estragar uma posição
       // que já está correta — e mais precisa do que qualquer ajuste manual.
       const jaPosicionada = Boolean(created?.corners);
+      // Sem georreferência no arquivo, o próprio mapa define a posição inicial
+      // assim que a imagem carrega (ver onCornersChange).
+      // Só posiciona sozinho se o mapa souber ONDE fica o cemitério (entrada
+      // marcada ou endereço geocodificado). Sem isso a vista está no centro do
+      // país, e "posicionar automaticamente" colocaria a foto a centenas de
+      // quilômetros — pior do que deixar sem posição e avisar.
+      const sabeOnde = Boolean(ctx?.center || addressCenter || entranceCoord);
+      autoPosicionarRef.current = jaPosicionada || !sabeOnde ? null : created?.id || null;
       setPositioning(!jaPosicionada);
       setOrthoDirty(false);
       setOrthoMsg(
@@ -422,10 +435,15 @@ export default function MapPage() {
               tone: "success",
               text: "Ortofoto georreferenciada: posicionada automaticamente pelas coordenadas do próprio arquivo. Nada a ajustar.",
             }
-          : {
-              tone: "info",
-              text: "Ortofoto carregada. Arraste para posicionar sobre o cemitério (ou use os pinos) e salve.",
-            }
+          : sabeOnde
+            ? {
+                tone: "info",
+                text: "Ortofoto carregada. Posicionando automaticamente sobre o cemitério…",
+              }
+            : {
+                tone: "warning",
+                text: "Ortofoto carregada, mas o sistema não sabe onde fica este cemitério (sem entrada marcada e sem cidade no cadastro). Navegue até o local, posicione e salve — ou envie o arquivo .tif, que traz as coordenadas.",
+              }
       );
     } catch (err) {
       setOrthoMsg({ tone: "danger", text: err?.message || "Falha ao enviar a ortofoto." });
@@ -436,6 +454,33 @@ export default function MapPage() {
     setDraftCorners(corners);
     setOrthoDirty(true);
     if (meta?.isNew && !positioning) setPositioning(true);
+
+    // Primeira posição de um envio novo: grava na hora. O mapa já enquadrou a
+    // imagem na proporção correta sobre o cemitério, então esta posição é um
+    // ponto de partida utilizável — e passa a valer em todas as telas na
+    // mesma hora. O operador refina depois se quiser.
+    if (autoPosicionarRef.current && corners) {
+      const alvo = autoPosicionarRef.current;
+      autoPosicionarRef.current = null;
+      salvarPosicaoInicial(alvo, corners);
+    }
+  }
+
+  async function salvarPosicaoInicial(orthoId, corners) {
+    try {
+      await doSaveOrtho(orthoId, { corners, opacity: orthoOpacity, active: true });
+      await orthoState.refetch();
+      setOrthoDirty(false);
+      setOrthoMsg({
+        tone: "success",
+        text: "Ortofoto posicionada automaticamente sobre o cemitério e já visível nas demais telas. Ajuste e salve se quiser precisão maior.",
+      });
+    } catch (e) {
+      setOrthoMsg({
+        tone: "warning",
+        text: `Ortofoto enviada, mas a posição inicial não pôde ser salva (${e?.message || "erro"}). Posicione e salve manualmente.`,
+      });
+    }
   }
 
   async function saveOrthoPosition() {
