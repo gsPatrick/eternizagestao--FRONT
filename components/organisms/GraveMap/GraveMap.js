@@ -14,6 +14,7 @@
  * ==========================================================================*/
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import dynamic from "next/dynamic";
 
 import Button from "@/components/atoms/Button/Button";
@@ -96,10 +97,18 @@ export default function GraveMap({
     () => (Array.isArray(orthoState.data) ? orthoState.data : []).map(adaptOrthophoto),
     [orthoState.data]
   );
-  const activeOrtho = useMemo(
-    () => orthophotos.find((o) => o.active) || orthophotos[0] || null,
-    [orthophotos]
-  );
+  // A ativa pode ser um envio recente ainda SEM POSIÇÃO — e sem cantos não há
+  // como desenhá-la. Pegar cegamente "a ativa" fazia este mapa ficar só com as
+  // ruas assim que alguém subia um arquivo novo, mesmo existindo uma ortofoto
+  // já posicionada. A posicionada tem prioridade.
+  const activeOrtho = useMemo(() => {
+    const posicionadas = orthophotos.filter((o) => o.corners);
+    return posicionadas.find((o) => o.active)
+      || posicionadas[0]
+      || orthophotos.find((o) => o.active)
+      || orthophotos[0]
+      || null;
+  }, [orthophotos]);
   const ctx = useMemo(
     () => (ctxState.data ? adaptMapContext(ctxState.data) : null),
     [ctxState.data]
@@ -140,6 +149,12 @@ export default function GraveMap({
   }, [poly, lat, lng, ctx, activeOrtho]);
 
   // ortofoto entregue ao mapa só quando POSICIONADA (tem cantos)
+  // Ortofoto existe mas nunca foi posicionada: não há onde desenhá-la (os
+  // cantos é que dizem a que pedaço do mundo ela corresponde). Em vez de
+  // simplesmente não mostrar nada — o operador via só o mapa de ruas e achava
+  // que a ortofoto tinha sumido — a tela diz o que falta e onde resolver.
+  const orthoSemPosicao = Boolean(activeOrtho?.fileUrl && !activeOrtho.corners);
+
   const orthoForMap = useMemo(() => {
     if (!activeOrtho?.fileUrl || !activeOrtho.corners) return null;
     return {
@@ -197,6 +212,14 @@ export default function GraveMap({
           onGravePolygon={onGravePolygon}
           height="100%"
         />
+
+        {orthoSemPosicao && (
+          <div className={styles.orthoHint}>
+            Ortofoto enviada, mas ainda <strong>sem posição</strong> — por isso o
+            mapa mostra só as ruas.{" "}
+            <Link href="/painel/mapa">Posicionar no Mapa</Link>
+          </div>
+        )}
 
         {drawing && (
           <div className={styles.banner}>
