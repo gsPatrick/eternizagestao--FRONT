@@ -27,6 +27,7 @@ import {
   getGraveStatusCounts,
   listCemeteries,
   createGrave,
+  updateGrave,
   removeGrave,
   getGraveDeleteImpact,
   uploadGravePhoto,
@@ -234,11 +235,36 @@ export default function GravesListPage() {
     }
   }
 
-  function openModal() {
-    setGForm(emptyGrave);
-    setTombType(TOMB_TYPE_OPTIONS[0]);
+  // O MESMO formulário serve para cadastrar e editar: dois formulários para a
+  // mesma entidade divergem com o tempo, e foi assim que campos acabaram
+  // editáveis no cadastro e travados na edição.
+  const [editingGrave, setEditingGrave] = useState(null);
+
+  function openModal(row = null) {
+    setEditingGrave(row);
     setGravePhoto(null);
     setCreateError(null);
+    if (row) {
+      const g = row.raw || {};
+      setGForm({
+        cemeteryId: g.cemeteryId || "",
+        quadra: g.lot?.street?.block?.code || (row.block !== "—" ? row.block : ""),
+        lote: g.lot?.code || (row.lot !== "—" ? row.lot : ""),
+        quadraAnterior: g.previousBlock || "",
+        loteAnterior: g.previousLot || "",
+        ownerPersonId: g.owner?.person?.id || "",
+        utilizacao: g.utilizacao || UTILIZACAO_OPTIONS[0],
+        carneiraPermission: g.carneiraPermission || "",
+        dataPermissao: (g.carneiraPermissionDate || "").slice(0, 10),
+        notes: g.notes || "",
+        statusSlug: row.status || "livre",
+        parentGraveId: "",
+      });
+      setTombType(g.tombType || TOMB_TYPE_OPTIONS[0]);
+    } else {
+      setGForm(emptyGrave);
+      setTombType(TOMB_TYPE_OPTIONS[0]);
+    }
     setModalOpen(true);
   }
 
@@ -266,7 +292,9 @@ export default function GravesListPage() {
         carneiraPermissionDate: gForm.dataPermissao || undefined,
         notes: gForm.notes || undefined,
       };
-      const created = await createGrave(body);
+      const created = editingGrave
+        ? await updateGrave(editingGrave.id, body)
+        : await createGrave(body);
       const newGraveId = created?.id || created?.data?.id;
       // Fotografia é opcional e não pode derrubar o cadastro já gravado.
       if (gravePhoto && newGraveId) {
@@ -305,7 +333,7 @@ export default function GravesListPage() {
         <div className={styles.actions}>
           <Button variant="secondary" onClick={() => setExportOpen(true)}>Exportar</Button>
           <Button
-            onClick={openModal}
+            onClick={() => openModal()}
             iconLeft={
               <svg viewBox="0 0 16 16" fill="none">
                 <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
@@ -406,7 +434,7 @@ export default function GravesListPage() {
         <EmptyState
           title="Nenhuma sepultura encontrada"
           message="Ajuste os filtros ou cadastre a primeira sepultura deste cemitério — você também pode importar em lote."
-          action={<Button onClick={openModal}>Cadastrar sepultura</Button>}
+          action={<Button onClick={() => openModal()}>Cadastrar sepultura</Button>}
         />
       ) : (
         <>
@@ -470,7 +498,7 @@ export default function GravesListPage() {
                   align: "right",
                   render: (row) => (
                     <RowActions
-                      editHref={`/painel/sepulturas/${row.id}`}
+                      onEdit={() => openModal(row)}
                       canDelete={canDelete}
                       onDelete={() => askDelete(row)}
                     />
@@ -521,7 +549,7 @@ export default function GravesListPage() {
       <Modal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
-        title="Nova sepultura"
+        title={editingGrave ? "Editar sepultura" : "Nova sepultura"}
         subtitle="Cemitério, quadra e lote identificam a sepultura"
         width={620}
         footer={
@@ -533,7 +561,7 @@ export default function GravesListPage() {
               disabled={!gForm.quadra.trim() || !gForm.lote.trim()}
               onClick={() => submitGrave({ demarcate: false })}
             >
-              Cadastrar
+              {editingGrave ? "Salvar" : "Cadastrar"}
             </Button>
             <Button
               loading={saving}

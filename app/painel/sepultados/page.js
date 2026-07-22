@@ -21,7 +21,7 @@ import ErrorState from "@/components/molecules/ErrorState/ErrorState";
 import EmptyState from "@/components/molecules/EmptyState/EmptyState";
 import { maskCpf } from "@/lib/masks";
 import { useResource, useMutation } from "@/lib/api/useResource";
-import { listDeceased, getLocationCounts, createDeceased, uploadDeathCertificate, deleteDeceased, getDeceasedDeleteImpact } from "@/lib/api/resources/deceased";
+import { listDeceased, getLocationCounts, createDeceased, updateDeceased, uploadDeathCertificate, deleteDeceased, getDeceasedDeleteImpact } from "@/lib/api/resources/deceased";
 import { getUser } from "@/lib/api/session";
 import RowActions from "@/components/molecules/RowActions/RowActions";
 import ConfirmDelete from "@/components/molecules/ConfirmDelete/ConfirmDelete";
@@ -112,6 +112,7 @@ export default function DeceasedListPage() {
   const linkBurial = Boolean(burialForm.graveId);
   // Sepultura escolhida no modal "Pesquisa de sepulturas" — guardamos o objeto
   // inteiro para exibir "Cemitério - Quadra: X - Lote: Y", como na tela dele.
+  const [editingDeceased, setEditingDeceased] = useState(null);
   const [pickedGrave, setPickedGrave] = useState(null);
   const [gravePickerOpen, setGravePickerOpen] = useState(false);
 
@@ -243,6 +244,7 @@ export default function DeceasedListPage() {
         registration: r.registrationNumber || "—",
         gender: GENDER_LABEL[String(r.gender || "").toLowerCase()] || r.gender || "—",
         responsible: r.responsible?.name || "—",
+        raw: r,
       })),
     [rawRows]
   );
@@ -288,6 +290,51 @@ export default function DeceasedListPage() {
     }
   }
 
+  // O MESMO formulário do cadastro serve para editar: manter dois divergia com
+  // o tempo e foi o que deixou campos livres num e travados no outro.
+  function openEdit(row) {
+    const r = row.raw || {};
+    setEditingDeceased(row);
+    setForm({
+      fullName: r.fullName || "",
+      registrationNumber: r.registrationNumber || "",
+      cpf: r.cpf ? maskCpf(r.cpf) : "",
+      rg: r.rg || "",
+      age: r.age || "",
+      gender: String(r.gender || "").toLowerCase().startsWith("f") ? "f"
+        : String(r.gender || "").toLowerCase().startsWith("m") ? "m"
+        : r.gender ? "o" : "",
+      birthplace: r.birthplace || "",
+      motherName: r.motherName || "",
+      fatherName: r.fatherName || "",
+      birthDate: (r.birthDate || "").slice(0, 10),
+      deathDate: (r.deathDate || "").slice(0, 10),
+      deathTime: (r.deathTime || "").slice(0, 5),
+      causeOfDeath: r.causeOfDeath || "",
+      maritalStatus: r.maritalStatus || "",
+      skinColor: r.skinColor || "",
+      voterId: r.voterId || "",
+      deathPlace: r.deathPlace || "",
+      attendingPhysician: r.attendingPhysician || "",
+      deathCertificateNumber: r.deathCertificateNumber || "",
+      deathCertificateRegistry: r.deathCertificateRegistry || "",
+      registryNumber: r.registryNumber || "",
+      funeralHome: r.funeralHome || "",
+      responsiblePersonId: r.responsiblePersonId || "",
+      notes: r.notes || "",
+    });
+    setPickedGrave(r.currentGrave || null);
+    setBurialForm({
+      graveId: r.currentGrave?.id || "",
+      date: (r.lastBurialDate || "").slice(0, 10) || todayISO(),
+      time: "",
+    });
+    setCertFile(null);
+    setExhum({ done: false, nicheId: "", number: "", date: "" });
+    setFormError("");
+    setModalOpen(true);
+  }
+
   async function handleCreate() {
     setFormError("");
     if (!form.fullName.trim()) { setFormError("Informe o nome completo do sepultado."); return; }
@@ -326,6 +373,25 @@ export default function DeceasedListPage() {
       // validação do sepultamento vinculado (quando marcado)
       if (linkBurial && (!burialForm.graveId || !burialForm.date)) {
         setFormError("Para registrar o sepultamento junto, informe o jazigo e a data.");
+        return;
+      }
+      if (editingDeceased) {
+        // Sepultura e data de sepultamento entram no PATCH: a API atualiza o
+        // registro de sepultamento junto, para listagem e histórico não
+        // divergirem.
+        await updateDeceased(editingDeceased.id, {
+          ...body,
+          currentGraveId: burialForm.graveId || null,
+          burialDate: burialForm.date || undefined,
+          burialTime: burialForm.time || undefined,
+        });
+        setModalOpen(false);
+        setEditingDeceased(null);
+        setForm(EMPTY_FORM);
+        setCertFile(null);
+        setPickedGrave(null);
+        setBurialForm({ graveId: "", date: todayISO(), time: "" });
+        refetch();
         return;
       }
       const created = await submitCreate(body);
@@ -431,7 +497,7 @@ export default function DeceasedListPage() {
       align: "right",
       render: (row) => (
         <RowActions
-          editHref={`/painel/sepultados/${row.id}`}
+          onEdit={() => openEdit(row)}
           canDelete={canDelete}
           onDelete={() => askDelete(row)}
           extra={
@@ -612,13 +678,13 @@ export default function DeceasedListPage() {
       <Modal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
-        title="Novo sepultado"
+        title={editingDeceased ? "Editar sepultado" : "Novo sepultado"}
         subtitle="Cadastro do sepultado e vínculo com a sepultura"
         width={680}
         footer={
           <>
             <Button variant="ghost" onClick={() => setModalOpen(false)}>Cancelar</Button>
-            <Button loading={saving} onClick={handleCreate}>Registrar sepultado</Button>
+            <Button loading={saving} onClick={handleCreate}>{editingDeceased ? "Salvar" : "Registrar sepultado"}</Button>
           </>
         }
       >
@@ -815,7 +881,11 @@ export default function DeceasedListPage() {
             </FormField>
           </div>
 
-          <span className={styles.formSection}>Exumação</span>
+          {/* Exumação só no CADASTRO: na edição, mexer nisso criaria um novo
+              processo de exumação em vez de corrigir dados — o lugar disso é o
+              menu Exumações. */}
+          {!editingDeceased && (
+          <><span className={styles.formSection}>Exumação</span>
           <div className={styles.formGrid}>
             <FormField label="Foi exumado?">
               <Select
@@ -854,6 +924,8 @@ export default function DeceasedListPage() {
               </>
             )}
           </div>
+
+          </>)}
 
           {formError && <Alert tone="danger">{formError}</Alert>}
         </form>
