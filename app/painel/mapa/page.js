@@ -408,12 +408,25 @@ export default function MapPage() {
       if (created?.id) setPreferredOrthoId(created.id);
       await orthoState.refetch();
       setOrthoVisible(true);
-      setPositioning(true); // já entra no modo de alinhamento
-      setOrthoDirty(true);
-      setOrthoMsg({
-        tone: "info",
-        text: "Ortofoto carregada. Arraste os cantos para alinhar sobre o cemitério e salve a posição.",
-      });
+
+      // GeoTIFF traz a georreferência dentro do arquivo: a API já devolve os
+      // cantos calculados e não há nada para posicionar. Entrar no modo de
+      // alinhamento nesse caso só convidaria o operador a estragar uma posição
+      // que já está correta — e mais precisa do que qualquer ajuste manual.
+      const jaPosicionada = Boolean(created?.corners);
+      setPositioning(!jaPosicionada);
+      setOrthoDirty(false);
+      setOrthoMsg(
+        jaPosicionada
+          ? {
+              tone: "success",
+              text: "Ortofoto georreferenciada: posicionada automaticamente pelas coordenadas do próprio arquivo. Nada a ajustar.",
+            }
+          : {
+              tone: "info",
+              text: "Ortofoto carregada. Arraste para posicionar sobre o cemitério (ou use os pinos) e salve.",
+            }
+      );
     } catch (err) {
       setOrthoMsg({ tone: "danger", text: err?.message || "Falha ao enviar a ortofoto." });
     }
@@ -571,7 +584,10 @@ export default function MapPage() {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*"
+                // .tif/.tiff explícitos: o navegador não oferece GeoTIFF sob
+                // image/* em vários sistemas, e é justamente o formato que
+                // dispensa o posicionamento manual.
+                accept="image/*,.tif,.tiff,image/tiff"
                 className={styles.hiddenFile}
                 onChange={handleFile}
               />
