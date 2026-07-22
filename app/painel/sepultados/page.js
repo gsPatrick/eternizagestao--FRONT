@@ -30,7 +30,7 @@ import { listCartorios } from "@/lib/api/resources/cartorios";
 import { listFunerarias } from "@/lib/api/resources/funerarias";
 import { listPeople } from "@/lib/api/resources/people";
 import GravePicker, { graveLabel } from "@/components/organisms/GravePicker/GravePicker";
-import { registerPerformedExhumation } from "@/lib/api/resources/exhumations";
+import { registerPerformedExhumation, listExhumations } from "@/lib/api/resources/exhumations";
 import { listOssuaries, listNiches } from "@/lib/api/resources/ossuaries";
 import { todayISO } from "@/lib/date-local";
 
@@ -120,6 +120,9 @@ export default function DeceasedListPage() {
   // foi exumado, registramos a exumação como realizada (a API percorre o fluxo
   // oficial por dentro, então o registro é igual ao da tela de Exumações).
   const [exhum, setExhum] = useState({ done: false, nicheId: "", number: "", date: "" });
+  // Exumações JÁ registradas do sepultado em edição. Sem isto, o bloco criaria
+  // uma exumação nova a cada salvamento — repetindo um evento que já existe.
+  const [exhumExistentes, setExhumExistentes] = useState([]);
 
   // Cartórios e Funerárias cadastrados (Básico) → dropdowns do sepultado.
   const { data: cartoriosData } = useResource(
@@ -331,6 +334,10 @@ export default function DeceasedListPage() {
     });
     setCertFile(null);
     setExhum({ done: false, nicheId: "", number: "", date: "" });
+    setExhumExistentes([]);
+    listExhumations({ deceasedId: row.id, perPage: 20 })
+      .then((r) => setExhumExistentes(r?.data ?? []))
+      .catch(() => {});
     setFormError("");
     setModalOpen(true);
   }
@@ -376,15 +383,38 @@ export default function DeceasedListPage() {
         return;
       }
       if (editingDeceased) {
+        const vaiExumar = exhum.done && burialForm.graveId && !exhumExistentes.length;
         // Sepultura e data de sepultamento entram no PATCH: a API atualiza o
         // registro de sepultamento junto, para listagem e histórico não
         // divergirem.
         await updateDeceased(editingDeceased.id, {
           ...body,
-          currentGraveId: burialForm.graveId || null,
+          // Quando vai exumar, NÃO mexemos na sepultura aqui: a exumação é que
+          // define a nova localização (ossário/cremação). Mandar o jazigo junto
+          // devolveria o sepultado para a cova logo depois de exumá-lo.
+          ...(vaiExumar ? {} : { currentGraveId: burialForm.graveId || null }),
           burialDate: burialForm.date || undefined,
           burialTime: burialForm.time || undefined,
         });
+
+        // Exumação depois do update: ela dá baixa no sepultamento e move o
+        // sepultado, então precisa ser a última palavra sobre a localização.
+        if (vaiExumar) {
+          try {
+            await registerPerformedExhumation({
+              deceasedId: editingDeceased.id,
+              graveId: burialForm.graveId,
+              destinationType: exhum.nicheId ? "ossario" : "outro",
+              destinationOssuaryNicheId: exhum.nicheId || undefined,
+              authorizationNumber: exhum.number || undefined,
+              performedAt: exhum.date || undefined,
+            });
+          } catch (e) {
+            setFormError(
+              `Dados salvos, mas a exumação não foi registrada: ${e.message || "tente pelo menu Exumações"}.`
+            );
+          }
+        }
         setModalOpen(false);
         setEditingDeceased(null);
         setForm(EMPTY_FORM);
@@ -881,11 +911,23 @@ export default function DeceasedListPage() {
             </FormField>
           </div>
 
-          {/* Exumação só no CADASTRO: na edição, mexer nisso criaria um novo
-              processo de exumação em vez de corrigir dados — o lugar disso é o
-              menu Exumações. */}
-          {!editingDeceased && (
-          <><span className={styles.formSection}>Exumação</span>
+          <span className={styles.formSection}>Exumação</span>
+          {/* Na edição, o que JÁ foi exumado aparece como histórico: repetir o
+              registro criaria um segundo processo para um evento único. Só se
+              oferece marcar quando ainda não há exumação. */}
+          {exhumExistentes.length > 0 && (
+            <Alert tone="info" title="Exumação já registrada">
+              {exhumExistentes.map((e) => (
+                <div key={e.id}>
+                  Processo {e.processNumber || "—"} · {e.status}
+                  {e.performedAt ? ` · realizada em ${fmtDate(e.performedAt)}` : ""}
+                </div>
+              ))}
+              Para alterar ou cancelar, use o menu <strong>Exumações & Ossário</strong>.
+            </Alert>
+          )}
+          {exhumExistentes.length === 0 && (
+          <>
           <div className={styles.formGrid}>
             <FormField label="Foi exumado?">
               <Select
