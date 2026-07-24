@@ -13,7 +13,7 @@ import Alert from "@/components/molecules/Alert/Alert";
 import ErrorState from "@/components/molecules/ErrorState/ErrorState";
 
 import { getMe, updateMyProfile, changeMyPassword } from "@/lib/api/resources/me";
-import { clearSession } from "@/lib/api/session";
+import { logout } from "@/lib/api/session";
 import { normalizeEmail, isValidEmail } from "@/lib/masks";
 
 const SignOutIcon = (
@@ -65,8 +65,7 @@ export default function SettingsPage() {
   }, []);
 
   function signOut() {
-    clearSession();
-    router.replace("/login");
+    logout("/login");
   }
 
   // ---------- Perfil ----------

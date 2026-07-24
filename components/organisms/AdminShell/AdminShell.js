@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import styles from "./AdminShell.module.css";
 import BrandMark from "@/components/atoms/BrandMark/BrandMark";
 import Avatar from "@/components/atoms/Avatar/Avatar";
-import { getUser, isAuthed, clearSession } from "@/lib/api/session";
+import { getUser, isAuthed, logout } from "@/lib/api/session";
 import { ADMIN_NAV, isActive, findAdminNavItem } from "@/lib/admin-nav";
 
 /**
@@ -68,8 +68,7 @@ export default function AdminShell({ children }) {
   }, [isLoginRoute, pathname, router]);
 
   function signOut() {
-    clearSession();
-    router.replace("/login");
+    logout("/login");
   }
 
   // A tela de login não recebe a casca.

@@ -17,7 +17,7 @@ import ErrorState from "@/components/molecules/ErrorState/ErrorState";
 import { useTenant } from "@/components/providers/TenantTheme/TenantTheme";
 import { useResource, useMutation } from "@/lib/api/useResource";
 import { getMe, updateMe, changePassword } from "@/lib/api/resources/portal";
-import { clearSession } from "@/lib/api/session";
+import { logout } from "@/lib/api/session";
 import { maskPhone, maskCep } from "@/lib/masks";
 
 const MailIcon = (
@@ -211,9 +211,8 @@ function PerfilContent({ user, sub }) {
     }
   }
 
-  function logout() {
-    clearSession();
-    router.push("/portal/login");
+  function doLogout() {
+    logout("/portal/login");
   }
 
   return (
@@ -428,7 +427,7 @@ function PerfilContent({ user, sub }) {
 
       {/* ---- sair ---- */}
       <footer className={styles.logout}>
-        <Button variant="danger" full onClick={logout}>Sair da conta</Button>
+        <Button variant="danger" full onClick={doLogout}>Sair da conta</Button>
       </footer>
 
       {/* ---- modal alterar senha ---- */}

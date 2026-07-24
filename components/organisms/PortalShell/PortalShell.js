@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import BrandMark from "@/components/atoms/BrandMark/BrandMark";
-import { clearSession } from "@/lib/api/session";
+import { logout } from "@/lib/api/session";
 import styles from "./PortalShell.module.css";
 
 /**
@@ -91,10 +91,7 @@ export default function PortalShell({ children, active }) {
 
           <button
             className={styles.exit}
-            onClick={() => {
-              clearSession();
-              router.push("/portal/login");
-            }}
+            onClick={() => logout("/portal/login")}
           >
             <span>Sair</span>
             <svg viewBox="0 0 24 24" fill="none">

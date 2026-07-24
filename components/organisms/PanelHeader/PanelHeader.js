@@ -5,7 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import styles from "./PanelHeader.module.css";
 import Avatar from "@/components/atoms/Avatar/Avatar";
 import { findNavItem } from "@/lib/panel-nav";
-import { clearSession } from "@/lib/api/session";
+import { logout } from "@/lib/api/session";
 
 export default function PanelHeader() {
   const router = useRouter();
@@ -91,10 +91,7 @@ export default function PanelHeader() {
             <button
               className={`${styles.menuItem} ${styles.menuDanger}`}
               role="menuitem"
-              onClick={() => {
-                clearSession();
-                router.push("/login");
-              }}
+              onClick={() => logout("/login")}
             >
               <svg viewBox="0 0 18 18" fill="none">
                 <path d="M7 15.5H4a1 1 0 01-1-1v-11a1 1 0 011-1h3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
