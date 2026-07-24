@@ -47,12 +47,26 @@ function pad(n) {
   return String(n).padStart(2, "0");
 }
 
+// Fuso de operação: a agenda mostra a hora do CEMITÉRIO, não a do dispositivo
+// do visitante. Antes usava getHours(), que confia no relógio/fuso do aparelho
+// — um dispositivo mal configurado exibia um horário diferente do cadastrado.
+const AGENDA_TZ = "America/Sao_Paulo";
+const _hm = new Intl.DateTimeFormat("pt-BR", {
+  timeZone: AGENDA_TZ, hour: "2-digit", minute: "2-digit", hour12: false,
+});
+const _ymd = new Intl.DateTimeFormat("en-CA", {
+  timeZone: AGENDA_TZ, year: "numeric", month: "2-digit", day: "2-digit",
+});
 function dateKey(d) {
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  return _ymd.format(d); // YYYY-MM-DD
+}
+function minutesOfDay(d) {
+  const [h, m] = hhmm(d).split(":").map(Number);
+  return h * 60 + m;
 }
 
 function hhmm(d) {
-  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return _hm.format(d);
 }
 
 // Segunda-feira (00:00 local) da semana que contém `d`.
@@ -81,6 +95,7 @@ function transformEvents(items) {
         start: hhmm(start),
         end: hhmm(end),
         place: it.place || "Local a confirmar",
+        rawType: it.type,
       };
     })
     .filter(Boolean)
@@ -90,6 +105,11 @@ function transformEvents(items) {
 export default function PublicAgenda({ cityName, tenantSlug }) {
   const [view, setView] = useState("week");
   const [selectedDay, setSelectedDay] = useState(0);
+  // Busca por nome, filtro por tipo e detalhe ao clicar (pedido do cliente:
+  // a população precisa achar e conferir a cerimônia de alguém).
+  const [query, setQuery] = useState("");
+  const [typeFilter, setTypeFilter] = useState("todos");
+  const [selectedEvent, setSelectedEvent] = useState(null);
 
   useEffect(() => {
     if (window.innerWidth <= 768) setView("day");
@@ -109,7 +129,15 @@ export default function PublicAgenda({ cityName, tenantSlug }) {
     [cemeteryId, tenantSlug]
   );
 
-  const events = useMemo(() => transformEvents(agenda.data), [agenda.data]);
+  const allEvents = useMemo(() => transformEvents(agenda.data), [agenda.data]);
+  const events = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return allEvents.filter((e) => {
+      if (typeFilter !== "todos" && e.type !== typeFilter) return false;
+      if (q && !`${e.name} ${e.place}`.toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }, [allEvents, query, typeFilter]);
 
   // Ancora a semana/mês na PRIMEIRA cerimônia (assim as views Dia/Semana/Mês
   // mostram dados reais); sem eventos, ancora em hoje.
@@ -265,6 +293,33 @@ export default function PublicAgenda({ cityName, tenantSlug }) {
               </div>
             </div>
 
+            {/* busca por nome + filtro por tipo */}
+            <div className={styles.searchRow}>
+              <input
+                className={styles.searchInput}
+                type="search"
+                placeholder="Buscar por nome do sepultado…"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                aria-label="Buscar por nome"
+              />
+              <select
+                className={styles.typeSelect}
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value)}
+                aria-label="Filtrar por tipo"
+              >
+                <option value="todos">Todos os tipos</option>
+                <option value="sepultamento">Sepultamento</option>
+                <option value="velorio">Velório</option>
+              </select>
+              {(query || typeFilter !== "todos") && (
+                <span className={styles.searchCount}>
+                  {events.length} resultado{events.length === 1 ? "" : "s"}
+                </span>
+              )}
+            </div>
+
             {/* chips de dia (só no modo dia) */}
             {view === "day" && (
               <div className={styles.dayChips}>
@@ -313,11 +368,11 @@ export default function PublicAgenda({ cityName, tenantSlug }) {
                           const top = Math.max(((toMin(event.start) - DAY_START * 60) / 60) * HOUR_PX, 0);
                           const height = Math.max(((toMin(event.end) - toMin(event.start)) / 60) * HOUR_PX - 3, 28);
                           return (
-                            <div key={event.id} className={`${styles.event} ${styles[`ev_${event.type}`]}`} style={{ top, height }}>
+                            <button key={event.id} type="button" onClick={() => setSelectedEvent(event)} className={`${styles.event} ${styles[`ev_${event.type}`]}`} style={{ top, height }}>
                               <span className={styles.eventTime}>{event.start} – {event.end}</span>
                               <span className={styles.eventTitle}>{event.label} · {event.name}</span>
                               <span className={styles.eventPlace}>{event.place}</span>
-                            </div>
+                            </button>
                           );
                         })}
                       </div>
@@ -376,19 +431,36 @@ export default function PublicAgenda({ cityName, tenantSlug }) {
                     <ul className={styles.agendaItems}>
                       {day.items.map((event) => (
                         <li key={event.id}>
-                          <div className={styles.agendaItem}>
+                          <button type="button" className={styles.agendaItem} onClick={() => setSelectedEvent(event)}>
                             <span className={styles.agendaTime}>{event.start}<em>{event.end}</em></span>
                             <span className={`${styles.agendaBar} ${styles[`ev_${event.type}_dot`]}`} />
                             <span className={styles.agendaBody}>
                               <span className={styles.agendaTitle}>{event.label} · {event.name}</span>
                               <span className={styles.agendaMeta}>{event.place}</span>
                             </span>
-                          </div>
+                          </button>
                         </li>
                       ))}
                     </ul>
                   </section>
                 ))}
+              </div>
+            )}
+
+            {selectedEvent && (
+              <div className={styles.detailOverlay} onClick={() => setSelectedEvent(null)}>
+                <div className={styles.detailCard} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+                  <button className={styles.detailClose} onClick={() => setSelectedEvent(null)} aria-label="Fechar">×</button>
+                  <span className={`${styles.detailBadge} ${styles[`ev_${selectedEvent.type}_dot`]}`} />
+                  <h3 className={styles.detailTitle}>{selectedEvent.name}</h3>
+                  <p className={styles.detailType}>{selectedEvent.label}</p>
+                  <dl className={styles.detailList}>
+                    <div><dt>Data</dt><dd>{selectedEvent.date.toLocaleDateString("pt-BR", { timeZone: AGENDA_TZ, weekday: "long", day: "2-digit", month: "long", year: "numeric" })}</dd></div>
+                    <div><dt>Horário</dt><dd>{selectedEvent.start} — {selectedEvent.end}</dd></div>
+                    <div><dt>Local</dt><dd>{selectedEvent.place}</dd></div>
+                  </dl>
+                  <p className={styles.detailNote}>Informações sujeitas a alteração. Confirme com a administração do cemitério.</p>
+                </div>
               </div>
             )}
 
