@@ -1,20 +1,21 @@
 "use client";
 
 /**
- * Tópico PERFIS DE ACESSO — o cliente CRIA um perfil (nome + baseRole) e MARCA
+ * Tópico PERFIS DE ACESSO — o cliente CRIA um perfil (nome) e MARCA LIVREMENTE
  * as permissões numa matriz de checkboxes (recurso × ação). O perfil salvo vira
  * automaticamente uma COLUNA na matriz "Permissões por perfil" da tela de
  * usuários. Os 3 perfis padrão (Administrador/Operador/Consulta) são somente
  * leitura — refletem os papéis fixos que o sistema já usa.
  *
- * Segurança: cada perfil herda o TETO de um baseRole. As permissões são
+ * Segurança: o NÍVEL de acesso (admin/operador/consulta) é DERIVADO das
+ * permissões marcadas no backend — não é escolhido nem limita a marcação. As
+ * permissões são
  * clampadas a esse teto (aqui na UI e, definitivamente, no backend). Checkbox
  * acima do teto fica desabilitado — não faria efeito, já que o authorize das
  * rotas barra pelo baseRole.
  */
 import { useMemo, useState } from "react";
 import Input from "@/components/atoms/Input/Input";
-import Select from "@/components/atoms/Select/Select";
 import Badge from "@/components/atoms/Badge/Badge";
 import Skeleton from "@/components/atoms/Skeleton/Skeleton";
 import FormField from "@/components/molecules/FormField/FormField";
@@ -36,24 +37,7 @@ import { TopicHeader, SectionCard, Button } from "../_lib/ui";
 import ui from "../_lib/ui.module.css";
 import styles from "./page.module.css";
 
-const BASE_ROLES = [
-  { value: "admin", label: "Administrador" },
-  { value: "operador", label: "Operador" },
-  { value: "consulta", label: "Consulta" },
-];
-
-const EMPTY_DRAFT = { id: null, name: "", baseRole: "operador", description: "", permissions: {}, isSystem: false };
-
-// Interseção de um mapa de permissões com o teto (ceiling) do baseRole.
-function clampToCeiling(permissions, ceiling) {
-  const out = {};
-  for (const [mod, actions] of Object.entries(permissions || {})) {
-    const allowed = new Set((ceiling && ceiling[mod]) || []);
-    const kept = (actions || []).filter((a) => allowed.has(a));
-    if (kept.length) out[mod] = kept;
-  }
-  return out;
-}
+const EMPTY_DRAFT = { id: null, name: "", description: "", permissions: {}, isSystem: false };
 
 export default function PerfisPage() {
   const currentUser = useMemo(() => getUser(), []);
@@ -64,10 +48,6 @@ export default function PerfisPage() {
     []
   );
   const roles = useMemo(() => rolesRaw ?? [], [rolesRaw]);
-
-  // Teto (ceiling) de um baseRole = permissões do perfil de SISTEMA correspondente.
-  const ceilingFor = (base) =>
-    roles.find((r) => r.isSystem && r.baseRole === base)?.permissions || {};
 
   const [draft, setDraft] = useState(null); // null = modal fechado
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -94,17 +74,18 @@ export default function PerfisPage() {
     setDraft({
       id: role.id,
       name: role.name,
-      baseRole: role.baseRole,
       description: role.description || "",
       permissions: role.permissions || {},
       isSystem: Boolean(role.isSystem),
     });
   }
 
-  // Troca o baseRole → reclampa as permissões ao novo teto (não some marcações
   // válidas, mas descarta as que passariam do teto novo).
-  function changeBase(base) {
-    setDraft((d) => ({ ...d, baseRole: base, permissions: clampToCeiling(d.permissions, ceilingFor(base)) }));
+  function markAll() {
+    // Marca TODAS as permissões do catálogo — atalho para o perfil mais amplo.
+    const all = {};
+    for (const mod of PERMISSION_MODULES) all[mod.key] = mod.actions.map((a) => a.key);
+    setDraft((d) => ({ ...d, permissions: all }));
   }
 
   function toggle(modKey, actKey) {
@@ -119,10 +100,6 @@ export default function PerfisPage() {
     });
   }
 
-  // Aplica o padrão do perfil-base (copia o teto inteiro) — atalho útil.
-  function applyBaseDefault() {
-    setDraft((d) => ({ ...d, permissions: JSON.parse(JSON.stringify(ceilingFor(d.baseRole))) }));
-  }
   function clearAll() {
     setDraft((d) => ({ ...d, permissions: {} }));
   }
@@ -135,7 +112,6 @@ export default function PerfisPage() {
     }
     const body = {
       name: draft.name.trim(),
-      baseRole: draft.baseRole,
       description: draft.description.trim() || null,
       permissions: draft.permissions,
     };
@@ -167,7 +143,6 @@ export default function PerfisPage() {
     }
   }
 
-  const ceiling = draft ? ceilingFor(draft.baseRole) : {};
   // Perfis de sistema são somente leitura no editor (a API rejeita alterá-los).
   const editable = canManage && !draft?.isSystem;
 
@@ -211,7 +186,7 @@ export default function PerfisPage() {
                       )}
                     </div>
                     <span className={styles.roleMeta}>
-                      Herda de <strong>{meta.label}</strong> · {countPermissions(r.permissions)} permissões
+                      {countPermissions(r.permissions)} permissões · nível de acesso <strong>{meta.label}</strong>
                       {r.description ? ` · ${r.description}` : ""}
                     </span>
                   </div>
@@ -271,13 +246,6 @@ export default function PerfisPage() {
                   disabled={!editable}
                 />
               </FormField>
-              <FormField label="Perfil-base (teto de acesso)" hint="Define o máximo que este perfil pode alcançar.">
-                <Select value={draft.baseRole} onChange={(e) => changeBase(e.target.value)} disabled={!editable}>
-                  {BASE_ROLES.map((b) => (
-                    <option key={b.value} value={b.value}>{b.label}</option>
-                  ))}
-                </Select>
-              </FormField>
               <FormField label="Descrição (opcional)" className={styles.spanTwo}>
                 <Input
                   placeholder="Para que serve este perfil"
@@ -290,14 +258,14 @@ export default function PerfisPage() {
 
             {editable && (
               <div className={styles.quickRow}>
-                <button type="button" className={styles.quickBtn} onClick={applyBaseDefault}>
-                  Marcar padrão do perfil-base
+                <button type="button" className={styles.quickBtn} onClick={markAll}>
+                  Marcar tudo
                 </button>
                 <button type="button" className={styles.quickBtn} onClick={clearAll}>
                   Limpar tudo
                 </button>
                 <span className={styles.quickHint}>
-                  Ações fora do teto do perfil-base ficam bloqueadas.
+                  Marque livremente o que este perfil pode fazer.
                 </span>
               </div>
             )}
@@ -311,18 +279,16 @@ export default function PerfisPage() {
                   </div>
                   <div className={styles.actionsWrap}>
                     {mod.actions.map((act) => {
-                      const allowed = hasPermission(ceiling, mod.key, act.key); // dentro do teto?
                       const checked = hasPermission(draft.permissions, mod.key, act.key);
                       return (
                         <label
                           key={act.key}
-                          className={`${styles.actionChip} ${checked ? styles.actionOn : ""} ${!allowed ? styles.actionDisabled : ""}`}
-                          title={allowed ? "" : "Acima do teto do perfil-base"}
+                          className={`${styles.actionChip} ${checked ? styles.actionOn : ""}`}
                         >
                           <input
                             type="checkbox"
                             checked={checked}
-                            disabled={!allowed || !editable}
+                            disabled={!editable}
                             onChange={() => toggle(mod.key, act.key)}
                           />
                           <span>{act.label}</span>
