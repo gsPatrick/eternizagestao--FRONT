@@ -20,11 +20,12 @@ import Skeleton from "@/components/atoms/Skeleton/Skeleton";
 import ErrorState from "@/components/molecules/ErrorState/ErrorState";
 import EmptyState from "@/components/molecules/EmptyState/EmptyState";
 import FileViewer from "@/components/organisms/FileViewer/FileViewer";
+import ConfirmDelete from "@/components/molecules/ConfirmDelete/ConfirmDelete";
 
 import { useResource, useMutation } from "@/lib/api/useResource";
 import IntegrationRequired, { useIntegrationGuard } from "@/components/molecules/IntegrationRequired/IntegrationRequired";
 import {
-  listDocuments, issueDocument, reissueDocument, cancelDocument,
+  listDocuments, issueDocument, reissueDocument, cancelDocument, deleteDocument,
   listTemplates, createTemplate, updateTemplate,
   listSignatures, createSignature, simulateSignature,
   adaptDocument, adaptTemplate, adaptSignature, fetchDocumentPdf,
@@ -139,6 +140,10 @@ export default function DocumentsPage() {
   // o backend e as chamadas de API continuam intactos.
   const SIGNATURE_ENABLED = false;
 
+  // Excluir documento é ação sensível restrita a admin (a API exige authorize('admin')).
+  // Gatilhamos o botão pelo papel da sessão para não oferecer uma ação que falharia.
+  const isAdmin = getUser()?.role === "admin";
+
   const [filter, setFilter] = useState("todos");
   // Ano consultado — começa no ano corrente (nunca em um ano fixo no código) e o
   // operador pode voltar para consultar o arquivo de exercícios anteriores.
@@ -177,6 +182,7 @@ export default function DocumentsPage() {
   const [legalOpen, setLegalOpen] = useState(false);
   const [legalForm, setLegalForm] = useState({ legalCertidao: "", legalAutorizacao: "" });
   const [cancelTarget, setCancelTarget] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const [feedback, setFeedback] = useState(null);
   const [preview, setPreview] = useState(null); // arquivo aberto no FileViewer (modal)
 
@@ -219,6 +225,7 @@ export default function DocumentsPage() {
   const issueM = useMutation(issueDocument);
   const reissueM = useMutation(reissueDocument);
   const cancelM = useMutation(cancelDocument);
+  const deleteM = useMutation(deleteDocument);
   const signM = useMutation(createSignature);
   const simulateM = useMutation(simulateSignature);
   const tplM = useMutation((tpl) => {
@@ -379,6 +386,15 @@ export default function DocumentsPage() {
       setCancelTarget(null);
       setDetailId(null);
       flash("Documento cancelado — a numeração não é reaproveitada.");
+      docsRes.refetch();
+    });
+  }
+
+  function confirmDelete() {
+    runAction(deleteM.mutate(deleteTarget.id), () => {
+      setDeleteTarget(null);
+      setDetailId(null);
+      flash("Documento excluído — o registro e os arquivos foram removidos.");
       docsRes.refetch();
     });
   }
@@ -667,6 +683,11 @@ export default function DocumentsPage() {
                   Cancelar
                 </Button>
               )}
+              {isAdmin && (
+                <Button variant="danger" onClick={() => setDeleteTarget(detail)}>
+                  Excluir
+                </Button>
+              )}
               <Button variant="ghost" onClick={() => setDetailId(null)}>Fechar</Button>
             </>
           )
@@ -864,6 +885,17 @@ export default function DocumentsPage() {
           </FormField>
         </div>
       </Modal>
+
+      {/* ---------- excluir documento ---------- */}
+      <ConfirmDelete
+        open={Boolean(deleteTarget)}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={confirmDelete}
+        loading={deleteM.loading}
+        title="Excluir documento"
+        name={deleteTarget ? docLabel(deleteTarget) : ""}
+        description="O documento e os arquivos gerados (HTML e PDF) serão removidos definitivamente. A exclusão fica registrada na auditoria."
+      />
 
       {/* ---------- editar/criar modelo ---------- */}
       <Modal
