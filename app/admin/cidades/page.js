@@ -26,6 +26,7 @@ import {
   activateTenant,
   deactivateTenant,
   resendTenantInvite,
+  setTenantAdminPassword,
   uploadTenantLogo,
   adaptTenants,
   normalizeSubdomain,
@@ -94,6 +95,11 @@ export default function CitiesConsolePage() {
   const [deleteCity, setDeleteCity] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [deleteError, setDeleteError] = useState(null);
+
+  // (super_admin) definir a senha do ADMIN da cidade — sem depender de e-mail.
+  const [pwdCity, setPwdCity] = useState(null);
+  const [pwdForm, setPwdForm] = useState({ next: "", confirm: "", error: null });
+  const adminPwdM = useMutation(({ tenantId, password }) => setTenantAdminPassword(tenantId, password));
 
   const createM = useMutation((body) => createTenant(body));
   // Criar a cidade dispara o convite do 1º admin por e-mail. Sem provedor
@@ -366,6 +372,35 @@ export default function CitiesConsolePage() {
     }
   }
 
+  // ---- definir senha do admin da cidade (super_admin) ----
+  function openAdminPwd(city) {
+    setPwdCity(city);
+    setPwdForm({ next: "", confirm: "", error: null });
+  }
+
+  async function submitAdminPwd() {
+    if (pwdForm.next.length < 8) {
+      setPwdForm((f) => ({ ...f, error: "A senha deve ter no mínimo 8 caracteres." }));
+      return;
+    }
+    if (pwdForm.next !== pwdForm.confirm) {
+      setPwdForm((f) => ({ ...f, error: "As senhas não coincidem." }));
+      return;
+    }
+    try {
+      const admin = await adminPwdM.mutate({ tenantId: pwdCity.id, password: pwdForm.next });
+      const to = admin?.email ? ` (${admin.email})` : "";
+      setPwdCity(null);
+      flash(`Senha do administrador de ${pwdCity.name} definida${to}. Informe-a com segurança.`);
+    } catch (err) {
+      if (err?.code === "ADMIN_NOT_FOUND") {
+        setPwdForm((f) => ({ ...f, error: "Esta cidade ainda não tem um administrador." }));
+      } else {
+        setPwdForm((f) => ({ ...f, error: err?.message || "Não foi possível definir a senha." }));
+      }
+    }
+  }
+
   const columns = [
     {
       key: "city",
@@ -427,6 +462,15 @@ export default function CitiesConsolePage() {
               onClick={() => resendInvite(c)}
             >
               Reenviar convite
+            </button>
+            <button
+              type="button"
+              className={styles.rowLink}
+              disabled={busy}
+              onClick={() => openAdminPwd(c)}
+              title="Definir a senha do administrador da cidade (sem depender de e-mail)"
+            >
+              Senha do admin
             </button>
             <button
               type="button"
@@ -559,6 +603,13 @@ export default function CitiesConsolePage() {
                             onClick={() => resendInvite(c)}
                           >
                             Reenviar convite
+                          </Button>
+                          <Button
+                            variant="secondary"
+                            disabled={busy}
+                            onClick={() => openAdminPwd(c)}
+                          >
+                            Senha do admin
                           </Button>
                           <Button
                             variant="secondary"
@@ -887,6 +938,56 @@ export default function CitiesConsolePage() {
               />
             </FormField>
             {deleteError && <Alert tone="danger">{deleteError}</Alert>}
+          </div>
+        )}
+      </Modal>
+
+      {/* ---------- definir senha do admin da cidade (super_admin) ---------- */}
+      <Modal
+        open={Boolean(pwdCity)}
+        onClose={() => setPwdCity(null)}
+        title="Senha do administrador"
+        subtitle={pwdCity ? pwdCity.name : ""}
+        width={480}
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setPwdCity(null)}>Cancelar</Button>
+            <Button
+              loading={adminPwdM.loading}
+              disabled={pwdForm.next.length < 8 || pwdForm.next !== pwdForm.confirm}
+              onClick={submitAdminPwd}
+            >
+              Definir senha
+            </Button>
+          </>
+        }
+      >
+        {pwdCity && (
+          <div className={styles.confirmBody}>
+            <Alert tone="info">
+              Define a senha do <strong>administrador</strong> desta cidade diretamente,
+              sem depender de e-mail. Entregue-a ao responsável com segurança — ele
+              poderá trocá-la depois no próprio painel.
+            </Alert>
+            <FormField label="Nova senha">
+              <Input
+                type="password"
+                autoComplete="new-password"
+                placeholder="Mínimo de 8 caracteres"
+                value={pwdForm.next}
+                onChange={(e) => setPwdForm({ ...pwdForm, next: e.target.value, error: null })}
+              />
+            </FormField>
+            <FormField label="Confirmar senha">
+              <Input
+                type="password"
+                autoComplete="new-password"
+                placeholder="Repita a nova senha"
+                value={pwdForm.confirm}
+                onChange={(e) => setPwdForm({ ...pwdForm, confirm: e.target.value, error: null })}
+              />
+            </FormField>
+            {pwdForm.error && <Alert tone="danger">{pwdForm.error}</Alert>}
           </div>
         )}
       </Modal>

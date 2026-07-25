@@ -49,6 +49,12 @@ const TOPICS = [
     desc: "E-mail (SMTP) e WhatsApp",
     icon: BellIcon,
   },
+  {
+    slug: "perfis",
+    label: "Perfis de acesso",
+    desc: "Perfis e permissões da equipe",
+    icon: ShieldIcon,
+  },
 ];
 
 export default function ConfiguracoesLayout({ children }) {
@@ -185,6 +191,14 @@ function BellIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none">
       <path d="M6.5 9.5a5.5 5.5 0 0 1 11 0c0 4 1.5 5.5 1.5 5.5H5s1.5-1.5 1.5-5.5ZM10 18.5a2 2 0 0 0 4 0" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function ShieldIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none">
+      <path d="M12 3.5 5.5 6v5c0 4.2 2.8 7.4 6.5 8.5 3.7-1.1 6.5-4.3 6.5-8.5V6L12 3.5Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+      <path d="m9.2 11.8 2 2 3.6-3.9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

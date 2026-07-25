@@ -32,7 +32,10 @@ import {
   deactivateUser,
   resetUserPassword,
   resendUserInvite,
+  setUserPassword,
 } from "@/lib/api/resources/users";
+import { listRoles } from "@/lib/api/resources/roles";
+import { PERMISSION_MODULES, hasPermission } from "@/lib/permissions-catalog";
 
 const ROLE_META = {
   admin: {
@@ -67,75 +70,8 @@ const FILTERS = [
   { key: "inativos", label: "Inativos" },
 ];
 
-// matriz de permissões por AÇÃO — fiel ao que a API realmente aplica:
-// leitura (GET) liberada a todos os perfis; escrita = admin+operador;
-// exclusões e ações sensíveis = só admin (authorize no backend).
-const PERMISSIONS = [
-  {
-    resource: "Cadastros", desc: "Sepulturas, pessoas, concessões e sepultados",
-    actions: [
-      { label: "Visualizar", a: true, o: true, c: true },
-      { label: "Criar", a: true, o: true, c: false },
-      { label: "Editar", a: true, o: true, c: false },
-      { label: "Excluir", a: true, o: false, c: false },
-      { label: "Bloquear jazigo", a: true, o: false, c: false },
-    ],
-  },
-  {
-    resource: "Sepultados & exumações", desc: "Registros, agendamentos e autorizações",
-    actions: [
-      { label: "Visualizar", a: true, o: true, c: true },
-      { label: "Registrar / agendar", a: true, o: true, c: false },
-      { label: "Autorizar exumação", a: true, o: true, c: false },
-    ],
-  },
-  {
-    resource: "Financeiro", desc: "Cobranças, baixas e 2ª via",
-    actions: [
-      { label: "Visualizar", a: true, o: true, c: true },
-      { label: "Gerar cobrança", a: true, o: true, c: false },
-      { label: "Registrar pagamento", a: true, o: true, c: false },
-      { label: "Cancelar / estornar", a: true, o: true, c: false },
-    ],
-  },
-  {
-    resource: "Documentos", desc: "Certidões, autorizações e recibos",
-    actions: [
-      { label: "Visualizar", a: true, o: true, c: true },
-      { label: "Emitir / 2ª via", a: true, o: true, c: false },
-      { label: "Cancelar", a: true, o: true, c: false },
-    ],
-  },
-  {
-    resource: "Mapa", desc: "Ortofoto, camadas e demarcação",
-    actions: [
-      { label: "Visualizar", a: true, o: true, c: true },
-      { label: "Demarcar / importar ortofoto", a: true, o: true, c: false },
-    ],
-  },
-  {
-    resource: "Relatórios & exportações", desc: "Indicadores e exportação de dados",
-    actions: [
-      { label: "Visualizar relatórios", a: true, o: true, c: true },
-      { label: "Exportar dados", a: true, o: true, c: false },
-    ],
-  },
-  {
-    resource: "Importação de legado", desc: "Planilhas e migração histórica",
-    actions: [
-      { label: "Enviar / validar lote", a: true, o: true, c: false },
-      { label: "Confirmar em produção", a: true, o: false, c: false },
-    ],
-  },
-  {
-    resource: "Auditoria", desc: "Trilha imutável de ações",
-    actions: [{ label: "Consultar trilha", a: true, o: false, c: false }],
-  },
-  {
-    resource: "Usuários & configurações", desc: "Perfis, convites e parâmetros",
-    actions: [{ label: "Gerenciar tudo", a: true, o: false, c: false }],
-  },
-];
+// Tonalidade da coluna por baseRole na matriz (chip do cabeçalho).
+const BASE_ROLE_TONE = { admin: "roleAdmin", operador: "roleOperador", consulta: "roleConsulta" };
 
 function PermMark({ ok }) {
   return ok ? (
@@ -163,24 +99,60 @@ export default function UsersPage() {
     [data, currentUserId]
   );
 
+  // Perfis da cidade (3 de sistema + customizados). Alimenta o SELETOR de perfil
+  // dos usuários e as COLUNAS da matriz de permissões.
+  const { data: rolesRaw } = useResource(({ signal }) => listRoles({ signal }), []);
+  const roles = useMemo(() => rolesRaw ?? [], [rolesRaw]);
+  const rolesById = useMemo(
+    () => Object.fromEntries(roles.map((r) => [r.id, r])),
+    [roles]
+  );
+  // id do perfil de SISTEMA de um baseRole (para representar usuários sem roleId).
+  const systemRoleIdFor = (base) =>
+    roles.find((r) => r.isSystem && r.baseRole === base)?.id ?? "";
+  const defaultRoleId = useMemo(() => systemRoleIdFor("operador") || roles[0]?.id || "", [roles]);
+  // Perfil "atual" de um usuário: o customizado (roleId) ou o de sistema do seu baseRole.
+  const currentRoleIdOf = (u) => u.roleId || systemRoleIdFor(u.role);
+
+  // Opções do seletor de perfil: sistema primeiro, depois customizados.
+  const roleOptions = (rid) => (
+    <Select value={rid.value} onChange={rid.onChange} disabled={rid.disabled}>
+      {roles.map((r) => (
+        <option key={r.id} value={r.id}>
+          {r.name}{r.isSystem ? "" : " · personalizado"}
+        </option>
+      ))}
+    </Select>
+  );
+  // Descrição do perfil escolhido (nome + teto herdado do baseRole).
+  const roleHintFor = (roleId) => {
+    const r = rolesById[roleId];
+    if (!r) return "";
+    const base = ROLE_META[r.baseRole]?.label || r.baseRole;
+    return r.description
+      || `Perfil ${r.isSystem ? "padrão" : "personalizado"} — herda o teto de acesso de ${base}.`;
+  };
+
   const [filter, setFilter] = useState("todos");
   const [query, setQuery] = useState("");
   const [detailId, setDetailId] = useState(null);
-  const [roleDraft, setRoleDraft] = useState("operador");
-  const [invite, setInvite] = useState(null); // { name, email, phone, role }
+  const [roleDraft, setRoleDraft] = useState(""); // roleId selecionado no detalhe
+  const [invite, setInvite] = useState(null); // { name, email, phone, roleId }
+  const [pwd, setPwd] = useState({ next: "", confirm: "", error: null }); // definir senha
   const [exportOpen, setExportOpen] = useState(false);
   const [notice, setNotice] = useState(null); // { tone, message }
 
   // mutations (uma por endpoint) — o `saving` do modal deriva de todas.
   const inviteM = useMutation((body) => inviteUser(body));
-  const roleM = useMutation(({ id, role }) => updateUser(id, { role }));
+  const roleM = useMutation(({ id, roleId }) => updateUser(id, { roleId }));
   const activateM = useMutation((id) => activateUser(id));
   const deactivateM = useMutation((id) => deactivateUser(id));
   const resetM = useMutation((id) => resetUserPassword(id));
   const resendM = useMutation((id) => resendUserInvite(id));
+  const passwordM = useMutation(({ id, password }) => setUserPassword(id, password));
   const saving =
     inviteM.loading || roleM.loading || activateM.loading ||
-    deactivateM.loading || resetM.loading || resendM.loading;
+    deactivateM.loading || resetM.loading || resendM.loading || passwordM.loading;
 
   const detail = users.find((u) => u.id === detailId);
 
@@ -225,12 +197,13 @@ export default function UsersPage() {
 
   function openDetail(user) {
     setDetailId(user.id);
-    setRoleDraft(user.role);
+    setRoleDraft(currentRoleIdOf(user));
+    setPwd({ next: "", confirm: "", error: null });
   }
 
   async function sendInvite() {
     try {
-      await inviteM.mutate({ name: invite.name, email: invite.email, phone: invite.phone, role: invite.role });
+      await inviteM.mutate({ name: invite.name, email: invite.email, phone: invite.phone, roleId: invite.roleId });
       const email = invite.email;
       setInvite(null);
       await refetch();
@@ -242,9 +215,28 @@ export default function UsersPage() {
 
   async function saveRole() {
     try {
-      await roleM.mutate({ id: detailId, role: roleDraft });
+      await roleM.mutate({ id: detailId, roleId: roleDraft });
       await refetch();
-      flash(`Perfil de ${detail.name} atualizado para ${ROLE_META[roleDraft].label}.`);
+      flash(`Perfil de ${detail.name} atualizado para ${rolesById[roleDraft]?.name || "novo perfil"}.`);
+    } catch (e) {
+      fail(e);
+    }
+  }
+
+  // Admin DEFINE a senha do usuário (digita a nova) — não depende de e-mail.
+  async function applyPassword() {
+    if (pwd.next.length < 8) {
+      setPwd((p) => ({ ...p, error: "A senha deve ter no mínimo 8 caracteres." }));
+      return;
+    }
+    if (pwd.next !== pwd.confirm) {
+      setPwd((p) => ({ ...p, error: "As senhas não coincidem." }));
+      return;
+    }
+    try {
+      await passwordM.mutate({ id: detailId, password: pwd.next });
+      setPwd({ next: "", confirm: "", error: null });
+      flash(`Senha de ${detail.name} definida. Informe-a ao usuário com segurança.`);
     } catch (e) {
       fail(e);
     }
@@ -334,7 +326,10 @@ export default function UsersPage() {
     },
     {
       key: "role", label: "Perfil",
-      render: (u) => <Badge tone={ROLE_META[u.role].tone}>{ROLE_META[u.role].label}</Badge>,
+      render: (u) => {
+        const meta = ROLE_META[u.role] || ROLE_META.operador;
+        return <Badge tone={meta.tone}>{u.roleName || meta.label}</Badge>;
+      },
     },
     { key: "access", label: "Último acesso", render: renderLastAccess },
     {
@@ -363,7 +358,7 @@ export default function UsersPage() {
           message="Convide o primeiro usuário para dar acesso ao painel deste cemitério."
           action={
             canManage ? (
-              <Button onClick={() => setInvite({ name: "", email: "", phone: "", role: "operador" })}>
+              <Button onClick={() => setInvite({ name: "", email: "", phone: "", roleId: defaultRoleId })}>
                 Convidar usuário
               </Button>
             ) : null
@@ -446,43 +441,47 @@ export default function UsersPage() {
     </div>
   );
 
+  // Grade dinâmica: 1ª coluna (recurso/ação) + N colunas (um perfil cada).
+  const matrixGrid = { gridTemplateColumns: `minmax(0, 1fr) repeat(${Math.max(roles.length, 1)}, 140px)` };
+
   const permissionsTab = (
     <div className={styles.tabContent}>
       <p className={styles.typesHint}>
-        O que cada perfil pode fazer no sistema. Os perfis são fixos —
+        O que cada perfil pode fazer no sistema. Os três perfis padrão —
         <strong> Administrador</strong>, <strong>Operador</strong> e <strong>Consulta</strong> —
-        e valem para todos os módulos do cemitério.
+        aparecem sempre; os perfis <strong>personalizados</strong> criados em
+        {" "}<strong>Configurações › Perfis de acesso</strong> viram novas colunas aqui.
       </p>
       <div className={styles.matrixWrap}>
-        <div className={styles.matrix}>
-          {/* cabeçalho de colunas */}
-          <div className={`${styles.matrixRow} ${styles.matrixColHead}`}>
+        <div className={styles.matrix} style={{ minWidth: `${360 + Math.max(roles.length, 1) * 140}px` }}>
+          {/* cabeçalho de colunas — uma por perfil */}
+          <div className={`${styles.matrixRow} ${styles.matrixColHead}`} style={matrixGrid}>
             <span className={styles.matrixColLabel}>Recurso / ação</span>
-            <span className={styles.matrixRole}>
-              <span className={`${styles.matrixRoleChip} ${styles.roleAdmin}`}>Administrador</span>
-            </span>
-            <span className={styles.matrixRole}>
-              <span className={`${styles.matrixRoleChip} ${styles.roleOperador}`}>Operador</span>
-            </span>
-            <span className={styles.matrixRole}>
-              <span className={`${styles.matrixRoleChip} ${styles.roleConsulta}`}>Consulta</span>
-            </span>
+            {roles.map((r) => (
+              <span key={r.id} className={styles.matrixRole}>
+                <span className={`${styles.matrixRoleChip} ${styles[BASE_ROLE_TONE[r.baseRole]] || ""}`}>
+                  {r.name}
+                </span>
+              </span>
+            ))}
           </div>
 
-          {PERMISSIONS.map((p) => (
-            <div key={p.resource} className={styles.matrixGroup}>
+          {PERMISSION_MODULES.map((mod) => (
+            <div key={mod.key} className={styles.matrixGroup}>
               {/* divisor do recurso */}
               <div className={styles.matrixResourceRow}>
-                <span className={styles.matrixResourceName}>{p.resource}</span>
-                <span className={styles.matrixResourceDesc}>{p.desc}</span>
+                <span className={styles.matrixResourceName}>{mod.label}</span>
+                <span className={styles.matrixResourceDesc}>{mod.desc}</span>
               </div>
-              {/* ações do recurso */}
-              {p.actions.map((act) => (
-                <div key={act.label} className={styles.matrixRow}>
+              {/* ações do recurso × perfis */}
+              {mod.actions.map((act) => (
+                <div key={act.key} className={styles.matrixRow} style={matrixGrid}>
                   <span className={styles.matrixActionLabel}>{act.label}</span>
-                  <span className={styles.matrixCell}><PermMark ok={act.a} /></span>
-                  <span className={styles.matrixCell}><PermMark ok={act.o} /></span>
-                  <span className={styles.matrixCell}><PermMark ok={act.c} /></span>
+                  {roles.map((r) => (
+                    <span key={r.id} className={styles.matrixCell}>
+                      <PermMark ok={hasPermission(r.permissions, mod.key, act.key)} />
+                    </span>
+                  ))}
                 </div>
               ))}
             </div>
@@ -493,7 +492,8 @@ export default function UsersPage() {
       <p className={styles.matrixFoot}>
         Estas regras são aplicadas <strong>no servidor</strong>: uma ação sem
         permissão é bloqueada pela API (403) mesmo que a chamada seja forçada.
-        Na interface, os botões correspondentes ficam ocultos ou desabilitados.
+        Cada perfil personalizado herda o teto de acesso de um perfil padrão
+        (Administrador, Operador ou Consulta) e só restringe dentro dele.
       </p>
     </div>
   );
@@ -516,7 +516,7 @@ export default function UsersPage() {
             Exportar
           </Button>
           {canManage && (
-            <Button onClick={() => setInvite({ name: "", email: "", phone: "", role: "operador" })}
+            <Button onClick={() => setInvite({ name: "", email: "", phone: "", roleId: defaultRoleId })}
               iconLeft={
                 <svg viewBox="0 0 16 16" fill="none">
                   <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
@@ -548,7 +548,7 @@ export default function UsersPage() {
       <Tabs
         items={[
           { label: "Usuários", count: users.length, content: usersTab },
-          { label: "Permissões por perfil", count: 3, content: permissionsTab },
+          { label: "Permissões por perfil", count: roles.length, content: permissionsTab },
         ]}
       />
 
@@ -565,7 +565,7 @@ export default function UsersPage() {
               {canManage && (detail.status === "pendente" ? (
                 <Button variant="secondary" loading={saving} onClick={resendInvite}>Reenviar convite</Button>
               ) : (
-                <Button variant="secondary" loading={saving} onClick={resetPassword}>Redefinir senha</Button>
+                <Button variant="secondary" loading={saving} onClick={resetPassword}>Enviar link de redefinição</Button>
               ))}
               {canManage && detail.status === "ativo" && (
                 detail.you ? (
@@ -590,7 +590,9 @@ export default function UsersPage() {
               <Avatar name={detail.name} size="lg" />
               <div className={styles.profileInfo}>
                 <div className={styles.badgeRow}>
-                  <Badge tone={ROLE_META[detail.role].tone}>{ROLE_META[detail.role].label}</Badge>
+                  <Badge tone={(ROLE_META[detail.role] || ROLE_META.operador).tone}>
+                    {detail.roleName || (ROLE_META[detail.role] || ROLE_META.operador).label}
+                  </Badge>
                   <Badge tone={STATUS_META[detail.status].tone} dot={STATUS_META[detail.status].dot}>
                     {STATUS_META[detail.status].label}
                   </Badge>
@@ -605,24 +607,72 @@ export default function UsersPage() {
             <section className={styles.detailSection}>
               <span className={styles.sectionLabel}>Perfil de acesso</span>
               <div className={styles.roleEditRow}>
-                <Select value={roleDraft} onChange={(e) => setRoleDraft(e.target.value)} disabled={!canManage}>
-                  {Object.entries(ROLE_META).map(([key, meta]) => (
-                    <option key={key} value={key}>{meta.label}</option>
-                  ))}
-                </Select>
+                {roleOptions({
+                  value: roleDraft,
+                  onChange: (e) => setRoleDraft(e.target.value),
+                  disabled: !canManage,
+                })}
                 {canManage && (
-                  <Button size="sm" loading={saving} disabled={roleDraft === detail.role} onClick={saveRole}>
+                  <Button
+                    size="sm"
+                    loading={saving}
+                    disabled={roleDraft === currentRoleIdOf(detail)}
+                    onClick={saveRole}
+                  >
                     Salvar perfil
                   </Button>
                 )}
               </div>
-              <p className={styles.roleHint}>{ROLE_META[roleDraft].desc}</p>
+              <p className={styles.roleHint}>{roleHintFor(roleDraft)}</p>
               {detail.you && (
                 <p className={styles.statusNote}>
                   Você não pode desativar a própria conta — peça a outro administrador.
                 </p>
               )}
             </section>
+
+            {/* Admin DEFINE a senha direto (sem depender de e-mail configurado). */}
+            {canManage && (
+              <section className={styles.detailSection}>
+                <span className={styles.sectionLabel}>Definir senha</span>
+                <p className={styles.roleHint}>
+                  Defina uma senha diretamente para {detail.you ? "você" : "este usuário"} —
+                  útil quando o envio de e-mail não está configurado. Informe-a com segurança.
+                </p>
+                <div className={styles.formGrid}>
+                  <FormField label="Nova senha">
+                    <Input
+                      type="password"
+                      autoComplete="new-password"
+                      placeholder="Mínimo de 8 caracteres"
+                      value={pwd.next}
+                      onChange={(e) => setPwd({ ...pwd, next: e.target.value, error: null })}
+                    />
+                  </FormField>
+                  <FormField label="Confirmar senha">
+                    <Input
+                      type="password"
+                      autoComplete="new-password"
+                      placeholder="Repita a nova senha"
+                      value={pwd.confirm}
+                      onChange={(e) => setPwd({ ...pwd, confirm: e.target.value, error: null })}
+                    />
+                  </FormField>
+                </div>
+                {pwd.error && <p className={styles.statusNote}>{pwd.error}</p>}
+                <div className={styles.roleEditRow}>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    loading={saving}
+                    disabled={pwd.next.length < 8 || pwd.next !== pwd.confirm}
+                    onClick={applyPassword}
+                  >
+                    Salvar senha
+                  </Button>
+                </div>
+              </section>
+            )}
 
             <section className={styles.detailSection}>
               <span className={styles.sectionLabel}>Últimos acessos</span>
@@ -687,14 +737,13 @@ export default function UsersPage() {
                 />
               </FormField>
               <FormField label="Perfil de acesso" required className={styles.spanTwo}>
-                <Select value={invite.role} onChange={(e) => setInvite({ ...invite, role: e.target.value })}>
-                  {Object.entries(ROLE_META).map(([key, meta]) => (
-                    <option key={key} value={key}>{meta.label}</option>
-                  ))}
-                </Select>
+                {roleOptions({
+                  value: invite.roleId,
+                  onChange: (e) => setInvite({ ...invite, roleId: e.target.value }),
+                })}
               </FormField>
             </div>
-            <p className={styles.roleHint}>{ROLE_META[invite.role].desc}</p>
+            <p className={styles.roleHint}>{roleHintFor(invite.roleId)}</p>
           </div>
         )}
       </Modal>
