@@ -23,7 +23,7 @@ export default function PlatformLanding() {
         <PanelShowcase />
         <ImpactCards />
       </main>
-      <PublicFooter />
+      <PublicFooter showCredit />
     </>
   );
 }

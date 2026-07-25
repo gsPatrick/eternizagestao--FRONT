@@ -41,6 +41,9 @@ export default function PublicFooter({
   cityName,
   imageUrl = null,
   defaultImage = "platform",
+  // Crédito do desenvolvedor: só na landing PRINCIPAL da plataforma. Nas
+  // landings das cidades ele não aparece — cada prefeitura vê só a própria marca.
+  showCredit = false,
 }) {
   const art = DEFAULT_ART[defaultImage] || DEFAULT_ART.platform;
   const isPublic = variant === "public";
@@ -141,6 +144,14 @@ export default function PublicFooter({
           </picture>
           <div className={styles.bgBar}>
             <span>© 2026 Eterniza Gestão — plataforma de gestão de cemitérios</span>
+            {showCredit && (
+              <span className={styles.credit}>
+                Desenvolvido por{" "}
+                <a href="https://www.codeybypatrick.dev/" target="_blank" rel="noreferrer">
+                  Patrick.Developer
+                </a>
+              </span>
+            )}
             <a href="mailto:contato@eternizagestao.com.br">contato@eternizagestao.com.br</a>
           </div>
         </div>
