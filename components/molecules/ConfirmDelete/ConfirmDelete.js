@@ -89,6 +89,9 @@ export default function ConfirmDelete({
 
 // Traduz o impacto em frases que o operador entende — sem jargão de banco.
 function impactLines(impact) {
+  // Linhas já prontas (telas fora do domínio sepultura/sepultado passam assim).
+  if (Array.isArray(impact.lines) && impact.lines.length) return impact.lines;
+
   const out = [];
 
   if (impact.activeBurials) {

@@ -30,7 +30,10 @@ import {
   normalizeStatusSlug,
   frontStatusToApiSlug,
 } from "@/lib/api/resources/gavetas";
-import { createGrave, listGraves } from "@/lib/api/resources/graves";
+import { createGrave, listGraves, removeGrave, getGraveDeleteImpact } from "@/lib/api/resources/graves";
+import { getUser } from "@/lib/api/session";
+import RowActions from "@/components/molecules/RowActions/RowActions";
+import ConfirmDelete from "@/components/molecules/ConfirmDelete/ConfirmDelete";
 
 // Mesma identidade visual das situações de Sepulturas (chips/badges).
 const STATUS_META = {
@@ -54,6 +57,26 @@ export default function DrawersPage() {
   const [blockFilter, setBlockFilter] = useState("");
   const [page, setPage] = useState(1);
   const [detailId, setDetailId] = useState(null);
+  const currentUser = getUser();
+  const canDelete = ["admin", "super_admin"].includes(currentUser?.role);
+  const [confirmDelete, setConfirmDelete] = useState(null);
+  const [deleteImpact, setDeleteImpact] = useState(null);
+  const [deleteError, setDeleteError] = useState("");
+  const [deleting, setDeleting] = useState(false);
+
+  async function askDelete(row) {
+    setDeleteError(""); setDeleteImpact(null); setConfirmDelete(row);
+    try { setDeleteImpact(await getGraveDeleteImpact(row.id)); } catch (_) {}
+  }
+  async function doDelete(force = false) {
+    setDeleteError(""); setDeleting(true);
+    try {
+      await removeGrave(confirmDelete.id, { force });
+      setConfirmDelete(null); setDeleteImpact(null); refetch();
+    } catch (e) {
+      setDeleteError(e?.message || "Não foi possível excluir a gaveta.");
+    } finally { setDeleting(false); }
+  }
   const [newOpen, setNewOpen] = useState(false);
 
   // ---- filtros de estrutura (cemitério + quadra) ----
@@ -155,9 +178,17 @@ export default function DrawersPage() {
       label: "",
       align: "right",
       render: (row) => (
-        <button className={styles.detailLink} onClick={() => setDetailId(row.id)}>
-          Detalhes
-        </button>
+        <RowActions
+          editHref={`/painel/sepulturas/${row.id}`}
+          editLabel="Editar"
+          canDelete={canDelete}
+          onDelete={() => askDelete(row)}
+          extra={
+            <button className={styles.detailLink} onClick={() => setDetailId(row.id)}>
+              Detalhes
+            </button>
+          }
+        />
       ),
     },
   ];
@@ -305,6 +336,18 @@ export default function DrawersPage() {
       )}
 
       <DrawerDetail id={detailId} onClose={() => setDetailId(null)} onChanged={refetch} />
+
+      <ConfirmDelete
+        open={Boolean(confirmDelete)}
+        onClose={() => { setConfirmDelete(null); setDeleteImpact(null); }}
+        onConfirm={doDelete}
+        loading={deleting}
+        title="Excluir gaveta"
+        name={confirmDelete?.code}
+        impact={deleteImpact}
+        error={deleteError}
+        description="A gaveta sai das listagens e do mapa. O registro fica arquivado no histórico."
+      />
       <NewDrawerModal open={newOpen} onClose={() => setNewOpen(false)} onCreated={refetch} />
     </div>
   );

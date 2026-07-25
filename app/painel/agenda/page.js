@@ -10,6 +10,7 @@ import Select from "@/components/atoms/Select/Select";
 import Badge from "@/components/atoms/Badge/Badge";
 import FormField from "@/components/molecules/FormField/FormField";
 import Modal from "@/components/molecules/Modal/Modal";
+import ConfirmDelete from "@/components/molecules/ConfirmDelete/ConfirmDelete";
 import Alert from "@/components/molecules/Alert/Alert";
 import Skeleton from "@/components/atoms/Skeleton/Skeleton";
 import ErrorState from "@/components/molecules/ErrorState/ErrorState";
@@ -19,6 +20,8 @@ import { useResource, useMutation } from "@/lib/api/useResource";
 import {
   listSchedules,
   createSchedule,
+  updateSchedule,
+  deleteSchedule,
   changeScheduleStatus,
   adaptSchedule,
   composeNotes,
@@ -221,11 +224,33 @@ export default function AgendaPage() {
     );
   }, [events, form]);
 
+  const [editingId, setEditingId] = useState(null); // id do evento em edição
+  const [confirmDel, setConfirmDel] = useState(null); // evento a excluir
+  const [delError, setDelError] = useState("");
   const createMut = useMutation(createSchedule);
+  const updateMut = useMutation((body) => updateSchedule(editingId, body));
+  const deleteMut = useMutation(deleteSchedule);
   const statusMut = useMutation(changeScheduleStatus);
-  const saving = createMut.loading || statusMut.loading;
+  const saving = createMut.loading || updateMut.loading || statusMut.loading;
+
+  function openEdit(ev) {
+    setEditingId(ev.id);
+    setFormError(null);
+    setForm({
+      type: ev.type,
+      dateKey: ev.dateKey,
+      start: ev.start,
+      end: ev.end,
+      place: ev.place !== "—" ? ev.place : "",
+      deceased: ev.deceased !== "—" ? ev.deceased : "",
+      responsible: ev.responsible !== "—" ? ev.responsible : "",
+    });
+    setDetail(null);
+    setNewOpen(true);
+  }
 
   function openNew() {
+    setEditingId(null);
     const day = week[selectedDay] || week[0];
     setFormError(null);
     setForm({
@@ -278,11 +303,25 @@ export default function AgendaPage() {
       if (chapel) body.chapelId = chapel.id;
     }
     try {
-      await createMut.mutate(body);
+      if (editingId) await updateMut.mutate(body);
+      else await createMut.mutate(body);
       setNewOpen(false);
+      setEditingId(null);
       refetch();
     } catch (e) {
-      setFormError(e.message || "Não foi possível criar o agendamento.");
+      setFormError(e.message || "Não foi possível salvar o agendamento.");
+    }
+  }
+
+  async function doDelete() {
+    setDelError("");
+    try {
+      await deleteMut.mutate(confirmDel.id);
+      setConfirmDel(null);
+      setDetail(null);
+      refetch();
+    } catch (e) {
+      setDelError(e?.message || "Não foi possível excluir o agendamento.");
     }
   }
 
@@ -560,6 +599,16 @@ export default function AgendaPage() {
               )}
               <span className={styles.footSpacer} />
               <Button variant="ghost" onClick={() => setDetail(null)}>Fechar</Button>
+              {currentEvent.status !== "concluido" && (
+                <Button variant="secondary" onClick={() => openEdit(currentEvent)}>Editar</Button>
+              )}
+              <Button
+                variant="secondary"
+                onClick={() => { setDelError(""); setConfirmDel(currentEvent); }}
+                style={{ color: "var(--color-danger, #b42318)" }}
+              >
+                Excluir
+              </Button>
               {currentEvent.status === "agendado" && (
                 <Button loading={saving} onClick={() => setStatus(currentEvent.id, "confirmado")}>Confirmar</Button>
               )}
@@ -601,7 +650,7 @@ export default function AgendaPage() {
       <Modal
         open={newOpen}
         onClose={() => setNewOpen(false)}
-        title="Novo agendamento"
+        title={editingId ? "Editar agendamento" : "Novo agendamento"}
         subtitle="Controle de horários e capelas — sem conflitos"
         width={620}
         footer={
@@ -612,7 +661,7 @@ export default function AgendaPage() {
               disabled={!form || conflicts.length > 0 || toMinutes(form?.end || "0:0") <= toMinutes(form?.start || "0:0")}
               onClick={createEvent}
             >
-              Agendar
+              {editingId ? "Salvar" : "Agendar"}
             </Button>
           </>
         }
@@ -680,6 +729,28 @@ export default function AgendaPage() {
           </div>
         )}
       </Modal>
+
+      <ConfirmDelete
+        open={Boolean(confirmDel)}
+        onClose={() => setConfirmDel(null)}
+        onConfirm={doDelete}
+        loading={deleteMut.loading}
+        title="Excluir agendamento"
+        name={confirmDel ? `${typeMeta(confirmDel.type).label} · ${confirmDel.deceased}` : ""}
+        error={delError}
+        impact={
+          confirmDel?.deceasedId
+            ? {
+                blocked: true,
+                lines: [
+                  "O evento sai da agenda (interna e pública)",
+                  "O SEPULTAMENTO permanece registrado — só o agendamento é removido",
+                ],
+              }
+            : null
+        }
+        description="O agendamento é removido da agenda. Esta ação não pode ser desfeita."
+      />
     </div>
   );
 }
