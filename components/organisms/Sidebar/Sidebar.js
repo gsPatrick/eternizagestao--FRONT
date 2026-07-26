@@ -1,15 +1,28 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import styles from "./Sidebar.module.css";
 import BrandMark from "@/components/atoms/BrandMark/BrandMark";
 import NavIcon from "@/components/atoms/NavIcon/NavIcon";
 import { NAV_GROUPS, isActive } from "@/lib/panel-nav";
+import { getUser } from "@/lib/api/session";
+import { canViewModule, NAV_MODULE } from "@/lib/permissions";
 import { useTenant } from "@/components/providers/TenantTheme/TenantTheme";
 
 export default function Sidebar({ collapsed, onToggle, onNavigate }) {
+  // Esconde da navegação os itens de módulos que o perfil não pode ver — a
+  // sidebar reflete o RBAC. Grupos que ficam sem nenhum item somem inteiros.
+  const user = useMemo(() => getUser(), []);
+  const visibleGroups = useMemo(
+    () =>
+      NAV_GROUPS.map((g) => ({
+        ...g,
+        items: g.items.filter((it) => canViewModule(NAV_MODULE[it.key], user)),
+      })).filter((g) => g.items.length > 0),
+    [user]
+  );
   const pathname = usePathname();
   const [tip, setTip] = useState(null);
   // Cidade do usuário logado (resolvida pelo PanelTheme via /sessions/me).
@@ -54,7 +67,7 @@ export default function Sidebar({ collapsed, onToggle, onNavigate }) {
       </div>
 
       <nav className={styles.nav} onScroll={hideTip}>
-        {NAV_GROUPS.map((group) => (
+        {visibleGroups.map((group) => (
           <div key={group.label} className={styles.group}>
             {!collapsed && <span className={styles.groupLabel}>{group.label}</span>}
             {group.items.map((item) => {
