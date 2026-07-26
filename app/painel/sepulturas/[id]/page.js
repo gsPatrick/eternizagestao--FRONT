@@ -423,15 +423,16 @@ export default function GraveDetailPage() {
     });
   }, [certDocsData]);
 
-  // Abre o documento REAL (PDF assinado; senão regenera sob demanda; senão HTML).
+  // Baixa a certidão SEMPRE gerada na hora pelo backend (reflete o cadastro
+  // atual, mesmo número) — sem retrabalho de apagar e reemitir. Só cai no arquivo
+  // direto se a geração sob demanda falhar.
   async function openCertificate() {
     if (!certificate?.id) return;
-    const direct = fileHref(certificate.pdfUrl || certificate.fileUrl);
-    if (certificate.pdfUrl && direct) { window.open(direct, "_blank", "noopener"); return; }
     try {
       const url = await fetchDocumentPdf(certificate.id);
       window.open(url, "_blank", "noopener");
     } catch {
+      const direct = fileHref(certificate.pdfUrl || certificate.fileUrl);
       if (direct) window.open(direct, "_blank", "noopener");
     }
   }

@@ -67,6 +67,21 @@ function centroid(points) {
   return [s[0] / points.length, s[1] / points.length];
 }
 
+// Cantos APROXIMADos de um quadrado de ~2*meters ao redor de um centro [lat,lng].
+// Usado como backdrop quando a ortofoto ainda não foi posicionada: dá ao operador
+// a imagem aérea para se situar, sem depender do posicionamento fino.
+function cornersAround(center, meters = 140) {
+  const [la, ln] = center;
+  const dLat = meters / 111320;
+  const dLng = meters / (111320 * Math.cos((la * Math.PI) / 180) || 1);
+  return {
+    tl: [la + dLat, ln - dLng],
+    tr: [la + dLat, ln + dLng],
+    br: [la - dLat, ln + dLng],
+    bl: [la - dLat, ln - dLng],
+  };
+}
+
 export default function GraveMap({
   cemeteryId,
   grave, // { id, code, status, occupant, geoPolygon, latitude, longitude }
@@ -148,23 +163,52 @@ export default function GraveMap({
     return null;
   }, [poly, lat, lng, ctx, activeOrtho]);
 
-  // ortofoto entregue ao mapa só quando POSICIONADA (tem cantos)
-  // Ortofoto existe mas nunca foi posicionada: não há onde desenhá-la (os
-  // cantos é que dizem a que pedaço do mundo ela corresponde). Em vez de
-  // simplesmente não mostrar nada — o operador via só o mapa de ruas e achava
-  // que a ortofoto tinha sumido — a tela diz o que falta e onde resolver.
-  const orthoSemPosicao = Boolean(activeOrtho?.fileUrl && !activeOrtho.corners);
+  // Fonte POSICIONADA (com cantos): a ortofoto da lista ou a do contexto do
+  // cemitério — a que tiver cantos define exatamente a que pedaço do mundo a
+  // imagem corresponde.
+  const positionedOrtho = useMemo(() => {
+    if (activeOrtho?.corners) return activeOrtho;
+    if (ctx?.orthophoto?.corners && ctx.orthophoto?.fileUrl) return ctx.orthophoto;
+    return null;
+  }, [activeOrtho, ctx]);
+
+  // Qualquer ortofoto com arquivo (mesmo sem posição) — serve de backdrop.
+  const anyOrtho = activeOrtho?.fileUrl
+    ? activeOrtho
+    : (ctx?.orthophoto?.fileUrl ? ctx.orthophoto : null);
+
+  // Há imagem enviada mas nenhuma versão posicionada: mostramos assim mesmo, em
+  // POSIÇÃO APROXIMADA (ver orthoForMap), e avisamos que dá para ajustar. Antes,
+  // sem cantos, a tela ficava só com as ruas e o operador achava que a ortofoto
+  // tinha sumido — exatamente a reclamação do cliente na demarcação.
+  const orthoSemPosicao = Boolean(anyOrtho?.fileUrl && !positionedOrtho);
 
   const orthoForMap = useMemo(() => {
-    if (!activeOrtho?.fileUrl || !activeOrtho.corners) return null;
-    return {
-      id: activeOrtho.id,
-      fileUrl: activeOrtho.fileUrl,
-      corners: activeOrtho.corners,
-      opacity: activeOrtho.opacity,
-      rev: 0,
-    };
-  }, [activeOrtho]);
+    if (positionedOrtho?.fileUrl && positionedOrtho.corners) {
+      return {
+        id: positionedOrtho.id,
+        fileUrl: positionedOrtho.fileUrl,
+        corners: positionedOrtho.corners,
+        opacity: positionedOrtho.opacity,
+        rev: 0,
+      };
+    }
+    // Sem posição, mas há imagem e um centro conhecido: entrega a ortofoto como
+    // BACKDROP APROXIMADO (cantos derivados do centro do cemitério). O operador
+    // passa a VER a imagem aérea para se situar; a precisão fina fica para o
+    // posicionamento no Mapa.
+    if (anyOrtho?.fileUrl && center) {
+      return {
+        id: anyOrtho.id,
+        fileUrl: anyOrtho.fileUrl,
+        corners: cornersAround(center, 140),
+        opacity: anyOrtho.opacity ?? 1,
+        rev: 0,
+        approximate: true,
+      };
+    }
+    return null;
+  }, [positionedOrtho, anyOrtho, center]);
 
   const focusGrave = useMemo(
     () => (mapped && grave?.id ? { id: grave.id, nonce: focusNonce } : null),
@@ -201,7 +245,7 @@ export default function GraveMap({
           center={center}
           orthophoto={orthoForMap}
           orthoVisible
-          orthoOpacity={activeOrtho?.opacity ?? 1}
+          orthoOpacity={orthoForMap?.opacity ?? 1}
           positioning={false}
           graves={graves}
           layers={ctx?.layers}
@@ -215,9 +259,9 @@ export default function GraveMap({
 
         {orthoSemPosicao && (
           <div className={styles.orthoHint}>
-            Ortofoto enviada, mas ainda <strong>sem posição</strong> — por isso o
-            mapa mostra só as ruas.{" "}
-            <Link href="/painel/mapa">Posicionar no Mapa</Link>
+            Ortofoto em <strong>posição aproximada</strong> — a imagem já aparece
+            para você se situar. Para precisão, ajuste em{" "}
+            <Link href="/painel/mapa">Posicionar no Mapa</Link>.
           </div>
         )}
 
@@ -253,10 +297,11 @@ export default function GraveMap({
               Desenhe o contorno da cova sobre a ortofoto.
             </span>
           )}
-          {!activeOrtho?.corners && !drawing && (
+          {!positionedOrtho && !drawing && (
             <span className={styles.hint}>
-              Para usar a imagem aérea como base, posicione a ortofoto na página{" "}
-              <strong>Mapa</strong>.
+              {anyOrtho
+                ? <>A imagem aérea está em posição aproximada — ajuste em <strong>Mapa</strong> para precisão.</>
+                : <>Para usar a imagem aérea como base, posicione a ortofoto na página <strong>Mapa</strong>.</>}
             </span>
           )}
         </div>

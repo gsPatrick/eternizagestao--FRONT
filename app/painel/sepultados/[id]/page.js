@@ -26,7 +26,7 @@ import { getUser } from "@/lib/api/session";
 import { listCartorios } from "@/lib/api/resources/cartorios";
 import { listFunerarias } from "@/lib/api/resources/funerarias";
 import ConfirmDelete from "@/components/molecules/ConfirmDelete/ConfirmDelete";
-import { listDocuments, fileHref, fetchDocumentPdf, reissueDocument } from "@/lib/api/resources/documents";
+import { listDocuments, fileHref, fetchDocumentPdf, reissueDocument, issueDocument } from "@/lib/api/resources/documents";
 
 // Ícone de documento reutilizado nos botões de download (padrão do sistema).
 function DocIcon() {
@@ -169,16 +169,48 @@ export default function DeceasedDetailPage() {
   const officialDocs = useMemo(() => docsData?.data ?? [], [docsData]);
 
   async function downloadDoc(doc) {
-    // pdfUrl assinado quando existir; senão gera/baixa via endpoint autenticado.
-    if (doc.pdfUrl) {
-      window.open(fileHref(doc.pdfUrl), "_blank", "noopener");
-      return;
-    }
+    // SEMPRE gera na hora (endpoint autenticado): documentos oficiais são
+    // regenerados do cadastro atual pelo backend, então uma alteração aparece no
+    // próximo download sem apagar e reemitir. Cai no arquivo direto só se falhar.
     try {
       const url = await fetchDocumentPdf(doc.id);
       window.open(url, "_blank", "noopener");
     } catch (_) {
-      /* silencioso — o botão pode ser tentado de novo */
+      if (doc.pdfUrl) window.open(fileHref(doc.pdfUrl), "_blank", "noopener");
+    }
+  }
+
+  // Sepultamento ativo do sepultado (base da Autorização de Sepultamento).
+  const activeBurial = useMemo(
+    () => (data?.burials || []).find((b) => b.status === "ativo") || data?.burials?.[0] || null,
+    [data]
+  );
+  const hasAuthorization = useMemo(
+    () => officialDocs.some((d) => d.documentType === "autorizacao_sepultamento"),
+    [officialDocs]
+  );
+  const [generatingAuth, setGeneratingAuth] = useState(false);
+
+  // Gera a Autorização de Sepultamento SOB DEMANDA — se o operador apagou o
+  // documento, o botão continua aqui (não some) e reemite na hora com o mesmo
+  // vínculo (jazigo + sepultamento), pronta para baixar.
+  async function generateAuthorization() {
+    if (!activeBurial) { setDocError("Sem sepultamento ativo para gerar a autorização."); return; }
+    setGeneratingAuth(true);
+    setDocError("");
+    try {
+      await issueDocument({
+        documentType: "autorizacao_sepultamento",
+        graveId: activeBurial.grave?.id || activeBurial.graveId || data?.currentGrave?.id,
+        deceasedId: id,
+        referenceType: "burial",
+        referenceId: activeBurial.id,
+      });
+      refetchDocs();
+    } catch (e) {
+      setDocError(e?.message || "Não foi possível gerar a autorização.");
+    } finally {
+      setGeneratingAuth(false);
     }
   }
 
@@ -550,6 +582,16 @@ export default function DeceasedDetailPage() {
           <article className={styles.card}>
             <header className={styles.cardHead}>
               <h2 className={styles.cardTitle}>Documentos oficiais</h2>
+              {activeBurial && !hasAuthorization && (
+                <button
+                  type="button"
+                  className={styles.docLink}
+                  disabled={generatingAuth}
+                  onClick={generateAuthorization}
+                >
+                  {generatingAuth ? "Gerando…" : "＋ Gerar autorização agora"}
+                </button>
+              )}
             </header>
             {officialDocs.length ? (
               <ul className={styles.docList}>
@@ -584,6 +626,7 @@ export default function DeceasedDetailPage() {
               <p className={styles.small} style={{ color: "var(--color-slate)" }}>
                 A autorização de sepultamento é gerada automaticamente ao cadastrar o
                 sepultado e aparece aqui para download.
+                {activeBurial ? " Se foi apagada, use o botão acima para gerá-la de novo na hora." : ""}
               </p>
             )}
             {docError && <Alert tone="danger">{docError}</Alert>}

@@ -59,6 +59,52 @@ const statusMeta = (key, fallbackName) =>
 
 const PER_PAGE = 30;
 
+// Seletor de Quadra/Lote no cadastro de sepultura.
+//
+// O cliente escolhe o cemitério primeiro; então as quadras/lotes JÁ cadastrados
+// ali são carregados e viram um DROPDOWN de verdade — não mais um campo de texto
+// com datalist "invisível", que o operador (muitas vezes idoso) não descobria.
+// Sem quebrar o cadastro em massa: a opção "＋ Cadastrar nova/novo" alterna para
+// texto livre e a estrutura é criada/reaproveitada no backend (find-or-create).
+function PickOrType({ value, onChange, options, livre, setLivre, placeholder, newLabel }) {
+  const NEW = "__novo__";
+  const temOpcoes = options.length > 0;
+
+  if (!temOpcoes || livre) {
+    return (
+      <>
+        <Input placeholder={placeholder} value={value} onChange={(e) => onChange(e.target.value)} />
+        {temOpcoes && (
+          <button
+            type="button"
+            onClick={() => { setLivre(false); onChange(""); }}
+            style={{ marginTop: 6, background: "none", border: "none", color: "var(--primary, #2563eb)", cursor: "pointer", textDecoration: "underline", padding: 0, fontSize: 13 }}
+          >
+            ↩ Escolher da lista
+          </button>
+        )}
+      </>
+    );
+  }
+
+  // Garante que um valor pré-preenchido (ex.: ao editar) apareça mesmo se ainda
+  // não estiver entre as opções carregadas.
+  const merged = !value || options.includes(value) ? options : [value, ...options];
+  return (
+    <Select
+      value={value}
+      onChange={(e) => {
+        const v = e.target.value;
+        if (v === NEW) { setLivre(true); onChange(""); } else onChange(v);
+      }}
+    >
+      <option value="">Selecione…</option>
+      {merged.map((o) => (<option key={o} value={o}>{o}</option>))}
+      <option value={NEW}>{newLabel}</option>
+    </Select>
+  );
+}
+
 export default function GravesListPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -79,6 +125,9 @@ export default function GravesListPage() {
   // Campos oficiais dos modelos de documento (certidão/autorização).
   const [tombType, setTombType] = useState(TOMB_TYPE_OPTIONS[0]);
   const [gravePhoto, setGravePhoto] = useState(null); // File da "Fotografia"
+  const [existingPhotoUrl, setExistingPhotoUrl] = useState(null); // foto já salva (editar)
+  const [quadraLivre, setQuadraLivre] = useState(false); // "digitar nova" quadra
+  const [loteLivre, setLoteLivre] = useState(false);     // "digitar novo" lote
   const router = useRouter();
 
   // formulário real de nova sepultura — cadastro RÁPIDO: quadra e lote são
@@ -244,8 +293,11 @@ export default function GravesListPage() {
     setEditingGrave(row);
     setGravePhoto(null);
     setCreateError(null);
+    setQuadraLivre(false);
+    setLoteLivre(false);
     if (row) {
       const g = row.raw || {};
+      setExistingPhotoUrl(g.photoUrl || null);
       setGForm({
         cemeteryId: g.cemeteryId || "",
         quadra: g.lot?.street?.block?.code || (row.block !== "—" ? row.block : ""),
@@ -264,6 +316,7 @@ export default function GravesListPage() {
     } else {
       setGForm(emptyGrave);
       setTombType(TOMB_TYPE_OPTIONS[0]);
+      setExistingPhotoUrl(null);
     }
     setModalOpen(true);
   }
@@ -591,17 +644,17 @@ export default function GravesListPage() {
             <FormField
               label="Lote"
               required
-              hint={loteOptions.length ? "Escolha um existente ou digite um novo" : "Digite — ex.: 01"}
+              hint={loteOptions.length ? "Selecione um lote cadastrado ou cadastre um novo" : "Digite — ex.: 01"}
             >
-              <Input
-                list="lotes-existentes"
-                placeholder="Ex.: 01"
+              <PickOrType
                 value={gForm.lote}
-                onChange={(e) => setG("lote", e.target.value)}
+                onChange={(v) => setG("lote", v)}
+                options={loteOptions}
+                livre={loteLivre}
+                setLivre={setLoteLivre}
+                placeholder="Ex.: 01"
+                newLabel="＋ Cadastrar novo lote"
               />
-              <datalist id="lotes-existentes">
-                {loteOptions.map((l) => (<option key={l} value={l} />))}
-              </datalist>
             </FormField>
             <FormField label="Lote anterior" hint="Opcional — número no sistema antigo">
               <Input
@@ -614,17 +667,17 @@ export default function GravesListPage() {
             <FormField
               label="Quadra"
               required
-              hint={quadraOptions.length ? "Escolha uma existente ou digite uma nova" : "Digite — ex.: Q4P1C4"}
+              hint={quadraOptions.length ? "Selecione uma quadra cadastrada ou cadastre uma nova" : "Digite — ex.: Q4P1C4"}
             >
-              <Input
-                list="quadras-existentes"
-                placeholder="Ex.: Q4P1C4"
+              <PickOrType
                 value={gForm.quadra}
-                onChange={(e) => setG("quadra", e.target.value)}
+                onChange={(v) => setG("quadra", v)}
+                options={quadraOptions}
+                livre={quadraLivre}
+                setLivre={setQuadraLivre}
+                placeholder="Ex.: Q4P1C4"
+                newLabel="＋ Cadastrar nova quadra"
               />
-              <datalist id="quadras-existentes">
-                {quadraOptions.map((q) => (<option key={q} value={q} />))}
-              </datalist>
             </FormField>
             <FormField label="Quadra anterior" hint="Opcional — nome no sistema antigo">
               <Input
@@ -679,7 +732,33 @@ export default function GravesListPage() {
               />
             </FormField>
 
-            <FormField label="Fotografia" className={styles.spanTwo}>
+            <FormField
+              label="Fotografia"
+              className={styles.spanTwo}
+              hint={existingPhotoUrl && !gravePhoto ? "Já há uma foto salva — escolha um arquivo só se quiser trocá-la." : undefined}
+            >
+              {existingPhotoUrl && !gravePhoto && (
+                <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
+                  <img
+                    src={existingPhotoUrl}
+                    alt="Foto atual da sepultura"
+                    style={{ width: 72, height: 72, objectFit: "cover", borderRadius: 8, border: "1px solid var(--border, #ddd)" }}
+                  />
+                  <span style={{ fontSize: 13, opacity: 0.75 }}>Foto atual da sepultura</span>
+                </div>
+              )}
+              {gravePhoto && (
+                <div style={{ fontSize: 13, marginBottom: 8 }}>
+                  Nova foto selecionada: <strong>{gravePhoto.name}</strong>{" "}
+                  <button
+                    type="button"
+                    onClick={() => setGravePhoto(null)}
+                    style={{ background: "none", border: "none", color: "var(--primary, #2563eb)", cursor: "pointer", textDecoration: "underline", padding: 0 }}
+                  >
+                    remover
+                  </button>
+                </div>
+              )}
               <Input
                 type="file"
                 accept="image/png,image/jpeg,image/webp"
