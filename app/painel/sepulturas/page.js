@@ -135,16 +135,20 @@ export default function GravesListPage() {
   // regenerada do cadastro atual. Sem certidão ainda → abre o detalhe, onde dá
   // para emitir na hora (nem toda sepultura é perpétua).
   async function downloadCertificate(row) {
+    // Abre a aba JÁ no clique (síncrono): abrir depois dos await faz o navegador
+    // bloquear a URL blob do PDF como popup fora de gesto.
+    const win = window.open("", "_blank");
     try {
       const res = await listDocuments({ graveId: row.id, documentType: "certidao_perpetuidade", perPage: 1 });
       const doc = res?.data?.[0];
       if (doc) {
         const url = await fetchDocumentPdf(doc.id);
-        window.open(url, "_blank", "noopener");
+        if (win) win.location.href = url; else window.location.href = url;
         return;
       }
-    } catch (_) { /* cai no detalhe abaixo */ }
-    router.push(`/painel/sepulturas/${row.id}`);
+    } catch (_) { /* sem doc/erro → detalhe abaixo */ }
+    const detalhe = `/painel/sepulturas/${row.id}`;
+    if (win) win.location.href = detalhe; else router.push(detalhe);
   }
 
   // formulário real de nova sepultura — cadastro RÁPIDO: quadra e lote são

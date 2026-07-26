@@ -428,12 +428,16 @@ export default function GraveDetailPage() {
   // direto se a geração sob demanda falhar.
   async function openCertificate() {
     if (!certificate?.id) return;
+    // Abre a aba JÁ no clique (síncrono) — abrir depois do await faz o navegador
+    // bloquear a URL blob do PDF como popup fora de gesto.
+    const win = window.open("", "_blank");
     try {
       const url = await fetchDocumentPdf(certificate.id);
-      window.open(url, "_blank", "noopener");
+      if (win) win.location.href = url; else window.location.href = url;
     } catch {
       const direct = fileHref(certificate.pdfUrl || certificate.fileUrl);
-      if (direct) window.open(direct, "_blank", "noopener");
+      if (win) { if (direct) win.location.href = direct; else win.close(); }
+      else if (direct) window.location.href = direct;
     }
   }
   const [exhumations, setExhumations] = useState({});

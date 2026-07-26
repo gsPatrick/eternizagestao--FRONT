@@ -172,11 +172,16 @@ export default function DeceasedDetailPage() {
     // SEMPRE gera na hora (endpoint autenticado): documentos oficiais são
     // regenerados do cadastro atual pelo backend, então uma alteração aparece no
     // próximo download sem apagar e reemitir. Cai no arquivo direto só se falhar.
+    // Abre a aba JÁ no clique (síncrono) — abrir depois do await faz o navegador
+    // bloquear a URL blob do PDF como popup fora de gesto.
+    const win = window.open("", "_blank");
     try {
       const url = await fetchDocumentPdf(doc.id);
-      window.open(url, "_blank", "noopener");
+      if (win) win.location.href = url; else window.location.href = url;
     } catch (_) {
-      if (doc.pdfUrl) window.open(fileHref(doc.pdfUrl), "_blank", "noopener");
+      const direct = doc.pdfUrl ? fileHref(doc.pdfUrl) : null;
+      if (win) { if (direct) win.location.href = direct; else win.close(); }
+      else if (direct) window.location.href = direct;
     }
   }
 

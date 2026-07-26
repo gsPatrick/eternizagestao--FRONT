@@ -92,16 +92,21 @@ export default function DeceasedListPage() {
   // da lista, SEMPRE regenerado do cadastro atual. Sem documento ainda → abre o
   // detalhe, onde dá para gerar na hora com o contexto certo.
   async function downloadRowDoc(row) {
+    // Abre a aba JÁ no clique (síncrono): se abríssemos depois dos await, o
+    // navegador trata como popup fora de gesto e BLOQUEIA a URL blob do PDF.
+    const win = window.open("", "_blank");
     try {
       const res = await listDocuments({ deceasedId: row.id, documentType: "autorizacao_sepultamento", perPage: 1 });
       const doc = res?.data?.[0];
       if (doc) {
         const url = await fetchDocumentPdf(doc.id);
-        window.open(url, "_blank", "noopener");
+        if (win) win.location.href = url; else window.location.href = url;
         return;
       }
-    } catch (_) { /* cai no detalhe abaixo */ }
-    router.push(`/painel/sepultados/${row.id}`);
+    } catch (_) { /* sem doc/erro → detalhe abaixo */ }
+    // Sem documento ainda: leva ao detalhe (na mesma aba já aberta) para gerar.
+    const detalhe = `/painel/sepultados/${row.id}`;
+    if (win) win.location.href = detalhe; else router.push(detalhe);
   }
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
