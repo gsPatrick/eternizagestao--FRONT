@@ -17,6 +17,7 @@ import DataTable from "@/components/organisms/DataTable/DataTable";
 
 import { useResource, useMutation } from "@/lib/api/useResource";
 import IntegrationRequired, { useIntegrationGuard } from "@/components/molecules/IntegrationRequired/IntegrationRequired";
+import { AccessModeFields, CredentialResult } from "@/components/molecules/AccessCredential/AccessCredential";
 import { normalizeEmail, maskPhone } from "@/lib/masks";
 import {
   listTenants,
@@ -56,6 +57,9 @@ const EMPTY_DRAFT = {
   adminName: "",
   adminEmail: "",
   adminPhone: "",
+  // acesso do 1º admin: "email" (convite) ou "senha" (define agora + copia)
+  accessMode: "email",
+  adminPassword: "",
   // modo completo — marca
   primaryColor: "#032e59",
   secondaryColor: "#0a4a8c",
@@ -95,6 +99,9 @@ export default function CitiesConsolePage() {
   const [deleteCity, setDeleteCity] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [deleteError, setDeleteError] = useState(null);
+
+  // credenciais criadas quando o super_admin definiu a senha do admin na criação.
+  const [credResult, setCredResult] = useState(null); // { name, email, password, loginUrl }
 
   // (super_admin) definir a senha do ADMIN da cidade — sem depender de e-mail.
   const [pwdCity, setPwdCity] = useState(null);
@@ -188,6 +195,9 @@ export default function CitiesConsolePage() {
       email: normalizeEmail(draft.adminEmail),
     };
     if (draft.adminPhone.trim()) admin.phone = draft.adminPhone.trim();
+    // Modo SENHA: envia a senha → a API não dispara convite e devolve as
+    // credenciais para copiar. Modo E-MAIL: sem senha → convite normal.
+    if (draft.accessMode === "senha" && draft.adminPassword) admin.password = draft.adminPassword;
 
     if (draft.mode === "completo") {
       if (draft.primaryColor) tenant.primaryColor = draft.primaryColor;
@@ -203,7 +213,8 @@ export default function CitiesConsolePage() {
 
   const canSubmit =
     draft.name.trim() && normalizeSubdomain(draft.subdomain).length >= 2 &&
-    draft.adminName.trim() && draft.adminEmail.trim();
+    draft.adminName.trim() && draft.adminEmail.trim() &&
+    (draft.accessMode !== "senha" || (draft.adminPassword || "").length >= 8);
 
   async function submitCreate() {
     setFormError(null);
@@ -227,7 +238,16 @@ export default function CitiesConsolePage() {
       // mas o convite carrega a SENHA TEMPORÁRIA: sem ele a cidade nasce
       // inacessível. Então isso nunca pode ser anunciado como sucesso completo.
       const invite = res?.adminInvite;
-      if (invite && invite.sent === false) {
+      // Modo SENHA: a API devolve as credenciais → mostra o bloco para copiar.
+      if (res?.credentials) {
+        setCredResult({
+          name: draft.adminName.trim(),
+          email: res.credentials.email,
+          password: res.credentials.password,
+          loginUrl: res.credentials.loginUrl || domain,
+        });
+        flash(`Cidade "${draft.name.trim()}" criada — copie as credenciais do admin abaixo.`);
+      } else if (invite && invite.sent === false) {
         flash(`Cidade "${draft.name.trim()}" criada, mas o convite ao administrador NÃO foi enviado.`, "warning");
         guard.capture({ code: invite.code, message: invite.message });
       } else if (logoFailed) {
@@ -737,9 +757,14 @@ export default function CitiesConsolePage() {
                 />
               </FormField>
             </div>
-            <p className={styles.inviteHint}>
-              O administrador recebe um convite por e-mail para criar a senha e acessar o painel da cidade.
-            </p>
+            <div style={{ marginTop: 12 }}>
+              <AccessModeFields
+                mode={draft.accessMode}
+                onModeChange={(m) => set("accessMode", m)}
+                password={draft.adminPassword}
+                onPasswordChange={(p) => set("adminPassword", p)}
+              />
+            </div>
           </div>
 
           {/* modo completo — marca + órgão gestor */}
@@ -800,6 +825,25 @@ export default function CitiesConsolePage() {
 
           {formError && <Alert tone="danger">{formError}</Alert>}
         </div>
+      </Modal>
+
+      {/* ---------- credenciais do admin (modo "definir senha") ---------- */}
+      <Modal
+        open={Boolean(credResult)}
+        onClose={() => setCredResult(null)}
+        title="Acesso do administrador criado"
+        subtitle="Copie e envie as credenciais para o administrador da cidade"
+        width={520}
+        footer={<Button onClick={() => setCredResult(null)}>Concluir</Button>}
+      >
+        {credResult && (
+          <CredentialResult
+            name={credResult.name}
+            email={credResult.email}
+            password={credResult.password}
+            loginUrl={credResult.loginUrl}
+          />
+        )}
       </Modal>
 
       {/* ---------- editar cidade ---------- */}

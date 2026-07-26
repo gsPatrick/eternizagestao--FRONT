@@ -28,6 +28,7 @@ import {
   listUsers,
   adaptUsers,
   inviteUser,
+  createUser,
   updateUser,
   activateUser,
   deactivateUser,
@@ -35,6 +36,7 @@ import {
   resendUserInvite,
   setUserPassword,
 } from "@/lib/api/resources/users";
+import { AccessModeFields, CredentialResult } from "@/components/molecules/AccessCredential/AccessCredential";
 import { listRoles } from "@/lib/api/resources/roles";
 import { PERMISSION_MODULES, hasPermission } from "@/lib/permissions-catalog";
 
@@ -138,13 +140,15 @@ export default function UsersPage() {
   const [query, setQuery] = useState("");
   const [detailId, setDetailId] = useState(null);
   const [roleDraft, setRoleDraft] = useState(""); // roleId selecionado no detalhe
-  const [invite, setInvite] = useState(null); // { name, email, phone, roleId }
+  const [invite, setInvite] = useState(null); // { name, email, phone, roleId, mode, password }
   const [pwd, setPwd] = useState({ next: "", confirm: "", error: null }); // definir senha
+  const [credResult, setCredResult] = useState(null); // { name, email, password } após criar por senha
   const [exportOpen, setExportOpen] = useState(false);
   const [notice, setNotice] = useState(null); // { tone, message }
 
   // mutations (uma por endpoint) — o `saving` do modal deriva de todas.
   const inviteM = useMutation((body) => inviteUser(body));
+  const createM = useMutation((body) => createUser(body));
   const roleM = useMutation(({ id, roleId }) => updateUser(id, { roleId }));
   const activateM = useMutation((id) => activateUser(id));
   const deactivateM = useMutation((id) => deactivateUser(id));
@@ -152,7 +156,7 @@ export default function UsersPage() {
   const resendM = useMutation((id) => resendUserInvite(id));
   const passwordM = useMutation(({ id, password }) => setUserPassword(id, password));
   const saving =
-    inviteM.loading || roleM.loading || activateM.loading ||
+    inviteM.loading || createM.loading || roleM.loading || activateM.loading ||
     deactivateM.loading || resetM.loading || resendM.loading || passwordM.loading;
 
   const detail = users.find((u) => u.id === detailId);
@@ -203,6 +207,31 @@ export default function UsersPage() {
   }
 
   async function sendInvite() {
+    const mode = invite.mode || "email";
+    // Modo SENHA: o admin define a senha agora → cria a conta direto (sem e-mail)
+    // e mostra as credenciais para copiar e repassar.
+    if (mode === "senha") {
+      if ((invite.password || "").length < 8) {
+        flash("A senha deve ter no mínimo 8 caracteres.", "danger");
+        return;
+      }
+      try {
+        await createM.mutate({
+          name: invite.name,
+          email: invite.email,
+          phone: invite.phone || undefined,
+          roleId: invite.roleId,
+          password: invite.password,
+        });
+        setCredResult({ name: invite.name, email: invite.email, password: invite.password });
+        setInvite(null);
+        await refetch();
+      } catch (e) {
+        fail(e);
+      }
+      return;
+    }
+    // Modo E-MAIL: convite; a pessoa cria a própria senha pelo link.
     try {
       await inviteM.mutate({ name: invite.name, email: invite.email, phone: invite.phone, roleId: invite.roleId });
       const email = invite.email;
@@ -359,7 +388,7 @@ export default function UsersPage() {
           message="Convide o primeiro usuário para dar acesso ao painel deste cemitério."
           action={
             canManage ? (
-              <Button onClick={() => setInvite({ name: "", email: "", phone: "", roleId: defaultRoleId })}>
+              <Button onClick={() => setInvite({ name: "", email: "", phone: "", roleId: defaultRoleId, mode: "email", password: "" })}>
                 Convidar usuário
               </Button>
             ) : null
@@ -533,7 +562,7 @@ export default function UsersPage() {
             Exportar
           </Button>
           {canManage && (
-            <Button onClick={() => setInvite({ name: "", email: "", phone: "", roleId: defaultRoleId })}
+            <Button onClick={() => setInvite({ name: "", email: "", phone: "", roleId: defaultRoleId, mode: "email", password: "" })}
               iconLeft={
                 <svg viewBox="0 0 16 16" fill="none">
                   <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
@@ -712,18 +741,22 @@ export default function UsersPage() {
         )}
       </Modal>
 
-      {/* ---------- convidar usuário ---------- */}
+      {/* ---------- convidar / criar usuário ---------- */}
       <Modal
         open={Boolean(invite)}
         onClose={() => setInvite(null)}
-        title="Convidar usuário"
-        subtitle="O convidado recebe um link por e-mail para criar a senha"
+        title="Novo usuário"
+        subtitle="Envie por e-mail (a pessoa cria a senha) ou defina a senha agora e copie para enviar"
         width={600}
         footer={
           <>
             <Button variant="ghost" onClick={() => setInvite(null)}>Cancelar</Button>
-            <Button loading={saving} disabled={!invite?.name || !invite?.email} onClick={sendInvite}>
-              Enviar convite
+            <Button
+              loading={saving}
+              disabled={!invite?.name || !invite?.email || (invite?.mode === "senha" && (invite?.password || "").length < 8)}
+              onClick={sendInvite}
+            >
+              {invite?.mode === "senha" ? "Criar acesso" : "Enviar convite"}
             </Button>
           </>
         }
@@ -761,7 +794,34 @@ export default function UsersPage() {
               </FormField>
             </div>
             <p className={styles.roleHint}>{roleHintFor(invite.roleId)}</p>
+
+            <div style={{ marginTop: 12 }}>
+              <AccessModeFields
+                mode={invite.mode || "email"}
+                onModeChange={(m) => setInvite({ ...invite, mode: m })}
+                password={invite.password || ""}
+                onPasswordChange={(p) => setInvite({ ...invite, password: p })}
+              />
+            </div>
           </div>
+        )}
+      </Modal>
+
+      {/* ---------- credenciais criadas (modo "definir senha") ---------- */}
+      <Modal
+        open={Boolean(credResult)}
+        onClose={() => setCredResult(null)}
+        title="Acesso criado"
+        subtitle="Copie e envie as credenciais para a pessoa"
+        width={520}
+        footer={<Button onClick={() => setCredResult(null)}>Concluir</Button>}
+      >
+        {credResult && (
+          <CredentialResult
+            name={credResult.name}
+            email={credResult.email}
+            password={credResult.password}
+          />
         )}
       </Modal>
 
