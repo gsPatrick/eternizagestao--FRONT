@@ -74,12 +74,12 @@ export function AccessModeFields({
       )}
 
       {mode === "senha" && (
-        <FormField label="Senha de acesso" required hint="Mínimo de 8 caracteres.">
+        <FormField label="Senha de acesso" required hint="Digite a senha que quiser ou clique em Gerar. Mínimo de 8 caracteres.">
           <div style={{ display: "flex", gap: 8 }}>
             <Input
               type="text"
               autoComplete="off"
-              placeholder="Defina a senha"
+              placeholder="Digite a senha ou clique em Gerar"
               value={password}
               onChange={(e) => onPasswordChange(e.target.value)}
             />
