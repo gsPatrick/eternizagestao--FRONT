@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import styles from "./page.module.css";
 
 import Button from "@/components/atoms/Button/Button";
@@ -31,6 +32,7 @@ import { listFunerarias } from "@/lib/api/resources/funerarias";
 import { listPeople } from "@/lib/api/resources/people";
 import GravePicker, { graveLabel } from "@/components/organisms/GravePicker/GravePicker";
 import { registerPerformedExhumation, listExhumations } from "@/lib/api/resources/exhumations";
+import { listDocuments, fetchDocumentPdf } from "@/lib/api/resources/documents";
 import { listOssuaries, listNiches } from "@/lib/api/resources/ossuaries";
 import { todayISO } from "@/lib/date-local";
 
@@ -85,6 +87,22 @@ function gavetaCode(row) {
 }
 
 export default function DeceasedListPage() {
+  const router = useRouter();
+  // Baixa o documento oficial do sepultado (autorização de sepultamento) direto
+  // da lista, SEMPRE regenerado do cadastro atual. Sem documento ainda → abre o
+  // detalhe, onde dá para gerar na hora com o contexto certo.
+  async function downloadRowDoc(row) {
+    try {
+      const res = await listDocuments({ deceasedId: row.id, documentType: "autorizacao_sepultamento", perPage: 1 });
+      const doc = res?.data?.[0];
+      if (doc) {
+        const url = await fetchDocumentPdf(doc.id);
+        window.open(url, "_blank", "noopener");
+        return;
+      }
+    } catch (_) { /* cai no detalhe abaixo */ }
+    router.push(`/painel/sepultados/${row.id}`);
+  }
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [locationFilter, setLocationFilter] = useState("");
@@ -531,17 +549,18 @@ export default function DeceasedListPage() {
           canDelete={canDelete}
           onDelete={() => askDelete(row)}
           extra={
-            <Link
-              href={`/painel/sepultados/${row.id}`}
-              title="Documentos (autorização de sepultamento, certidão de óbito)"
-              aria-label="Documentos"
-              style={{ display: "inline-flex", color: "var(--color-navy, #032e59)", padding: "6px 4px" }}
+            <button
+              type="button"
+              onClick={() => downloadRowDoc(row)}
+              title="Baixar autorização de sepultamento (gerada na hora)"
+              aria-label="Baixar documento"
+              style={{ display: "inline-flex", background: "none", border: "none", cursor: "pointer", color: "var(--color-navy, #032e59)", padding: "6px 4px" }}
             >
               <svg viewBox="0 0 16 16" fill="none" width="17" height="17" aria-hidden="true">
                 <path d="M4 1.5h5L13 5.5V14a.5.5 0 0 1-.5.5h-8A.5.5 0 0 1 4 14V1.5Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
-                <path d="M9 1.5V5h4M6.5 8.5h3M6.5 11h3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                <path d="M8 7.5v4m0 0L6.3 9.8M8 11.5l1.7-1.7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-            </Link>
+            </button>
           }
         />
       ),

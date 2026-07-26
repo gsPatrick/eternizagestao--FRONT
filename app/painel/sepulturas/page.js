@@ -40,6 +40,7 @@ import {
 } from "@/lib/api/resources/graves";
 import { listPeople } from "@/lib/api/resources/people";
 import { getStructure } from "@/lib/api/resources/cemeteries";
+import { listDocuments, fetchDocumentPdf } from "@/lib/api/resources/documents";
 import { getUser } from "@/lib/api/session";
 import RowActions from "@/components/molecules/RowActions/RowActions";
 import ConfirmDelete from "@/components/molecules/ConfirmDelete/ConfirmDelete";
@@ -130,6 +131,22 @@ export default function GravesListPage() {
   const [loteLivre, setLoteLivre] = useState(false);     // "digitar novo" lote
   const router = useRouter();
 
+  // Baixa a certidão de perpetuidade da sepultura direto da lista, SEMPRE
+  // regenerada do cadastro atual. Sem certidão ainda → abre o detalhe, onde dá
+  // para emitir na hora (nem toda sepultura é perpétua).
+  async function downloadCertificate(row) {
+    try {
+      const res = await listDocuments({ graveId: row.id, documentType: "certidao_perpetuidade", perPage: 1 });
+      const doc = res?.data?.[0];
+      if (doc) {
+        const url = await fetchDocumentPdf(doc.id);
+        window.open(url, "_blank", "noopener");
+        return;
+      }
+    } catch (_) { /* cai no detalhe abaixo */ }
+    router.push(`/painel/sepulturas/${row.id}`);
+  }
+
   // formulário real de nova sepultura — cadastro RÁPIDO: quadra e lote são
   // DIGITADOS (a estrutura é criada/reaproveitada no backend); proprietário é
   // opcional. Sem selects em cascata (pedido do cliente p/ cadastro em massa).
@@ -219,9 +236,13 @@ export default function GravesListPage() {
   // Estrutura JÁ CADASTRADA do cemitério escolhido → sugestões de quadra/lote.
   // Continua sendo campo de texto (cadastro rápido), mas agora oferece o que
   // existe, evitando duplicar quadra/lote por digitação diferente.
+  // structNonce força REBUSCA da estrutura (quadras/lotes) — ao abrir o modal e
+  // após cadastrar: assim o dropdown reflete na hora uma quadra/lote recém-criada,
+  // sem servir a árvore antiga em cache do fetch anterior.
+  const [structNonce, setStructNonce] = useState(0);
   const { data: structData } = useResource(
     ({ signal }) => (formCemeteryId ? getStructure(formCemeteryId, { signal }) : Promise.resolve(null)),
-    [formCemeteryId]
+    [formCemeteryId, structNonce]
   );
   const structBlocks = structData?.blocks ?? [];
   const quadraOptions = useMemo(
@@ -295,6 +316,7 @@ export default function GravesListPage() {
     setCreateError(null);
     setQuadraLivre(false);
     setLoteLivre(false);
+    setStructNonce((n) => n + 1); // rebusca quadras/lotes atuais ao abrir
     if (row) {
       const g = row.raw || {};
       setExistingPhotoUrl(g.photoUrl || null);
@@ -360,6 +382,7 @@ export default function GravesListPage() {
       setModalOpen(false);
       setGravePhoto(null);
       setGForm(emptyGrave);
+      setStructNonce((n) => n + 1); // quadra/lote nova entra no dropdown na próxima abertura
       refetch();
       if (demarcate && newGraveId) {
         router.push(`/painel/sepulturas/${newGraveId}`);
@@ -554,6 +577,20 @@ export default function GravesListPage() {
                       onEdit={() => openModal(row)}
                       canDelete={canDelete}
                       onDelete={() => askDelete(row)}
+                      extra={
+                        <button
+                          type="button"
+                          onClick={() => downloadCertificate(row)}
+                          title="Baixar certidão de perpetuidade (gerada na hora)"
+                          aria-label="Baixar documento"
+                          style={{ display: "inline-flex", background: "none", border: "none", cursor: "pointer", color: "var(--color-navy, #032e59)", padding: "6px 4px" }}
+                        >
+                          <svg viewBox="0 0 16 16" fill="none" width="17" height="17" aria-hidden="true">
+                            <path d="M4 1.5h5L13 5.5V14a.5.5 0 0 1-.5.5h-8A.5.5 0 0 1 4 14V1.5Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+                            <path d="M8 7.5v4m0 0L6.3 9.8M8 11.5l1.7-1.7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        </button>
+                      }
                     />
                   ),
                 },
