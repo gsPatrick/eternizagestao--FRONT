@@ -66,7 +66,6 @@ export default function TenantTheme({
   // forcedTenantId: quando o tenant vem da URL (/guarulhos) e não do seletor.
   const [tenantId, setTenantId] = useState(forcedTenantId || DEFAULT_TENANT.id);
   const [list, setList] = useState([]); // só a API popula (sem lista inventada)
-  const [open, setOpen] = useState(false);
 
   // Fonte da verdade: cidades da API. Se falhar, mantém o fallback (sem crash).
   useEffect(() => {
@@ -98,18 +97,9 @@ export default function TenantTheme({
     if (saved) setTenantId(saved);
   }, [forcedTenantId, tenantProp]);
 
-  function pick(id) {
-    setTenantId(id);
-    localStorage.setItem(STORAGE_KEY, id);
-    setOpen(false);
-  }
-
   const activeId = forcedTenantId || tenantId;
   // resolve na lista viva da API; sem match (ou API fora) cai no navy institucional.
   const tenant = tenantProp || resolveTenant(list, activeId) || DEFAULT_TENANT;
-  // Sem cidades carregadas não há o que trocar → esconde o seletor de demo.
-  const canSwitch =
-    showSwitcher && !forcedTenantId && !tenantProp && list.length > 0;
 
   const themeVars = themeVarsFor(tenant);
 
@@ -146,42 +136,9 @@ export default function TenantTheme({
     <TenantContext.Provider value={tenant}>
       <div className={styles.root} style={scopeVars ? themeVars : undefined}>
         {children}
-
-        {/* seletor de demonstração — só existe para mostrar o white label */}
-        {canSwitch && (
-          <div className={styles.switcher}>
-            {open && (
-              <div className={styles.menu}>
-                <span className={styles.menuLabel}>Ver como (demo white label)</span>
-                {list.map((t) => (
-                  <button
-                    key={t.id}
-                    className={`${styles.option} ${t.id === activeId ? styles.optionActive : ""}`}
-                    onClick={() => pick(t.id)}
-                  >
-                    <span className={styles.swatch} style={{ background: t.accent }} />
-                    <span className={styles.optionBody}>
-                      <strong>{t.name}</strong>
-                      {t.subdomain}
-                    </span>
-                    {t.id === activeId && (
-                      <svg viewBox="0 0 16 16" fill="none" className={styles.check}>
-                        <path d="m3.5 8.5 3 3 6-7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
-            <button className={styles.trigger} onClick={() => setOpen((v) => !v)} aria-label="Trocar tenant (demo)">
-              <span className={styles.triggerSwatch} style={{ background: tenant.accent }} />
-              <span className={styles.triggerText}>{tenant.brandLead}</span>
-              <svg viewBox="0 0 16 16" fill="none" className={styles.triggerChevron}>
-                <path d="m4 10 4-4 4 4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
-          </div>
-        )}
+        {/* O seletor de demonstração white label foi removido (pedido do cliente):
+            não aparece mais em nenhuma tela pública/auth. O tema por tenant segue
+            resolvido normalmente por cookie/subdomínio/API. */}
       </div>
     </TenantContext.Provider>
   );
