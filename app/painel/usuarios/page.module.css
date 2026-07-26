@@ -1571,3 +1571,13 @@
     gap: 2px;
   }
 }
+
+/* cabeçalho da aba de permissões: texto + botão criar/gerenciar perfis */
+.permHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}

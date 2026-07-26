@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import styles from "./page.module.css";
 
+import Link from "next/link";
 import Button from "@/components/atoms/Button/Button";
 import Input from "@/components/atoms/Input/Input";
 import Select from "@/components/atoms/Select/Select";
@@ -446,12 +447,28 @@ export default function UsersPage() {
 
   const permissionsTab = (
     <div className={styles.tabContent}>
-      <p className={styles.typesHint}>
-        O que cada perfil pode fazer no sistema. Os três perfis padrão —
-        <strong> Administrador</strong>, <strong>Operador</strong> e <strong>Consulta</strong> —
-        aparecem sempre; os perfis <strong>personalizados</strong> criados em
-        {" "}<strong>Configurações › Perfis de acesso</strong> viram novas colunas aqui.
-      </p>
+      <div className={styles.permHead}>
+        <p className={styles.typesHint} style={{ margin: 0 }}>
+          O que cada perfil pode fazer no sistema. Os três perfis padrão —
+          <strong> Administrador</strong>, <strong>Operador</strong> e <strong>Consulta</strong> —
+          aparecem sempre; os perfis <strong>personalizados</strong> viram novas colunas aqui.
+        </p>
+        {canManage && (
+          <Link href="/painel/configuracoes/perfis">
+            <Button
+              variant="secondary"
+              size="sm"
+              iconLeft={
+                <svg viewBox="0 0 16 16" fill="none">
+                  <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+                </svg>
+              }
+            >
+              Criar / gerenciar perfis
+            </Button>
+          </Link>
+        )}
+      </div>
       <div className={styles.matrixWrap}>
         <div className={styles.matrix} style={{ minWidth: `${360 + Math.max(roles.length, 1) * 140}px` }}>
           {/* cabeçalho de colunas — uma por perfil */}
