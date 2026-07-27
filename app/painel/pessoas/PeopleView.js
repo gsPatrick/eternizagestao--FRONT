@@ -39,6 +39,7 @@ import {
 import { getUser } from "@/lib/api/session";
 import RowActions from "@/components/molecules/RowActions/RowActions";
 import ConfirmDelete from "@/components/molecules/ConfirmDelete/ConfirmDelete";
+import { AccessModeFields, CredentialResult } from "@/components/molecules/AccessCredential/AccessCredential";
 import { listGraves, isPerpetualUse } from "@/lib/api/resources/graves";
 import { issueConcession } from "@/lib/api/resources/concessions";
 
@@ -80,6 +81,8 @@ export default function PeopleView({
   const [relForm, setRelForm] = useState(null); // { person: "", type: "Cônjuge" }
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState(null); // { tone, message }
+  const [portalInvite, setPortalInvite] = useState(null); // { person, email, mode, password }
+  const [portalCred, setPortalCred] = useState(null); // { name, email, password, loginUrl }
   const [addr, setAddr] = useState({ zip: "", city: "", street: "" });
   const [cepStatus, setCepStatus] = useState("idle"); // idle | loading | done | error
   // SEPULTURA vinculada no cadastro (pedido do cliente: ao cadastrar o
@@ -345,15 +348,49 @@ export default function PeopleView({
     }
   }
 
-  async function invitePortal(person) {
-    const body = person.email ? { email: person.email } : {};
-    const ok = await run(
-      () => apiInvitePortal(person.id, body),
-      `Convite do Portal da Família enviado para ${person.name.split(" ")[0]}.`
-    );
-    if (ok) {
+  // Abre o modal de acesso ao portal (mesma escolha das contas do painel).
+  function openPortalInvite(person) {
+    setPortalInvite({
+      person,
+      email: person.email || "",
+      mode: "email",
+      password: "",
+    });
+  }
+
+  // Envia conforme o modo escolhido: e-mail (link de ativação) ou senha definida
+  // agora (conta ativa + credenciais para copiar).
+  async function submitPortalInvite() {
+    const { person, email, mode, password } = portalInvite;
+    if (!email.trim()) {
+      setFeedback({ tone: "danger", message: "Informe um e-mail para o acesso ao portal." });
+      return;
+    }
+    if (mode === "senha" && (password || "").length < 8) {
+      setFeedback({ tone: "danger", message: "A senha deve ter no mínimo 8 caracteres." });
+      return;
+    }
+    const body = mode === "senha"
+      ? { email: email.trim(), password }
+      : { email: email.trim() };
+    const firstName = person.name.split(" ")[0];
+    setSaving(true);
+    try {
+      const res = await apiInvitePortal(person.id, body);
+      const creds = res?.credentials; // presente só no modo senha
+      setPortalInvite(null);
+      if (creds) {
+        setPortalCred({ name: person.name, email: creds.email, password: creds.password, loginUrl: creds.loginUrl });
+        flash(`Acesso ao portal criado para ${firstName}.`, "success");
+      } else {
+        flash(`Convite do Portal da Família enviado para ${firstName}.`, "success");
+      }
       refreshList();
       refetchDetail();
+    } catch (e) {
+      flash(e?.message || "Não foi possível dar acesso ao portal.", "danger");
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -819,8 +856,8 @@ export default function PeopleView({
                       Convite {detail.email ? `por e-mail (${detail.email})` : `por WhatsApp (${detail.whatsapp || detail.phone})`}
                     </span>
                   </div>
-                  <Button size="sm" loading={saving} onClick={() => invitePortal(detail)}>
-                    Enviar convite
+                  <Button size="sm" loading={saving} onClick={() => openPortalInvite(detail)}>
+                    Dar acesso
                   </Button>
                 </div>
               )}
@@ -833,6 +870,65 @@ export default function PeopleView({
               </section>
             )}
           </div>
+        )}
+      </Modal>
+
+      {/* ---------- dar acesso ao Portal da Família ---------- */}
+      <Modal
+        open={Boolean(portalInvite)}
+        onClose={() => setPortalInvite(null)}
+        title="Acesso ao Portal da Família"
+        subtitle="Envie por e-mail (a pessoa cria a senha) ou defina a senha agora e copie para enviar"
+        width={560}
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setPortalInvite(null)}>Cancelar</Button>
+            <Button
+              loading={saving}
+              disabled={!portalInvite?.email?.trim() || (portalInvite?.mode === "senha" && (portalInvite?.password || "").length < 8)}
+              onClick={submitPortalInvite}
+            >
+              {portalInvite?.mode === "senha" ? "Criar acesso" : "Enviar convite"}
+            </Button>
+          </>
+        }
+      >
+        {portalInvite && (
+          <div style={{ display: "grid", gap: 14 }}>
+            <FormField label="E-mail de acesso" required hint="É o login da pessoa no portal.">
+              <Input
+                type="email"
+                placeholder="email@exemplo.com"
+                value={portalInvite.email}
+                onChange={(e) => setPortalInvite({ ...portalInvite, email: e.target.value })}
+              />
+            </FormField>
+            <AccessModeFields
+              mode={portalInvite.mode}
+              onModeChange={(m) => setPortalInvite({ ...portalInvite, mode: m })}
+              password={portalInvite.password}
+              onPasswordChange={(p) => setPortalInvite({ ...portalInvite, password: p })}
+            />
+          </div>
+        )}
+      </Modal>
+
+      {/* ---------- credenciais do portal criadas (modo "definir senha") ---------- */}
+      <Modal
+        open={Boolean(portalCred)}
+        onClose={() => setPortalCred(null)}
+        title="Acesso ao portal criado"
+        subtitle="Copie e envie as credenciais para a pessoa"
+        width={520}
+        footer={<Button onClick={() => setPortalCred(null)}>Concluir</Button>}
+      >
+        {portalCred && (
+          <CredentialResult
+            name={portalCred.name}
+            email={portalCred.email}
+            password={portalCred.password}
+            loginUrl={portalCred.loginUrl}
+          />
         )}
       </Modal>
 
