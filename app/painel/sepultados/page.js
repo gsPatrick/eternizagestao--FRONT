@@ -32,7 +32,7 @@ import { listFunerarias } from "@/lib/api/resources/funerarias";
 import { listPeople } from "@/lib/api/resources/people";
 import GravePicker, { graveLabel } from "@/components/organisms/GravePicker/GravePicker";
 import { registerPerformedExhumation, listExhumations } from "@/lib/api/resources/exhumations";
-import { listDocuments, fetchDocumentPdf } from "@/lib/api/resources/documents";
+import { listDocuments, fetchDocumentPdf, issueDocument } from "@/lib/api/resources/documents";
 import { listOssuaries, listNiches } from "@/lib/api/resources/ossuaries";
 import { todayISO } from "@/lib/date-local";
 
@@ -96,15 +96,25 @@ export default function DeceasedListPage() {
     // navegador trata como popup fora de gesto e BLOQUEIA a URL blob do PDF.
     const win = window.open("", "_blank");
     try {
+      // 1) já existe a autorização? baixa (regenerada do cadastro atual).
       const res = await listDocuments({ deceasedId: row.id, documentType: "autorizacao_sepultamento", perPage: 1 });
-      const doc = res?.data?.[0];
+      let doc = res?.data?.[0];
+      // 2) não existe (registro migrado/sem documento): GERA na hora, sem
+      //    redirecionar para outra página. Basta o jazigo do sepultado.
+      if (!doc) {
+        const graveId = row.raw?.currentGrave?.id || row.raw?.currentGraveId || null;
+        if (graveId) {
+          doc = await issueDocument({ documentType: "autorizacao_sepultamento", graveId, deceasedId: row.id });
+        }
+      }
       if (doc) {
         const url = await fetchDocumentPdf(doc.id);
         if (win) win.location.href = url; else window.location.href = url;
         return;
       }
-    } catch (_) { /* sem doc/erro → detalhe abaixo */ }
-    // Sem documento ainda: leva ao detalhe (na mesma aba já aberta) para gerar.
+    } catch (_) { /* sem jazigo/erro → detalhe abaixo */ }
+    // Só cai aqui se o sepultado não tem jazigo (não há autorização possível):
+    // o detalhe é o lugar certo para vincular a sepultura e então gerar.
     const detalhe = `/painel/sepultados/${row.id}`;
     if (win) win.location.href = detalhe; else router.push(detalhe);
   }
@@ -352,7 +362,10 @@ export default function DeceasedListPage() {
     setPickedGrave(r.currentGrave || null);
     setBurialForm({
       graveId: r.currentGrave?.id || "",
-      date: (r.lastBurialDate || "").slice(0, 10) || todayISO(),
+      // EDITAR: mantém a data real; se estiver vazia (registro antigo/migrado),
+      // fica VAZIA — nunca "hoje". Assim o operador corrige e o valor persiste,
+      // em vez de o campo se preencher sozinho com a data de hoje.
+      date: (r.lastBurialDate || "").slice(0, 10),
       time: "",
     });
     setCertFile(null);
