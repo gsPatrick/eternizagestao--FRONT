@@ -14,9 +14,11 @@ import { getPublicCemeteries, getPublicAgenda } from "@/lib/api/resources/public
  * Agenda/lista), com o mesmo layout. Read-only e com informação pública:
  * velórios, sepultamentos e exumações. Temada pela cor do tenant.
  *
- * Fonte: API pública. Escolhe o PRIMEIRO cemitério do tenant
- * (GET /public/cemeteries) e carrega a agenda dele
- * (GET /public/cemeteries/:id/agenda). Estados: loading → error → vazio → conteúdo.
+ * Fonte: API pública. Lista os cemitérios do tenant (GET /public/cemeteries) e
+ * carrega a agenda de TODOS eles (GET /public/agenda) — o visitante pode
+ * restringir a um cemitério pelo seletor. Antes a tela fixava o PRIMEIRO
+ * cemitério, e uma cerimônia em qualquer outro nunca aparecia.
+ * Estados: loading → error → vazio → conteúdo.
  */
 
 const DAY_START = 8;
@@ -95,6 +97,8 @@ function transformEvents(items) {
         start: hhmm(start),
         end: hhmm(end),
         place: it.place || "Local a confirmar",
+        cemeteryId: it.cemeteryId || null,
+        cemeteryName: it.cemeteryName || null,
         rawType: it.type,
       };
     })
@@ -109,24 +113,32 @@ export default function PublicAgenda({ cityName, tenantSlug }) {
   // a população precisa achar e conferir a cerimônia de alguém).
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("todos");
+  // Cemitério exibido: "todos" (agregado da cidade) ou o id escolhido.
+  const [cemeteryFilter, setCemeteryFilter] = useState("todos");
   const [selectedEvent, setSelectedEvent] = useState(null);
 
   useEffect(() => {
     if (window.innerWidth <= 768) setView("day");
   }, []);
 
-  // 1) cemitérios do tenant → 2) agenda do primeiro cemitério
+  // 1) cemitérios do tenant (para o seletor) → 2) agenda: "todos" por padrão,
+  // ou só o cemitério escolhido pelo visitante.
   const cemeteries = useResource(
     ({ signal }) =>
       tenantSlug ? getPublicCemeteries({ tenant: tenantSlug, signal }) : Promise.resolve([]),
     [tenantSlug]
   );
-  const cemeteryId = cemeteries.data?.[0]?.id || null;
+  const cemeteryList = cemeteries.data || [];
 
   const agenda = useResource(
     ({ signal }) =>
-      cemeteryId ? getPublicAgenda(cemeteryId, { tenant: tenantSlug, signal }) : Promise.resolve([]),
-    [cemeteryId, tenantSlug]
+      tenantSlug
+        ? getPublicAgenda(cemeteryFilter === "todos" ? null : cemeteryFilter, {
+            tenant: tenantSlug,
+            signal,
+          })
+        : Promise.resolve([]),
+    [cemeteryFilter, tenantSlug]
   );
 
   const allEvents = useMemo(() => transformEvents(agenda.data), [agenda.data]);
@@ -134,7 +146,7 @@ export default function PublicAgenda({ cityName, tenantSlug }) {
     const q = query.trim().toLowerCase();
     return allEvents.filter((e) => {
       if (typeFilter !== "todos" && e.type !== typeFilter) return false;
-      if (q && !`${e.name} ${e.place}`.toLowerCase().includes(q)) return false;
+      if (q && !`${e.name} ${e.place} ${e.cemeteryName || ""}`.toLowerCase().includes(q)) return false;
       return true;
     });
   }, [allEvents, query, typeFilter]);
@@ -227,7 +239,7 @@ export default function PublicAgenda({ cityName, tenantSlug }) {
 
   // Estados — a agenda (grade) é SEMPRE exibida; sem cerimônias, a grade
   // aparece vazia (ancorada na semana atual), igual ao painel.
-  const loading = cemeteries.loading || (cemeteryId && agenda.loading);
+  const loading = cemeteries.loading || agenda.loading;
   const error = cemeteries.error || agenda.error;
   const retry = () => {
     cemeteries.refetch();
@@ -313,6 +325,20 @@ export default function PublicAgenda({ cityName, tenantSlug }) {
                 <option value="sepultamento">Sepultamento</option>
                 <option value="velorio">Velório</option>
               </select>
+              {/* Seletor de cemitério — só quando a cidade tem mais de um. */}
+              {cemeteryList.length > 1 && (
+                <select
+                  className={styles.typeSelect}
+                  value={cemeteryFilter}
+                  onChange={(e) => setCemeteryFilter(e.target.value)}
+                  aria-label="Filtrar por cemitério"
+                >
+                  <option value="todos">Todos os cemitérios</option>
+                  {cemeteryList.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              )}
               {(query || typeFilter !== "todos") && (
                 <span className={styles.searchCount}>
                   {events.length} resultado{events.length === 1 ? "" : "s"}
@@ -371,7 +397,9 @@ export default function PublicAgenda({ cityName, tenantSlug }) {
                             <button key={event.id} type="button" onClick={() => setSelectedEvent(event)} className={`${styles.event} ${styles[`ev_${event.type}`]}`} style={{ top, height }}>
                               <span className={styles.eventTime}>{event.start} – {event.end}</span>
                               <span className={styles.eventTitle}>{event.label} · {event.name}</span>
-                              <span className={styles.eventPlace}>{event.place}</span>
+                              <span className={styles.eventPlace}>
+                                {event.place}{event.cemeteryName ? ` · ${event.cemeteryName}` : ""}
+                              </span>
                             </button>
                           );
                         })}
@@ -436,7 +464,9 @@ export default function PublicAgenda({ cityName, tenantSlug }) {
                             <span className={`${styles.agendaBar} ${styles[`ev_${event.type}_dot`]}`} />
                             <span className={styles.agendaBody}>
                               <span className={styles.agendaTitle}>{event.label} · {event.name}</span>
-                              <span className={styles.agendaMeta}>{event.place}</span>
+                              <span className={styles.agendaMeta}>
+                                {event.place}{event.cemeteryName ? ` · ${event.cemeteryName}` : ""}
+                              </span>
                             </span>
                           </button>
                         </li>
@@ -458,6 +488,9 @@ export default function PublicAgenda({ cityName, tenantSlug }) {
                     <div><dt>Data</dt><dd>{selectedEvent.date.toLocaleDateString("pt-BR", { timeZone: AGENDA_TZ, weekday: "long", day: "2-digit", month: "long", year: "numeric" })}</dd></div>
                     <div><dt>Horário</dt><dd>{selectedEvent.start} — {selectedEvent.end}</dd></div>
                     <div><dt>Local</dt><dd>{selectedEvent.place}</dd></div>
+                    {selectedEvent.cemeteryName && (
+                      <div><dt>Cemitério</dt><dd>{selectedEvent.cemeteryName}</dd></div>
+                    )}
                   </dl>
                   <p className={styles.detailNote}>Informações sujeitas a alteração. Confirme com a administração do cemitério.</p>
                 </div>
