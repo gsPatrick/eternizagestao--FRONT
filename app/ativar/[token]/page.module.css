@@ -1,0 +1,160 @@
+/* Ativação do Portal da Família — mesmo desenho das telas de autenticação
+   (/login, /verificacao): visual à esquerda, formulário à direita. */
+
+.screen {
+  display: flex;
+  min-height: 100dvh;
+  background: var(--color-canvas);
+  overflow: clip;
+}
+
+.visual {
+  flex: 0 0 50%;
+  min-height: 100dvh;
+}
+
+.panel {
+  flex: 0 0 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(24px, 4vw, 56px);
+  background: var(--color-canvas);
+}
+
+.panelInner {
+  width: 100%;
+  max-width: 400px;
+}
+
+.formView {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  animation: viewIn 0.6s var(--ease-out) both;
+}
+
+.iconBadge {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--color-navy) 10%, transparent);
+  color: var(--color-navy);
+}
+
+.iconBadge svg {
+  width: 24px;
+  height: 24px;
+}
+
+.iconSuccess {
+  background: color-mix(in srgb, var(--color-success, #1a7f5c) 12%, transparent);
+  color: var(--color-success, #1a7f5c);
+}
+
+.formHead {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.formTitle {
+  font-size: var(--text-heading);
+  color: var(--color-ink);
+}
+
+.formSub {
+  color: var(--color-slate);
+  font-size: var(--text-body-lg);
+}
+
+.cityHighlight {
+  color: var(--color-ink);
+  font-weight: 600;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+/* ---------- medidor de força da senha ---------- */
+.strength {
+  margin-top: 8px;
+}
+
+.strengthBars {
+  display: flex;
+  gap: 4px;
+}
+
+.strengthBar {
+  flex: 1;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--color-mist, #dde3eb);
+  transition: background 0.25s ease;
+}
+
+.strengthLabel {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* ---------- rodapé com saídas (login / novo convite) ---------- */
+.exits {
+  font-size: var(--text-body);
+  color: var(--color-slate);
+  text-align: center;
+}
+
+.link {
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: inherit;
+  font-weight: 600;
+  color: var(--color-navy);
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 3px;
+  transition: text-decoration-color var(--speed-fast) var(--ease-out);
+}
+
+.link:hover {
+  text-decoration-color: var(--color-navy);
+}
+
+@keyframes viewIn {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 960px) {
+  .screen {
+    flex-direction: column;
+  }
+
+  .visual {
+    flex: 0 0 auto;
+    min-height: 220px;
+  }
+
+  .panel {
+    flex: 1 0 auto;
+    align-items: flex-start;
+    padding-top: var(--space-6);
+  }
+}
