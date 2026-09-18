@@ -8,30 +8,58 @@ import Badge from "@/components/atoms/Badge/Badge";
 import Skeleton from "@/components/atoms/Skeleton/Skeleton";
 import ErrorState from "@/components/molecules/ErrorState/ErrorState";
 import EmptyState from "@/components/molecules/EmptyState/EmptyState";
-import { useTenant } from "@/components/providers/TenantTheme/TenantTheme";
+import { useTenantSubdomain } from "@/components/providers/TenantTheme/TenantTheme";
 import { useResource } from "@/lib/api/useResource";
 import { getMe, getGraves, getBillings, billTotal, formatBRL } from "@/lib/api/resources/portal";
 
 export default function PortalHomePage() {
-  const tenant = useTenant();
-  const sub = (tenant?.subdomain || "").split(".")[0];
+  // Cidade do usuário logado: cookie `eterniza_tenant`/`?t=` (síncrono), NÃO a
+  // lista assíncrona de /public/tenants. Enquanto `ready` for false as buscas
+  // ficam adiadas — antes elas saíam com X-Tenant-Subdomain: demo, a API
+  // respondia 401 PORTAL_TENANT_MISMATCH e o client derrubava a sessão.
+  const { sub, ready } = useTenantSubdomain();
 
   // Link p/ a consulta pública preservando a cidade: no subdomínio o cookie
   // resolve o `sub` (via TenantTheme) e o `?t=` é inofensivo; no modo path é o
-  // que carrega o tenant. Evita o slug de demonstração ("demo").
-  const consultaHref = sub && sub !== "demo" ? `/consulta-publica?t=${sub}` : "/consulta-publica";
+  // que carrega o tenant.
+  const consultaHref = sub ? `/consulta-publica?t=${sub}` : "/consulta-publica";
 
-  const me = useResource(({ signal }) => getMe({ signal, tenant: sub }), [sub]);
-  const gravesRes = useResource(({ signal }) => getGraves({ signal, tenant: sub }), [sub]);
-  const billingsRes = useResource(({ signal }) => getBillings({ signal, tenant: sub }), [sub]);
+  const me = useResource(
+    ({ signal }) => (sub ? getMe({ signal, tenant: sub }) : Promise.resolve(null)),
+    [sub, ready]
+  );
+  const gravesRes = useResource(
+    ({ signal }) => (sub ? getGraves({ signal, tenant: sub }) : Promise.resolve(null)),
+    [sub, ready]
+  );
+  const billingsRes = useResource(
+    ({ signal }) => (sub ? getBillings({ signal, tenant: sub }) : Promise.resolve(null)),
+    [sub, ready]
+  );
 
-  const loading = me.loading || gravesRes.loading || billingsRes.loading;
+  const loading = !ready || me.loading || gravesRes.loading || billingsRes.loading;
   const error = me.error || gravesRes.error || billingsRes.error;
+  // Cidade resolvida e ausente (acesso ao portal fora de um tenant): é erro de
+  // contexto, não de rede — melhor avisar do que buscar com um tenant inventado.
+  const noTenant = ready && !sub;
 
   function retry() {
     me.refetch();
     gravesRes.refetch();
     billingsRes.refetch();
+  }
+
+  if (noTenant) {
+    return (
+      <PortalShell active="inicio">
+        <div className={styles.page}>
+          <ErrorState
+            title="Cidade não identificada"
+            message="Entre pelo endereço da sua cidade para acessar o Portal da Família."
+          />
+        </div>
+      </PortalShell>
+    );
   }
 
   if (loading) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import {
   DEFAULT_TENANT,
   normalizeApiTenant,
@@ -29,6 +29,25 @@ const STORAGE_KEY = "eterniza:tenant";
 const THEME_VARS_KEY = "eterniza:themeVars";
 const TenantContext = createContext(DEFAULT_TENANT);
 
+/**
+ * Contexto IRMÃO: o SUBDOMÍNIO da cidade (header X-Tenant-Subdomain) + o aviso
+ * de que ele já foi resolvido.
+ *
+ * Por que separado do tema: o objeto `tenant` do contexto acima só fica certo
+ * DEPOIS de `GET /public/tenants` responder (é uma busca assíncrona). Até lá ele
+ * é o DEFAULT_TENANT, cujo `subdomain` é "demo.<domínio>" — um rótulo de
+ * demonstração. As telas do portal derivavam o header desse objeto e, na
+ * primeira renderização, disparavam `/portal/me|graves|billings` com
+ * `X-Tenant-Subdomain: demo`. A API respondia 401 PORTAL_TENANT_MISMATCH e o
+ * client derrubava a sessão: o usuário logado voltava para /login.
+ *
+ * O subdomínio, porém, NÃO depende da API: ele vem do cookie `eterniza_tenant`
+ * (middleware/login) ou do `?t=` da URL — fontes SÍNCRONAS e locais. É isso que
+ * este contexto expõe, com `ready` para as telas só buscarem quando houver
+ * cidade resolvida — nunca com o "demo" de fallback.
+ */
+const TenantSubContext = createContext({ sub: null, ready: false });
+
 // Lê o subdomínio da cidade do cookie setado pelo middleware (produção).
 // Em dev o cookie não existe (middleware no-op) → null e cai no seletor. SSR-safe.
 function readTenantCookie() {
@@ -52,6 +71,18 @@ export function useTenant() {
   return useContext(TenantContext);
 }
 
+/**
+ * Subdomínio da cidade para o header X-Tenant-Subdomain.
+ * @returns {{ sub: string|null, ready: boolean }}
+ *   `sub`   — ex.: "guarulhos"; null quando não há cidade (contexto plataforma).
+ *   `ready` — true quando a resolução já aconteceu (mesmo que sem cidade).
+ * Enquanto `ready` for false a tela NÃO deve chamar a API: é exatamente a
+ * janela em que o "demo" vazava como tenant de um usuário autenticado.
+ */
+export function useTenantSubdomain() {
+  return useContext(TenantSubContext);
+}
+
 export default function TenantTheme({
   children,
   showSwitcher = true,
@@ -66,6 +97,11 @@ export default function TenantTheme({
   // forcedTenantId: quando o tenant vem da URL (/guarulhos) e não do seletor.
   const [tenantId, setTenantId] = useState(forcedTenantId || DEFAULT_TENANT.id);
   const [list, setList] = useState([]); // só a API popula (sem lista inventada)
+  // A resolução do subdomínio (cookie/`?t=`) só pode acontecer no cliente, num
+  // efeito — ler document.cookie durante a renderização divergiria do SSR e
+  // causaria aviso de hidratação. `subReady` marca o fim dessa espera de 1 tick.
+  // Quando o tenant vem pronto de fora (prop/URL), já nasce resolvido.
+  const [subReady, setSubReady] = useState(Boolean(forcedTenantId || tenantProp));
 
   // Fonte da verdade: cidades da API. Se falhar, mantém o fallback (sem crash).
   useEffect(() => {
@@ -95,6 +131,8 @@ export default function TenantTheme({
         : null;
     const saved = fromCookie || fromQuery || localStorage.getItem(STORAGE_KEY);
     if (saved) setTenantId(saved);
+    // Resolvido (com ou sem cidade): libera as telas para chamar a API.
+    setSubReady(true);
   }, [forcedTenantId, tenantProp]);
 
   const activeId = forcedTenantId || tenantId;
@@ -132,14 +170,28 @@ export default function TenantTheme({
   // flash; então deixamos herdar do :root, que o script anti-flash já pintou.
   const scopeVars = forcedTenantId || tenantProp || previewOnly;
 
+  // Subdomínio para o header: vem do id ativo (cookie/`?t=`/prop), que já É o
+  // slug da cidade ("guarulhos") — NÃO do objeto de tema, que até a API
+  // responder é o DEFAULT_TENANT ("demo"). Nenhum fallback é publicado aqui:
+  // sem cidade resolvida o valor é null e as telas simplesmente não buscam.
+  const subValue = useMemo(() => {
+    const raw = tenantProp
+      ? tenantProp.apiSubdomain || tenantProp.id
+      : activeId;
+    const sub = raw && raw !== DEFAULT_TENANT.id ? String(raw).split(".")[0] : null;
+    return { sub, ready: subReady };
+  }, [tenantProp, activeId, subReady]);
+
   return (
     <TenantContext.Provider value={tenant}>
-      <div className={styles.root} style={scopeVars ? themeVars : undefined}>
-        {children}
-        {/* O seletor de demonstração white label foi removido (pedido do cliente):
-            não aparece mais em nenhuma tela pública/auth. O tema por tenant segue
-            resolvido normalmente por cookie/subdomínio/API. */}
-      </div>
+      <TenantSubContext.Provider value={subValue}>
+        <div className={styles.root} style={scopeVars ? themeVars : undefined}>
+          {children}
+          {/* O seletor de demonstração white label foi removido (pedido do cliente):
+              não aparece mais em nenhuma tela pública/auth. O tema por tenant segue
+              resolvido normalmente por cookie/subdomínio/API. */}
+        </div>
+      </TenantSubContext.Provider>
     </TenantContext.Provider>
   );
 }

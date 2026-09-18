@@ -8,18 +8,21 @@ import Badge from "@/components/atoms/Badge/Badge";
 import Skeleton from "@/components/atoms/Skeleton/Skeleton";
 import ErrorState from "@/components/molecules/ErrorState/ErrorState";
 import EmptyState from "@/components/molecules/EmptyState/EmptyState";
-import { useTenant } from "@/components/providers/TenantTheme/TenantTheme";
+import { useTenantSubdomain } from "@/components/providers/TenantTheme/TenantTheme";
 import { useResource } from "@/lib/api/useResource";
 import { getGraves } from "@/lib/api/resources/portal";
 
 export default function PortalJazigosPage() {
-  const tenant = useTenant();
-  const sub = (tenant?.subdomain || "").split(".")[0];
+  // Cidade do usuário logado (cookie/`?t=`, síncrono). Só busca com ela
+  // resolvida — o fallback "demo" derrubava a sessão (401 na API).
+  const { sub, ready } = useTenantSubdomain();
 
-  const { data, loading, error, refetch } = useResource(
-    ({ signal }) => getGraves({ signal, tenant: sub }),
-    [sub]
+  const res = useResource(
+    ({ signal }) => (sub ? getGraves({ signal, tenant: sub }) : Promise.resolve(null)),
+    [sub, ready]
   );
+  const { data, error, refetch } = res;
+  const loading = !ready || res.loading;
   const graves = data ?? [];
 
   return (

@@ -14,7 +14,7 @@ import ErrorState from "@/components/molecules/ErrorState/ErrorState";
 import EmptyState from "@/components/molecules/EmptyState/EmptyState";
 import FileViewer from "@/components/organisms/FileViewer/FileViewer";
 import dynamic from "next/dynamic";
-import { useTenant } from "@/components/providers/TenantTheme/TenantTheme";
+import { useTenantSubdomain } from "@/components/providers/TenantTheme/TenantTheme";
 
 // mapa real (Leaflet/OSM) — client-only
 const PublicCemeteryMap = dynamic(
@@ -45,13 +45,16 @@ function initials(name) {
 
 export default function PortalJazigoDetailPage() {
   const params = useParams();
-  const tenant = useTenant();
-  const sub = (tenant?.subdomain || "").split(".")[0];
+  // Cidade do usuário logado (cookie/`?t=`, síncrono). Só busca com ela
+  // resolvida — o fallback "demo" derrubava a sessão (401 na API).
+  const { sub, ready } = useTenantSubdomain();
 
-  const { data, loading, error, refetch } = useResource(
-    ({ signal }) => getGraves({ signal, tenant: sub }),
-    [sub]
+  const res = useResource(
+    ({ signal }) => (sub ? getGraves({ signal, tenant: sub }) : Promise.resolve(null)),
+    [sub, ready]
   );
+  const { data, error, refetch } = res;
+  const loading = !ready || res.loading;
 
   const [mapOpen, setMapOpen] = useState(false);
   const [contractOpen, setContractOpen] = useState(false);

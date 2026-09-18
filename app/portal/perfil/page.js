@@ -14,7 +14,7 @@ import Modal from "@/components/molecules/Modal/Modal";
 import Alert from "@/components/molecules/Alert/Alert";
 import Skeleton from "@/components/atoms/Skeleton/Skeleton";
 import ErrorState from "@/components/molecules/ErrorState/ErrorState";
-import { useTenant } from "@/components/providers/TenantTheme/TenantTheme";
+import { useTenantSubdomain } from "@/components/providers/TenantTheme/TenantTheme";
 import { useResource, useMutation } from "@/lib/api/useResource";
 import { getMe, updateMe, changePassword } from "@/lib/api/resources/portal";
 import { logout } from "@/lib/api/session";
@@ -55,13 +55,16 @@ const LockIcon = (
 );
 
 export default function PortalPerfilPage() {
-  const tenant = useTenant();
-  const sub = (tenant?.subdomain || "").split(".")[0];
+  // Cidade do usuário logado (cookie/`?t=`, síncrono). Só busca com ela
+  // resolvida — o fallback "demo" derrubava a sessão (401 na API).
+  const { sub, ready } = useTenantSubdomain();
 
-  const { data, loading, error, refetch } = useResource(
-    ({ signal }) => getMe({ signal, tenant: sub }),
-    [sub]
+  const res = useResource(
+    ({ signal }) => (sub ? getMe({ signal, tenant: sub }) : Promise.resolve(null)),
+    [sub, ready]
   );
+  const { data, error, refetch } = res;
+  const loading = !ready || res.loading;
 
   return (
     <PortalShell active="perfil">
@@ -70,7 +73,9 @@ export default function PortalPerfilPage() {
           <Skeleton variant="block" height={110} />
           <Skeleton variant="card" count={2} height={160} />
         </div>
-      ) : error ? (
+      ) : error || !data ? (
+        // !data = cidade não resolvida (nenhuma busca foi feita): melhor um
+        // erro honesto do que renderizar o perfil sem titular.
         <div className={styles.page}>
           <ErrorState onRetry={refetch} />
         </div>
