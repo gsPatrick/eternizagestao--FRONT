@@ -34,6 +34,8 @@ import {
   toPersonRow,
   toPersonDetail,
   toPersonPayload,
+  detailToPersonForm,
+  diffPersonPayload,
   deletePerson,
 } from "@/lib/api/resources/people";
 import { getUser } from "@/lib/api/session";
@@ -83,7 +85,15 @@ export default function PeopleView({
   const [feedback, setFeedback] = useState(null); // { tone, message }
   const [portalInvite, setPortalInvite] = useState(null); // { person, email, mode, password }
   const [portalCred, setPortalCred] = useState(null); // { name, email, password, loginUrl }
-  const [addr, setAddr] = useState({ zip: "", city: "", street: "" });
+  // Endereço do formulário — um campo por coluna do model Person. Guardar tudo
+  // concatenado (como era antes) fazia número/bairro/UF voltarem gravados numa
+  // coluna só e sumirem do cadastro.
+  const [addr, setAddr] = useState({
+    zip: "", street: "", number: "", district: "", city: "", state: "",
+  });
+  // snapshot do registro carregado — base do PATCH parcial (só o que mudou)
+  const [baseForm, setBaseForm] = useState(null);
+  const [editLoadingId, setEditLoadingId] = useState(null); // linha abrindo o form
   const [cepStatus, setCepStatus] = useState("idle"); // idle | loading | done | error
   // SEPULTURA vinculada no cadastro (pedido do cliente: ao cadastrar o
   // proprietário já escolher a sepultura). Ao salvar, emite a concessão.
@@ -208,9 +218,21 @@ export default function PeopleView({
     }
   }
 
+  /**
+   * Abre o formulário. `person` DEVE ser um detalhe completo (toPersonDetail) ou
+   * null (cadastro novo) — nunca uma linha da listagem, que é só um resumo.
+   */
   function openForm(person) {
     setEditing(person);
-    setAddr({ zip: person?.zipcode || "", city: person?.city || "", street: person?.address || "" });
+    setAddr({
+      zip: person?.zipcode || "",
+      street: person?.street || "",
+      number: person?.number || "",
+      district: person?.district || "",
+      city: person?.city || "",
+      state: person?.state || "",
+    });
+    setBaseForm(detailToPersonForm(person));
     setCepStatus("idle");
     setPhoto({ url: person?.photoUrl || null, pendingFile: null, uploading: false });
     // vínculo de sepultura só existe no CADASTRO novo (edição usa o detalhe)
@@ -218,6 +240,26 @@ export default function PeopleView({
     setGraveSearch("");
     setGraveSearchDebounced("");
     setFormOpen(true);
+  }
+
+  /**
+   * Editar a partir da LISTA. A linha é um resumo (não traz endereço, CEP,
+   * nascimento, gênero e observações), então buscamos o registro COMPLETO em
+   * GET /people/:id — o mesmo caminho do "Editar dados" do modal de detalhe —
+   * antes de abrir o formulário. Abrir pelo resumo deixava campos em branco e,
+   * ao salvar, apagava os dados no banco.
+   */
+  async function openFormById(id) {
+    if (editLoadingId) return; // evita duplo clique
+    setEditLoadingId(id);
+    try {
+      const full = await getPerson(id);
+      openForm(toPersonDetail(full));
+    } catch (e) {
+      flash(e?.message || "Não foi possível carregar o cadastro para edição.", "danger");
+    } finally {
+      setEditLoadingId(null);
+    }
   }
 
   // Upload da foto da pessoa. Em EDIÇÃO (id já existe) sobe na hora e atualiza o
@@ -288,10 +330,13 @@ export default function PeopleView({
         setCepStatus("error");
         return;
       }
+      // cada informação no seu campo (nada de concatenar)
       setAddr((a) => ({
         ...a,
-        city: `${data.localidade} — ${data.uf}`,
-        street: [data.logradouro, data.bairro].filter(Boolean).join(" · "),
+        city: data.localidade || "",
+        state: data.uf || "",
+        street: data.logradouro || "",
+        district: data.bairro || "",
       }));
       setCepStatus("done");
     } catch {
@@ -309,10 +354,14 @@ export default function PeopleView({
       gender: fd.get("gender"),
       whatsapp: fd.get("whatsapp"),
       phonePrimary: fd.get("phonePrimary"),
+      phoneSecondary: editing?.phoneSecondary || "",
       email: fd.get("email"),
       zip: addr.zip,
-      city: addr.city,
       street: addr.street,
+      number: addr.number,
+      district: addr.district,
+      city: addr.city,
+      state: addr.state,
       notes: fd.get("notes"),
     };
     if (!form.fullName || !String(form.fullName).trim()) {
@@ -323,7 +372,11 @@ export default function PeopleView({
     const editingId = editing?.id;
     const ok = await run(async () => {
       if (editingId) {
-        await updatePerson(editingId, payload);
+        // PATCH PARCIAL: só o que mudou. Campo não tocado não viaja no body e,
+        // portanto, não corre risco de ser sobrescrito com null pela API.
+        const patch = diffPersonPayload(payload, toPersonPayload(baseForm || {}));
+        if (!Object.keys(patch).length) return; // nada mudou — não chama a API
+        await updatePerson(editingId, patch);
         return;
       }
       // cria a pessoa e, se uma foto foi escolhida antes de existir o id, sobe agora
@@ -504,7 +557,9 @@ export default function PeopleView({
       key: "action", label: "", align: "right",
       render: (p) => (
         <RowActions
-          onEdit={() => openForm(p)}
+          // carrega o cadastro COMPLETO antes de abrir o form (a linha é resumo)
+          onEdit={() => openFormById(p.id)}
+          editLabel={editLoadingId === p.id ? "Abrindo…" : "Editar"}
           canDelete={canDelete}
           onDelete={() => { setDeleteError(""); setConfirmDelete(p); }}
           extra={
@@ -723,7 +778,8 @@ export default function PeopleView({
                 </div>
                 <div className={`${styles.infoItem} ${styles.infoWide}`}>
                   <span className={styles.infoLabel}>Endereço</span>
-                  <span className={styles.infoValue}>{[detail.address, detail.city].filter(Boolean).join(" · ") || "—"}</span>
+                  {/* concatenação só na APRESENTAÇÃO — os campos são separados */}
+                  <span className={styles.infoValue}>{[detail.addressLine, detail.cityLine].filter(Boolean).join(" · ") || "—"}</span>
                 </div>
               </div>
             </section>
@@ -983,7 +1039,9 @@ export default function PeopleView({
                 <Input name="whatsapp" defaultValue={editing?.whatsapp} placeholder="(00) 00000-0000" onChange={(e) => (e.target.value = maskPhone(e.target.value))} />
               </FormField>
               <FormField label="Telefone secundário">
-                <Input name="phonePrimary" defaultValue={editing?.phone} placeholder="(00) 0000-0000" onChange={(e) => (e.target.value = maskPhone(e.target.value))} />
+                {/* grava em phonePrimary — nunca no phone "derivado" da lista,
+                    que cai no phoneSecondary e misturaria os dois telefones */}
+                <Input name="phonePrimary" defaultValue={editing?.phonePrimary} placeholder="(00) 0000-0000" onChange={(e) => (e.target.value = maskPhone(e.target.value))} />
               </FormField>
               <FormField label="E-mail" className={styles.spanTwo}>
                 <Input name="email" defaultValue={editing?.email} placeholder="email@exemplo.com" type="email" />
@@ -1013,18 +1071,40 @@ export default function PeopleView({
                   {cepStatus === "loading" && <span className={styles.cepSpinner} />}
                 </div>
               </FormField>
-              <FormField label="Cidade / UF">
+              <FormField label="Cidade">
                 <Input
                   value={addr.city}
                   onChange={(e) => setAddr({ ...addr, city: e.target.value })}
-                  placeholder="São Paulo — SP"
+                  placeholder="São Paulo"
                 />
               </FormField>
-              <FormField label="Logradouro e número" className={styles.spanTwo}>
+              <FormField label="Logradouro" className={styles.spanTwo}>
                 <Input
                   value={addr.street}
                   onChange={(e) => setAddr({ ...addr, street: e.target.value })}
-                  placeholder="Rua, número · bairro"
+                  placeholder="Rua / Avenida"
+                />
+              </FormField>
+              <FormField label="Número">
+                <Input
+                  value={addr.number}
+                  onChange={(e) => setAddr({ ...addr, number: e.target.value })}
+                  placeholder="123"
+                />
+              </FormField>
+              <FormField label="Bairro">
+                <Input
+                  value={addr.district}
+                  onChange={(e) => setAddr({ ...addr, district: e.target.value })}
+                  placeholder="Centro"
+                />
+              </FormField>
+              <FormField label="UF">
+                <Input
+                  value={addr.state}
+                  maxLength={2}
+                  onChange={(e) => setAddr({ ...addr, state: e.target.value.toUpperCase() })}
+                  placeholder="SP"
                 />
               </FormField>
             </div>
