@@ -30,7 +30,7 @@ import { createBurial } from "@/lib/api/resources/burials";
 import { listCartorios } from "@/lib/api/resources/cartorios";
 import { listFunerarias } from "@/lib/api/resources/funerarias";
 import { listPeople } from "@/lib/api/resources/people";
-import GravePicker, { graveLabel } from "@/components/organisms/GravePicker/GravePicker";
+import GravePicker, { graveLabel, GaveteSelect } from "@/components/organisms/GravePicker/GravePicker";
 import { registerPerformedExhumation, listExhumations } from "@/lib/api/resources/exhumations";
 import { listDocuments, fetchDocumentPdf, issueDocument } from "@/lib/api/resources/documents";
 import { listOssuaries, listNiches } from "@/lib/api/resources/ossuaries";
@@ -148,6 +148,11 @@ export default function DeceasedListPage() {
   const [editingDeceased, setEditingDeceased] = useState(null);
   const [pickedGrave, setPickedGrave] = useState(null);
   const [gravePickerOpen, setGravePickerOpen] = useState(false);
+  // 2º passo em BLOCO DE GAVETAS: escolhido o jazigo, a unidade onde o corpo
+  // entra é a GAVETA (sepultura filha, identificada pelo número/código). O
+  // graveId enviado é o DA GAVETA. Jazigo sem gavetas → campo nem aparece.
+  const [pickedGaveta, setPickedGaveta] = useState(null);
+  const [temGavetas, setTemGavetas] = useState(false);
 
   // Bloco "Exumação" do formulário: quando o operador marca que o sepultado JÁ
   // foi exumado, registramos a exumação como realizada (a API percorre o fluxo
@@ -359,7 +364,14 @@ export default function DeceasedListPage() {
       responsiblePersonId: r.responsiblePersonId || "",
       notes: r.notes || "",
     });
-    setPickedGrave(r.currentGrave || null);
+    // EDITAR em bloco de gavetas: o `currentGrave` gravado é a GAVETA. Na tela,
+    // o campo "Sepultura" mostra o JAZIGO e o "Número da gaveta" mostra a gaveta
+    // — senão o operador reabria o cadastro sem saber em que gaveta o corpo está.
+    const atual = r.currentGrave || null;
+    const ehGaveta = Boolean(atual?.parentGraveId && atual?.parentGrave);
+    setPickedGrave(ehGaveta ? atual.parentGrave : atual);
+    setPickedGaveta(ehGaveta ? atual : null);
+    setTemGavetas(ehGaveta);
     setBurialForm({
       graveId: r.currentGrave?.id || "",
       // EDITAR: mantém a data real; se estiver vazia (registro antigo/migrado),
@@ -456,6 +468,8 @@ export default function DeceasedListPage() {
         setForm(EMPTY_FORM);
         setCertFile(null);
         setPickedGrave(null);
+        setPickedGaveta(null);
+        setTemGavetas(false);
         setBurialForm({ graveId: "", date: todayISO(), time: "" });
         refetch();
         return;
@@ -780,13 +794,39 @@ export default function DeceasedListPage() {
                   <Button
                     type="button"
                     variant="ghost"
-                    onClick={() => { setPickedGrave(null); setBurialForm((b) => ({ ...b, graveId: "" })); }}
+                    onClick={() => {
+                      setPickedGrave(null);
+                      setPickedGaveta(null);
+                      setTemGavetas(false);
+                      setBurialForm((b) => ({ ...b, graveId: "" }));
+                    }}
                   >
                     Limpar
                   </Button>
                 )}
               </div>
             </FormField>
+            {/* BLOCO DE GAVETAS: só aparece quando o jazigo escolhido tem
+                gavetas cadastradas. O sepultamento grava o id DA GAVETA. */}
+            {pickedGrave && !pickedGrave.parentGraveId && (
+              <div className={styles.spanTwo} hidden={!temGavetas}>
+                <FormField
+                  label="Número da gaveta"
+                  hint="Escolha a gaveta do bloco onde o corpo será depositado."
+                >
+                  <GaveteSelect
+                    parentGraveId={pickedGrave.id}
+                    value={pickedGaveta?.id}
+                    onLoaded={(gs) => setTemGavetas(gs.length > 0)}
+                    onChange={(g) => {
+                      setPickedGaveta(g);
+                      // graveId = gaveta escolhida; sem gaveta, volta ao jazigo.
+                      setBurialForm((b) => ({ ...b, graveId: g ? g.id : pickedGrave.id }));
+                    }}
+                  />
+                </FormField>
+              </div>
+            )}
             <FormField label="Matrícula">
               <Input placeholder="Ex.: M2/12B" value={form.registrationNumber} onChange={set("registrationNumber")} />
             </FormField>
@@ -1014,6 +1054,10 @@ export default function DeceasedListPage() {
         onClose={() => setGravePickerOpen(false)}
         onSelect={(g) => {
           setPickedGrave(g);
+          // Troca de jazigo zera a gaveta anterior — o número só vale dentro do
+          // bloco de onde veio.
+          setPickedGaveta(null);
+          setTemGavetas(false);
           setBurialForm((b) => ({ ...b, graveId: g.id }));
         }}
       />

@@ -57,6 +57,11 @@ export default function GravePicker({ open, onClose, onSelect }) {
             {
               page,
               perPage: PER_PAGE,
+              // SÓ SEPULTURAS RAIZ: a gaveta herda quadra/lote do jazigo pai e
+              // aparecia aqui como uma linha idêntica a ele — impossível saber
+              // qual era qual. A gaveta passa a ser escolhida no 2º passo
+              // ("Número da gaveta"), depois do jazigo.
+              onlyRoot: true,
               cemeteryId,
               block: applied.block || undefined,
               lot: applied.lot || undefined,
@@ -116,9 +121,11 @@ export default function GravePicker({ open, onClose, onSelect }) {
             <table className={styles.table}>
               <thead>
                 <tr>
+                  <th>Sepultura</th>
                   <th>Cemitério</th>
                   <th>Quadra</th>
                   <th>Lote</th>
+                  <th>Gavetas</th>
                   <th>Tipo do túmulo</th>
                   <th>Utilização</th>
                   <th />
@@ -127,9 +134,12 @@ export default function GravePicker({ open, onClose, onSelect }) {
               <tbody>
                 {visible.map((g) => (
                   <tr key={g.id}>
+                    {/* o CÓDIGO identifica a sepultura (e é o nº da gaveta, nas filhas) */}
+                    <td>{g.code || "—"}</td>
                     <td>{g.cemetery?.name || "—"}</td>
                     <td>{g.lot?.street?.block?.code || "—"}</td>
                     <td>{g.lot?.code || "—"}</td>
+                    <td>{g.childCount ? `${g.childCount} gaveta(s)` : "—"}</td>
                     <td>{g.tombType || "—"}</td>
                     <td>{g.utilizacao || "—"}</td>
                     <td className={styles.pickCell}>
@@ -160,13 +170,69 @@ export default function GravePicker({ open, onClose, onSelect }) {
   );
 }
 
-/** Rótulo da sepultura escolhida, no formato que o cliente já lê. */
+/**
+ * Rótulo da sepultura escolhida, no formato que o cliente já lê.
+ * Inclui o CÓDIGO: em bloco de gavetas, quadra/lote se repetem em todas as
+ * unidades — sem o código o operador não distingue uma da outra. Quando o
+ * registro é uma GAVETA, mostra "JAZIGO · GAVETA", como na coluna da listagem.
+ */
 export function graveLabel(g) {
   if (!g) return "";
   const parts = [
+    g.parentGrave?.code ? `${g.parentGrave.code} · ${g.code}` : g.code,
     g.cemetery?.name,
     g.lot?.street?.block?.code ? `Quadra: ${g.lot.street.block.code}` : null,
     g.lot?.code ? `Lote: ${g.lot.code}` : null,
   ].filter(Boolean);
   return parts.length ? parts.join(" - ") : g.code || "";
+}
+
+/**
+ * "Número da gaveta" — 2º passo do vínculo com a sepultura.
+ *
+ * Bloco de gavetas: a unidade onde o corpo entra é a GAVETA (uma Grave filha do
+ * jazigo, identificada pelo `code`). Sem este campo só dava para apontar o
+ * jazigo, e o sepultamento ficava sem número de gaveta.
+ *
+ * Só aparece quando o jazigo escolhido TEM filhas; senão, `onReady(false)` e o
+ * formulário segue com o graveId do próprio jazigo (comportamento de sempre).
+ * As gavetas já ocupadas continuam na lista, marcadas — o operador precisa
+ * enxergar por que aquele número não está disponível.
+ */
+export function GaveteSelect({ parentGraveId, value, onChange, onLoaded }) {
+  const { data, loading } = useResource(
+    ({ signal }) =>
+      parentGraveId
+        ? listGraves({ parentGraveId, perPage: 200 }, { signal })
+        : Promise.resolve({ data: [] }),
+    [parentGraveId]
+  );
+  const gavetas = data?.data ?? [];
+
+  useEffect(() => {
+    if (!loading) onLoaded?.(gavetas);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, data]);
+
+  if (!parentGraveId || loading || !gavetas.length) return null;
+
+  return (
+    <select
+      className={styles.gaveta}
+      value={value || ""}
+      onChange={(e) => onChange(gavetas.find((g) => g.id === e.target.value) || null)}
+      aria-label="Número da gaveta"
+    >
+      <option value="">Selecione a gaveta</option>
+      {gavetas.map((g) => {
+        const ocupada = (g.activeBurials || 0) >= (g.capacity || 1);
+        return (
+          <option key={g.id} value={g.id}>
+            {g.code}
+            {ocupada ? " — ocupada" : ""}
+          </option>
+        );
+      })}
+    </select>
+  );
 }
