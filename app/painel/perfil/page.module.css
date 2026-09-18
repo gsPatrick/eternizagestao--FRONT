@@ -1,0 +1,170 @@
+/* ==========================================================================
+ * Meu perfil — mesma linguagem visual dos tópicos de Configurações
+ * (topic / card / grids / pill), usando apenas tokens do design system.
+ * ========================================================================== */
+
+.topic {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  animation: topicIn 0.4s var(--ease-out) both;
+}
+
+@keyframes topicIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ------------------------------ topic header ----------------------------- */
+.topicHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.topicTitle {
+  font-family: var(--font-display);
+  font-size: clamp(1.3rem, 2vw, 1.6rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--color-ink);
+}
+
+.topicDesc {
+  margin-top: 6px;
+  max-width: 64ch;
+  font-size: var(--text-body);
+  line-height: 1.55;
+  color: var(--color-slate);
+}
+
+/* ---------------------------- cartão de identidade ------------------------ */
+.identity {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  border: 1px solid var(--color-mist);
+  border-radius: var(--radius-lg);
+  background: var(--color-navy-ghost);
+}
+
+.identityInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.identityName {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.identityEmail {
+  font-size: var(--text-caption);
+  color: var(--color-slate);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.identityMeta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+
+.identityTenant {
+  font-size: var(--text-caption);
+  color: var(--color-slate);
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 11px;
+  border-radius: var(--radius-pill);
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid var(--color-mist);
+  background: var(--color-surface);
+  color: var(--color-navy);
+}
+
+/* -------------------------------- card ----------------------------------- */
+.card {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-5) var(--space-6) var(--space-6);
+  border: 1px solid var(--color-mist);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.cardHead {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-bottom: var(--space-4);
+  margin-bottom: var(--space-5);
+  border-bottom: 1px solid var(--color-mist-soft);
+}
+
+.cardTitle {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--color-ink);
+}
+
+.cardDesc {
+  max-width: 72ch;
+  font-size: var(--text-caption);
+  line-height: 1.55;
+  color: var(--color-slate);
+}
+
+.cardBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  min-width: 0;
+}
+
+.cardFooter {
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-mist-soft);
+}
+
+/* -------------------------------- grids ---------------------------------- */
+.grid2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4) var(--space-5);
+}
+
+.grid3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4) var(--space-5);
+}
+
+/* ------------------------------ responsive ------------------------------- */
+@media (max-width: 820px) {
+  .grid3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 560px) {
+  .card { padding: var(--space-4) var(--space-4) var(--space-5); }
+  .grid2, .grid3 { grid-template-columns: 1fr; }
+  .identity { align-items: flex-start; }
+}
