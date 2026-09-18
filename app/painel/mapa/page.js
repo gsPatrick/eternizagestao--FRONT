@@ -88,12 +88,23 @@ export default function MapPage() {
   const [removingOrtho, setRemovingOrtho] = useState(false);
 
   async function removerOrtofoto() {
+    if (!confirmOrtho) return;
+    const alvo = confirmOrtho.id;
     setRemovingOrtho(true);
     try {
-      await deleteOrthophoto(confirmOrtho.id, { tenant: mapTenant });
+      await deleteOrthophoto(alvo, { tenant: mapTenant });
+      // SAIR DO ALINHAMENTO ANTES do refetch. A ortofoto que estava em edição
+      // deixa de existir: se o modo de posicionamento continuasse ligado, o mapa
+      // tentaria manter as alças de edição sobre um overlay que sumiu.
+      setPositioning(false);
+      setOrthoDirty(false);
+      setDraftCorners(null);
+      setPinning(false);
+      setPinsDone(0);
+      autoPosicionarRef.current = null;
       // Se a excluída era a que estava em tela, solta a preferência para a
       // próxima render escolher outra em vez de insistir num id que sumiu.
-      setPreferredOrthoId((id) => (id === confirmOrtho.id ? null : id));
+      setPreferredOrthoId((id) => (id === alvo ? null : id));
       setConfirmOrtho(null);
       setOrthoMsg({ tone: "success", text: "Ortofoto removida." });
       await orthoState.refetch();

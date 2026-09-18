@@ -1,0 +1,90 @@
+/* Moldura das fronteiras de erro (error.js / global-error.js). O conteúdo em si
+   é o ErrorState do design system — aqui só centralizamos na área disponível. */
+.wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  padding: var(--space-6, 24px);
+}
+
+.inner {
+  width: 100%;
+  max-width: 560px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 16px);
+}
+
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3, 12px);
+  justify-content: center;
+}
+
+.detail {
+  margin-top: var(--space-2, 8px);
+  font-family: var(--font-mono, monospace);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--color-slate, #5a6b7d);
+  text-align: center;
+  word-break: break-word;
+}
+
+/* global-error substitui o layout raiz: precisa das cores básicas por conta
+   própria, pois nada garante que os tokens do tema tenham carregado. */
+.rootFallback {
+  min-height: 100vh;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: #f6f7f9;
+  color: #0e1c2f;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+.card {
+  width: 100%;
+  max-width: 520px;
+  padding: 32px 28px;
+  text-align: center;
+  background: #fff;
+  border: 1px solid #e3e8ee;
+  border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(14, 28, 47, 0.06);
+}
+
+.cardTitle {
+  margin: 0 0 8px;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.cardText {
+  margin: 0 0 20px;
+  font-size: 15px;
+  line-height: 1.6;
+  color: #5a6b7d;
+}
+
+.btn {
+  display: inline-block;
+  padding: 10px 18px;
+  border: 1px solid #032e59;
+  border-radius: 8px;
+  background: #032e59;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.btnGhost {
+  background: transparent;
+  color: #032e59;
+}

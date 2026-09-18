@@ -150,6 +150,51 @@ export default function CemeteryMap({
   const cbRef = useRef({});
   cbRef.current = { onCornersChange, onGravePolygon, onGraveClick, onOrthoError, onEntrancePick, onPinsChange };
 
+  // Remove o overlay distorcível SEM deixar o mapa (nem o app) cair.
+  //
+  // O `onRemove` do leaflet-distortableimage faz `L.DomEvent.off(this.getElement(), …)`
+  // e `this.editing.disable()`. Quando a imagem NUNCA carregou — justamente o
+  // caso de quem apaga um envio ruim — `getElement()` é null e o plugin estoura
+  // dentro do efeito, matando a raiz da árvore React: a partir daí QUALQUER tela
+  // navegada por <Link> quebrava até recarregar a página.
+  //
+  // Aqui desligamos a edição antes, tentamos a remoção limpa e, se ainda assim
+  // falhar, arrancamos o elemento do DOM na mão. Em todos os caminhos o
+  // overlayRef é zerado e o mapa segue utilizável.
+  const removerOverlayRef = useRef(() => {});
+  removerOverlayRef.current = () => {
+    const overlay = overlayRef.current;
+    const map = mapRef.current;
+    overlayRef.current = null;
+    if (!overlay) return;
+
+    // Desabilitar a edição ANTES do removeLayer: é o passo do onRemove que mais
+    // depende do elemento da imagem existir.
+    try {
+      if (overlay.editing) overlay.editing.disable();
+    } catch (_) {}
+
+    try {
+      if (map) map.removeLayer(overlay);
+      return;
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn("[ortofoto] remoção do overlay falhou; limpando na mão.", err);
+    }
+
+    // Plano B: o layer pode ter ficado meio removido. Tira o que sobrou do DOM
+    // e do registro de layers do mapa, sem passar pelo onRemove do plugin.
+    try {
+      const el = overlay.getElement && overlay.getElement();
+      if (el && el.parentNode) el.parentNode.removeChild(el);
+    } catch (_) {}
+    try {
+      if (map && overlay._leaflet_id != null && map._layers) {
+        delete map._layers[overlay._leaflet_id];
+      }
+    } catch (_) {}
+  };
+
   // Desentorta o overlay: retângulo alinhado ao norte, mesmo centro e tamanho,
   // na PROPORÇÃO REAL do arquivo. Usada pelo botão "Desentortar" e também no
   // primeiro posicionamento — os cantos iniciais vinham do formato da TELA, o
@@ -318,8 +363,17 @@ export default function CemeteryMap({
     return () => {
       mounted = false;
       if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
+      // Tira a ortofoto ANTES de destruir o mapa: map.remove() dispara o
+      // onRemove de cada layer, e o do distortableimage estoura com a imagem
+      // não carregada — numa desmontagem isso derrubava a navegação inteira.
+      removerOverlayRef.current();
       if (mapRef.current) {
-        mapRef.current.remove();
+        try {
+          mapRef.current.remove();
+        } catch (err) {
+          // eslint-disable-next-line no-console
+          console.warn("[mapa] falha ao destruir o mapa na desmontagem.", err);
+        }
         mapRef.current = null;
       }
     };
@@ -346,11 +400,9 @@ export default function CemeteryMap({
     if (!ready || !L || !map) return;
 
     if (!orthophoto || !orthophoto.fileUrl) {
-      if (overlayRef.current) {
-        map.removeLayer(overlayRef.current);
-        overlayRef.current = null;
-      }
+      removerOverlayRef.current();
       lastOrthoKeyRef.current = null;
+      lastFitOrthoRef.current = null;
       return;
     }
 
@@ -363,10 +415,7 @@ export default function CemeteryMap({
     ].join("::");
     if (key === lastOrthoKeyRef.current && overlayRef.current) return;
 
-    if (overlayRef.current) {
-      map.removeLayer(overlayRef.current);
-      overlayRef.current = null;
-    }
+    removerOverlayRef.current();
 
     const corners = orthophoto.corners || defaultCorners(map);
 
