@@ -19,7 +19,10 @@ const PRESETS = {
     alt: "Logo da cidade",
     emptyTitle: "Arraste a logo ou clique para enviar",
     busyTitle: "Enviando logo…",
-    upload: async (file) => (await uploadTenantLogo(file)).logoUrl,
+    upload: async (file) => {
+      const d = await uploadTenantLogo(file);
+      return { url: d.logoUrl, raw: d.logoUrlRaw || d.fileUrl || d.logoUrl };
+    },
   },
   hero: {
     accept: "image/png,image/jpeg,image/webp",
@@ -31,7 +34,10 @@ const PRESETS = {
     alt: "Imagem do topo da página pública",
     emptyTitle: "Arraste a imagem do topo ou clique para enviar",
     busyTitle: "Enviando imagem…",
-    upload: async (file) => (await uploadTenantPublicImage("hero", file)).heroImageUrl,
+    upload: async (file) => {
+      const d = await uploadTenantPublicImage("hero", file);
+      return { url: d.heroImageUrl, raw: d.heroImageUrlRaw || d.fileUrl || d.heroImageUrl };
+    },
   },
   footer: {
     accept: "image/png,image/jpeg,image/webp",
@@ -43,18 +49,25 @@ const PRESETS = {
     alt: "Imagem do rodapé da página pública",
     emptyTitle: "Arraste a imagem do rodapé ou clique para enviar",
     busyTitle: "Enviando imagem…",
-    upload: async (file) => (await uploadTenantPublicImage("footer", file)).footerImageUrl,
+    upload: async (file) => {
+      const d = await uploadTenantPublicImage("footer", file);
+      return { url: d.footerImageUrl, raw: d.footerImageUrlRaw || d.fileUrl || d.footerImageUrl };
+    },
   },
 };
 
 /**
  * Controle de upload de imagem da cidade — clique ou arraste-e-solte.
  * Mostra o preview da imagem atual (value), com "Trocar" e "Remover", estado de
- * envio (spinner) e erro amigável. Ao selecionar → sobe o arquivo e devolve a
- * URL via onChange(url). "Remover" → onChange("").
+ * envio (spinner) e erro amigável. Ao selecionar → sobe o arquivo e devolve
+ * DUAS URLs via onChange(url, raw):
+ *   - `url`: ASSINADA (?token&exp) — serve só para exibir no <img>;
+ *   - `raw`: CRUA (/files/...) — é o que deve ser gravado/enviado no PATCH.
+ * Gravar a assinada fazia a API assinar por cima e a imagem voltar 403.
+ * "Remover" → onChange("", "").
  *
- * @param {string}  value       URL atual (arquivo já enviado)
- * @param {(url:string)=>void} onChange
+ * @param {string}  value       URL atual, assinada (exibição)
+ * @param {(url:string, raw:string)=>void} onChange
  * @param {(uploading:boolean)=>void} [onUploading]
  * @param {boolean} [disabled]
  * @param {'logo'|'hero'|'footer'} [kind='logo']  o que está sendo enviado
@@ -89,8 +102,8 @@ export default function LogoUpload({ value, onChange, onUploading, disabled = fa
 
     onUploading?.(true);
     try {
-      const url = await mutate(file);
-      onChange?.(url);
+      const { url, raw } = await mutate(file);
+      onChange?.(url, raw);
     } catch {
       // erro tipado exposto via `error` (message) — nada a fazer aqui.
     } finally {
@@ -163,7 +176,7 @@ export default function LogoUpload({ value, onChange, onUploading, disabled = fa
                 onClick={() => {
                   if (disabled || busy) return;
                   setLocalError(null);
-                  onChange?.("");
+                  onChange?.("", "");
                 }}
                 disabled={disabled || busy}
               >

@@ -25,7 +25,7 @@ import {
 import ui from "../_lib/ui.module.css";
 
 export default function IdentidadePage() {
-  const { data, loading, error, refetch, form, set, canEdit, saving, feedback, handleSave } =
+  const { data, loading, error, refetch, form, set, patch, canEdit, saving, feedback, handleSave } =
     useOnboardingForm();
 
   if (loading) return <TopicSkeleton />;
@@ -80,9 +80,10 @@ export default function IdentidadePage() {
           label="Logo da cidade"
           hint="Envie uma imagem (PNG, JPEG ou SVG). Deixe em branco para usar só o nome."
         >
+          {/* url = assinada (preview); raw = crua (é o que vai no PATCH) */}
           <LogoUpload
             value={form.logoUrl}
-            onChange={(url) => set("logoUrl", url)}
+            onChange={(url, raw) => patch({ logoUrl: url, logoUrlRaw: raw })}
             disabled={!canEdit}
           />
         </FormField>
@@ -95,7 +96,7 @@ export default function IdentidadePage() {
           <LogoUpload
             kind="hero"
             value={form.heroImageUrl}
-            onChange={(url) => set("heroImageUrl", url)}
+            onChange={(url, raw) => patch({ heroImageUrl: url, heroImageUrlRaw: raw })}
             disabled={!canEdit}
           />
         </FormField>
@@ -107,7 +108,7 @@ export default function IdentidadePage() {
           <LogoUpload
             kind="footer"
             value={form.footerImageUrl}
-            onChange={(url) => set("footerImageUrl", url)}
+            onChange={(url, raw) => patch({ footerImageUrl: url, footerImageUrlRaw: raw })}
             disabled={!canEdit}
           />
         </FormField>
