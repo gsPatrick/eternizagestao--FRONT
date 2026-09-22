@@ -32,6 +32,33 @@ const DEFAULT_CENTER = [-15.7801, -47.9292]; // Brasil (fallback sem centro)
 const DEFAULT_ZOOM = 4;
 const CEMETERY_ZOOM = 18;
 
+/* ---------------------------------------------------------------- SNAP (ímã)
+ * O Geoman liga o "snap" por padrão com raio de 20px: ao desenhar/editar, o
+ * vértice é ATRAÍDO para a geometria vizinha mais próxima. Num cemitério real
+ * as sepulturas são coladas umas nas outras, então o ímã puxava o vértice para
+ * a cova do lado e demarcar virava um suplício (o único escape era segurar ALT,
+ * atalho nativo do Geoman para ignorar o encaixe).
+ *
+ * Padrão agora: DESLIGADO — o vértice fica exatamente onde foi solto. Quem
+ * quiser alinhar de propósito liga no controle "Encaixar nas vizinhas"; a
+ * escolha fica gravada no navegador.
+ */
+const SNAP_KEY = "eterniza:map-snap";
+const SNAP_DISTANCE = 8; // px — bem menor que os 20 do padrão, quando ligado
+
+function lerSnapSalvo() {
+  try {
+    return window.localStorage.getItem(SNAP_KEY) === "1";
+  } catch (_) {
+    return false;
+  }
+}
+function gravarSnap(on) {
+  try {
+    window.localStorage.setItem(SNAP_KEY, on ? "1" : "0");
+  } catch (_) {}
+}
+
 // distortable ordena os cantos como [0]=TL, [1]=TR, [2]=BL, [3]=BR.
 function cornersToLatLngs(L, c) {
   return [
@@ -98,6 +125,16 @@ const LAYER_STYLES = {
 };
 const LAYER_LABELS = { blocks: "Quadras", streets: "Ruas", lots: "Lotes" };
 
+// Opções da EDIÇÃO de vértices (arrastar alça de um polígono já demarcado).
+const EDIT_OPTIONS = {
+  snapDistance: SNAP_DISTANCE,
+  // ver justificativa no bloco de setGlobalOptions
+  allowSelfIntersection: true,
+  // alças intermediárias mantidas: criam vértice no meio da aresta
+  preventMarkerRemoval: false,
+  draggable: true,
+};
+
 export default function CemeteryMap({
   center = null,
   orthophoto = null, // { id, fileUrl, corners, opacity, rev }
@@ -114,6 +151,8 @@ export default function CemeteryMap({
   markingEntrance = false, // clique no mapa define a ENTRADA do cemitério
   entrance = null, // [lat, lng] já marcada — mostra o marcador
   focusGrave = null, // { id, nonce }
+  editGrave = null, // id da sepultura a entrar em EDIÇÃO DE VÉRTICES (ou null)
+  onGraveGeometryEdit = null, // ({ geoPolygon, latitude, longitude }) => void
   statusColors = {},
   canEdit = false,
   onApi, // recebe { getLiveCorners } (next/dynamic não encaminha ref)
@@ -139,6 +178,11 @@ export default function CemeteryMap({
 
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
+  // ímã (snap) — DESLIGADO por padrão; preferência por navegador
+  const [snapping, setSnapping] = useState(false);
+  useEffect(() => {
+    setSnapping(lerSnapSalvo());
+  }, []);
   // visibilidade de cada camada (alternável pelo controle no canto)
   const [layerVis, setLayerVis] = useState({
     blocks: true,
@@ -148,7 +192,15 @@ export default function CemeteryMap({
   });
 
   const cbRef = useRef({});
-  cbRef.current = { onCornersChange, onGravePolygon, onGraveClick, onOrthoError, onEntrancePick, onPinsChange };
+  cbRef.current = {
+    onCornersChange,
+    onGravePolygon,
+    onGraveClick,
+    onOrthoError,
+    onEntrancePick,
+    onPinsChange,
+    onGraveGeometryEdit,
+  };
 
   // Remove o overlay distorcível SEM deixar o mapa (nem o app) cair.
   //
@@ -330,6 +382,19 @@ export default function CemeteryMap({
         if (map.pm) {
           try {
             map.pm.setLang("pt_br");
+          } catch (_) {}
+          // ímã desligado já na criação do mapa (ver bloco SNAP no topo).
+          try {
+            map.pm.setGlobalOptions({
+              snappable: lerSnapSalvo(),
+              snapDistance: SNAP_DISTANCE,
+              // Middle markers MANTIDOS: são o único jeito de acrescentar um
+              // vértice numa aresta. O que atrapalhava era o ímã, não eles.
+              snapMiddle: false,
+              // Sem auto-interseção o Geoman recusa (e desfaz) o arrasto em
+              // polígonos pequenos, dando a sensação de "vértice que volta".
+              allowSelfIntersection: true,
+            });
           } catch (_) {}
           map.on("pm:create", (e) => {
             const layer = e.layer;
@@ -526,7 +591,10 @@ export default function CemeteryMap({
     try {
       if (drawing && canEdit) {
         map.pm.enableDraw("Polygon", {
-          snappable: true,
+          // ímã conforme a preferência do operador (padrão: desligado)
+          snappable: snapping,
+          snapDistance: SNAP_DISTANCE,
+          allowSelfIntersection: true,
           continueDrawing: false,
           templineStyle: { color: "#0a4a8c" },
           hintlineStyle: { color: "#0a4a8c", dashArray: "4,4" },
@@ -536,7 +604,82 @@ export default function CemeteryMap({
         map.pm.disableDraw();
       }
     } catch (_) {}
-  }, [ready, drawing, canEdit]);
+  }, [ready, drawing, canEdit, snapping]);
+
+  // ------------------------------------- ímã (snap) ligado/desligado ao vivo
+  // Reaplica em TODAS as frentes: opções globais, desenho em curso e camadas
+  // que já estão em edição de vértices.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map || !map.pm) return;
+    gravarSnap(snapping);
+    try {
+      map.pm.setGlobalOptions({ snappable: snapping, snapDistance: SNAP_DISTANCE });
+    } catch (_) {}
+    Object.values(graveLayersRef.current).forEach((lyr) => {
+      try {
+        if (lyr.pm && lyr.pm.enabled()) {
+          lyr.pm.enable({ ...EDIT_OPTIONS, snappable: snapping });
+        }
+      } catch (_) {}
+    });
+  }, [ready, snapping]);
+
+  // --------------------------------- EDIÇÃO DE VÉRTICES de uma sepultura
+  //
+  // Editar era "desenhar tudo de novo": muitos cliques para corrigir um canto.
+  // Com `editGrave` a cova entra direto em modo de edição — as alças aparecem
+  // sem clique nenhum — e cada mexida emite a geometria nova para a tela pai.
+  const editLayerRef = useRef(null);
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map) return undefined;
+
+    const desligar = () => {
+      const lyr = editLayerRef.current;
+      editLayerRef.current = null;
+      if (!lyr) return;
+      try {
+        if (lyr.pm) lyr.pm.disable();
+      } catch (_) {}
+      try {
+        lyr.off("pm:markerdragend pm:edit pm:vertexadded pm:vertexremoved");
+      } catch (_) {}
+    };
+
+    desligar();
+    if (!editGrave || !canEdit) return undefined;
+
+    const layer = graveLayersRef.current[editGrave];
+    if (!layer || !layer.pm || !layer.getLatLngs) return undefined;
+
+    // O polígono em edição fica POR CIMA: sem isto o clique cai na cova
+    // vizinha (que está colada) e "rouba" a edição.
+    try {
+      layer.bringToFront();
+    } catch (_) {}
+
+    const emitir = () => {
+      try {
+        const raw = layer.getLatLngs();
+        const arr = Array.isArray(raw[0]) ? raw[0] : raw;
+        if (!arr || arr.length < 3) return;
+        const geoPolygon = arr.map((ll) => [ll.lat, ll.lng]);
+        const [latitude, longitude] = polygonCentroid(arr);
+        cbRef.current.onGraveGeometryEdit
+          && cbRef.current.onGraveGeometryEdit({ geoPolygon, latitude, longitude });
+      } catch (_) {}
+    };
+
+    try {
+      layer.pm.enable({ ...EDIT_OPTIONS, snappable: snapping });
+    } catch (_) {}
+    layer.on("pm:markerdragend pm:edit pm:vertexadded pm:vertexremoved", emitir);
+    editLayerRef.current = layer;
+
+    return desligar;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, editGrave, canEdit, graves]);
 
   // ------------------------------------------- mapa de ruas ligado/desligado
   useEffect(() => {
@@ -830,6 +973,25 @@ export default function CemeteryMap({
   return (
     <div className={styles.root} style={{ height }}>
       <div ref={containerRef} className={styles.canvas} />
+
+      {/* ÍMÃ (snap): desligado por padrão — o vértice vai onde for solto. */}
+      {ready && canEdit && (drawing || editGrave) && (
+        <div className={styles.snapControl}>
+          <label className={styles.snapRow}>
+            <input
+              type="checkbox"
+              checked={snapping}
+              onChange={() => setSnapping((v) => !v)}
+            />
+            <span className={styles.snapName}>Encaixar nas vizinhas</span>
+          </label>
+          <span className={styles.snapHint}>
+            {snapping
+              ? "Os pontos grudam nas sepulturas ao lado. Segure ALT para ignorar."
+              : "Cada ponto fica exatamente onde você soltar."}
+          </span>
+        </div>
+      )}
 
       {/* controle de camadas (só aparece quando há geometria de quadra/rua/lote) */}
       {ready && hasAnyLayer && (

@@ -181,6 +181,9 @@ export default function MapPage() {
   const [demarcMsg, setDemarcMsg] = useState(null);
   // desenho: 'grave' (sepultura) | 'layer' (quadra/rua/lote)
   const [drawMode, setDrawMode] = useState(null);
+  // edição de VÉRTICES de uma sepultura já demarcada (arrastar as alças)
+  const [editingGrave, setEditingGrave] = useState(null); // { id, code }
+  const [editDraft, setEditDraft] = useState(null);
 
   // camadas (quadra/rua/lote)
   const [layerTarget, setLayerTarget] = useState(null);
@@ -293,6 +296,8 @@ export default function MapPage() {
     setDrawing(false);
     setDrawMode(null);
     setDemarcTarget(null);
+    setEditingGrave(null);
+    setEditDraft(null);
     setLayerTarget(null);
     setLayerMsg(null);
     setSelectedGrave(null);
@@ -553,6 +558,47 @@ export default function MapPage() {
   function cancelDrawing() {
     setDrawing(false);
     setDrawMode(null);
+  }
+
+  // ---- edição de vértices de uma sepultura já demarcada ----
+  function startVertexEdit() {
+    if (!demarcTarget) return;
+    setPositioning(false);
+    setDrawing(false);
+    setDrawMode(null);
+    setDemarcMsg(null);
+    setEditDraft(null);
+    setEditingGrave({ id: demarcTarget.id, code: demarcTarget.code });
+    setFocusGrave({ id: demarcTarget.id, nonce: Date.now() });
+  }
+
+  function cancelVertexEdit() {
+    setEditingGrave(null);
+    setEditDraft(null);
+    gravesState.refetch(); // devolve o contorno aos pontos salvos
+  }
+
+  async function saveVertexEdit() {
+    if (!editingGrave || !editDraft) {
+      setEditingGrave(null);
+      return;
+    }
+    setDemarcMsg(null);
+    try {
+      await doSetGeometry(editingGrave.id, editDraft);
+      setEditingGrave(null);
+      setEditDraft(null);
+      await gravesState.refetch();
+      setDemarcMsg({
+        tone: "success",
+        text: `Demarcação de ${editingGrave.code} atualizada.`,
+      });
+    } catch (err) {
+      setDemarcMsg({
+        tone: "danger",
+        text: err?.message || "Não foi possível salvar a demarcação.",
+      });
+    }
   }
 
   // callback único de polígono: decide entre sepultura e camada pelo drawMode
@@ -970,6 +1016,8 @@ export default function MapPage() {
                       onClick={() => {
                         setDemarcTarget(null);
                         setDrawing(false);
+                        setEditingGrave(null);
+                        setEditDraft(null);
                       }}
                       aria-label="Limpar seleção"
                     >
@@ -989,15 +1037,31 @@ export default function MapPage() {
                     <Button variant="ghost" size="sm" onClick={cancelDrawing}>
                       Cancelar desenho
                     </Button>
-                  ) : (
-                    <Button
-                      size="sm"
-                      onClick={startDemarcation}
-                      loading={savingGeometry}
-                      disabled={!activeOrtho?.corners}
-                    >
-                      Desenhar contorno
+                  ) : editingGrave ? (
+                    <Button variant="ghost" size="sm" onClick={cancelVertexEdit}>
+                      Cancelar edição
                     </Button>
+                  ) : (
+                    <>
+                      {/* Já demarcada: editar os vértices é MUITO mais barato do
+                          que redesenhar a cova inteira. */}
+                      {demarcTarget.geoPolygon?.length >= 3 && (
+                        <Button size="sm" onClick={startVertexEdit} loading={savingGeometry}>
+                          Editar vértices
+                        </Button>
+                      )}
+                      <Button
+                        variant={demarcTarget.geoPolygon?.length >= 3 ? "secondary" : undefined}
+                        size="sm"
+                        onClick={startDemarcation}
+                        loading={savingGeometry}
+                        disabled={!activeOrtho?.corners}
+                      >
+                        {demarcTarget.geoPolygon?.length >= 3
+                          ? "Redesenhar contorno"
+                          : "Desenhar contorno"}
+                      </Button>
+                    </>
                   ))}
                 {!activeOrtho?.corners && demarcTarget && (
                   <p className={styles.hintSm}>
@@ -1098,6 +1162,8 @@ export default function MapPage() {
               layers={ctx?.layers}
               drawing={drawing}
               focusGrave={focusGrave}
+              editGrave={editingGrave?.id || null}
+              onGraveGeometryEdit={setEditDraft}
               statusColors={STATUS_COLORS}
               canEdit={canEdit}
               onCornersChange={onCornersChange}
@@ -1144,6 +1210,29 @@ export default function MapPage() {
                   </Button>
                   <Button size="sm" onClick={saveOrthoPosition} loading={savingOrtho}>
                     Salvar posição
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {editingGrave && (
+              <div className={styles.banner}>
+                <span className={styles.bannerText}>
+                  <strong>Editando {editingGrave.code}</strong> — arraste os pontos
+                  do contorno; os pontos claros no meio das arestas criam vértices
+                  novos
+                </span>
+                <div className={styles.bannerActions}>
+                  <Button variant="ghost" size="sm" onClick={cancelVertexEdit}>
+                    Cancelar
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={saveVertexEdit}
+                    loading={savingGeometry}
+                    disabled={!editDraft}
+                  >
+                    Salvar
                   </Button>
                 </div>
               </div>

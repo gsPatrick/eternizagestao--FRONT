@@ -90,6 +90,9 @@ export default function GraveMap({
   onSaved,
 }) {
   const [drawing, setDrawing] = useState(false);
+  // edição de VÉRTICES da demarcação existente (sem redesenhar tudo)
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(null);
   const [msg, setMsg] = useState(null);
   const [focusNonce, setFocusNonce] = useState(0);
   const mapApiRef = useRef(null);
@@ -221,6 +224,39 @@ export default function GraveMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapped, grave?.id, center && center[0]]);
 
+  // cada mexida numa alça chega aqui; só guardamos o rascunho (salva no botão)
+  function onGraveGeometryEdit(next) {
+    setDraft(next);
+  }
+
+  async function salvarEdicao() {
+    if (!grave?.id || !draft) {
+      setEditing(false);
+      return;
+    }
+    setMsg(null);
+    try {
+      await doSetGeometry(grave.id, draft);
+      setEditing(false);
+      setDraft(null);
+      setMsg({ tone: "success", text: `Demarcação de ${grave.code} atualizada.` });
+      onSaved && onSaved();
+    } catch (err) {
+      setMsg({
+        tone: "danger",
+        text: err?.message || "Não foi possível salvar a demarcação.",
+      });
+    }
+  }
+
+  function cancelarEdicao() {
+    setEditing(false);
+    setDraft(null);
+    // remonta o polígono nos pontos salvos (descarta o arrasto)
+    setFocusNonce((n) => n + 1);
+    onSaved && onSaved();
+  }
+
   async function onGravePolygon({ geoPolygon, latitude, longitude }) {
     setDrawing(false);
     setMsg(null);
@@ -251,6 +287,8 @@ export default function GraveMap({
           layers={ctx?.layers}
           drawing={drawing}
           focusGrave={focusGrave}
+          editGrave={editing ? grave?.id : null}
+          onGraveGeometryEdit={onGraveGeometryEdit}
           statusColors={STATUS_COLORS}
           canEdit={editable}
           onGravePolygon={onGravePolygon}
@@ -262,6 +300,21 @@ export default function GraveMap({
             Ortofoto em <strong>posição aproximada</strong> — a imagem já aparece
             para você se situar. Para precisão, ajuste em{" "}
             <Link href="/painel/mapa">Posicionar no Mapa</Link>.
+          </div>
+        )}
+
+        {editing && (
+          <div className={styles.banner}>
+            <span className={styles.bannerText}>
+              <strong>Editando {grave?.code}</strong> — arraste os pontos do
+              contorno; os pontos claros no meio das arestas criam vértices novos
+            </span>
+            <Button variant="ghost" size="sm" onClick={cancelarEdicao}>
+              Cancelar
+            </Button>
+            <Button size="sm" onClick={salvarEdicao} loading={saving} disabled={!draft}>
+              Salvar
+            </Button>
           </div>
         )}
 
@@ -280,24 +333,42 @@ export default function GraveMap({
 
       {editable && (
         <div className={styles.foot}>
-          {!drawing ? (
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => {
-                setMsg(null);
-                setDrawing(true);
-              }}
-              loading={saving}
-            >
-              {mapped ? "Editar demarcação" : "Demarcar no mapa"}
-            </Button>
-          ) : (
+          {!drawing && !editing ? (
+            <>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  setMsg(null);
+                  setDraft(null);
+                  // Já demarcada → edição de vértices DIRETO (sem redesenhar).
+                  if (poly) setEditing(true);
+                  else setDrawing(true);
+                }}
+                loading={saving}
+              >
+                {poly ? "Editar demarcação" : "Demarcar no mapa"}
+              </Button>
+              {poly && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setMsg(null);
+                    setDrawing(true);
+                  }}
+                >
+                  Redesenhar
+                </Button>
+              )}
+            </>
+          ) : null}
+          {drawing && (
             <span className={styles.hint}>
               Desenhe o contorno da cova sobre a ortofoto.
             </span>
           )}
-          {!positionedOrtho && !drawing && (
+          {!positionedOrtho && !drawing && !editing && (
             <span className={styles.hint}>
               {anyOrtho
                 ? <>A imagem aérea está em posição aproximada — ajuste em <strong>Mapa</strong> para precisão.</>
