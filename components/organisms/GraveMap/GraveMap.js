@@ -24,8 +24,10 @@ import {
   listOrthophotos,
   getMapContext,
   setGraveGeometry,
+  listReferenceGraves,
   adaptOrthophoto,
   adaptMapContext,
+  adaptReferenceGrave,
 } from "@/lib/api/resources/map";
 import styles from "./GraveMap.module.css";
 
@@ -80,6 +82,25 @@ function cornersAround(center, meters = 140) {
     br: [la - dLat, ln + dLng],
     bl: [la - dLat, ln - dLng],
   };
+}
+
+/* ----------------------------------------- vizinhança (camada de referência)
+ * O cemitério do cliente tem MILHARES de covas; baixar todas para desenhar uma
+ * seria desperdício de rede e de render. Buscamos só as que estão num quadrado
+ * de ~2*RAIO_VIZINHANCA metros ao redor da cova atual — que é exatamente o que
+ * cabe na tela durante a demarcação — e só as que têm contorno salvo.
+ */
+const RAIO_VIZINHANCA = 150; // metros a partir do centro da cova atual
+const LIMITE_VIZINHANCA = 800; // teto de segurança (o backend também limita)
+
+// centro [lat,lng] → "minLat,minLng,maxLat,maxLng"
+function bboxAoRedor(center, meters) {
+  const [la, ln] = center;
+  const dLat = meters / 111320;
+  const dLng = meters / (111320 * Math.cos((la * Math.PI) / 180) || 1);
+  return [la - dLat, ln - dLng, la + dLat, ln + dLng]
+    .map((n) => n.toFixed(6))
+    .join(",");
 }
 
 export default function GraveMap({
@@ -165,6 +186,36 @@ export default function GraveMap({
     if (c) return centroid([c.tl, c.tr, c.br, c.bl]);
     return null;
   }, [poly, lat, lng, ctx, activeOrtho]);
+
+  // -------- sepulturas JÁ demarcadas ao redor (referência para demarcar) -----
+  // Estado espelha o controle do mapa (preferência lembrada no navegador):
+  // desligado, nem buscamos — o pedido some da rede também.
+  const [refOn, setRefOn] = useState(true);
+  const onReferenceToggle = useCallback((on) => setRefOn(Boolean(on)), []);
+
+  const bbox = useMemo(
+    () => (center ? bboxAoRedor(center, RAIO_VIZINHANCA) : null),
+    [center]
+  );
+
+  const vizinhasState = useResource(
+    ({ signal }) =>
+      cemeteryId && bbox && refOn
+        ? listReferenceGraves(cemeteryId, {
+            bbox,
+            limit: LIMITE_VIZINHANCA,
+            excludeId: grave?.id,
+            signal,
+          })
+        : Promise.resolve({ data: [] }),
+    [cemeteryId, bbox, refOn, grave?.id]
+  );
+
+  const referenceGraves = useMemo(() => {
+    const raw = vizinhasState.data;
+    const list = Array.isArray(raw) ? raw : raw?.data;
+    return (Array.isArray(list) ? list : []).map(adaptReferenceGrave).filter(Boolean);
+  }, [vizinhasState.data]);
 
   // Fonte POSICIONADA (com cantos): a ortofoto da lista ou a do contexto do
   // cemitério — a que tiver cantos define exatamente a que pedaço do mundo a
@@ -284,6 +335,9 @@ export default function GraveMap({
           orthoOpacity={orthoForMap?.opacity ?? 1}
           positioning={false}
           graves={graves}
+          referenceGraves={referenceGraves}
+          referenceControl={editable}
+          onReferenceToggle={onReferenceToggle}
           layers={ctx?.layers}
           drawing={drawing}
           focusGrave={focusGrave}

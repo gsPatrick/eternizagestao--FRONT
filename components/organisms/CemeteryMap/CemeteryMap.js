@@ -59,6 +59,41 @@ function gravarSnap(on) {
   } catch (_) {}
 }
 
+/* ------------------------------------------- SEPULTURAS JÁ DEMARCADAS (ref.)
+ * Demarcar sem ver as covas vizinhas é demarcar no escuro: não dá para alinhar
+ * a fileira nem evitar sobreposição. Esta camada desenha o contorno das covas
+ * já demarcadas do mesmo cemitério em traço NEUTRO e discreto — de propósito
+ * diferente da cova em edição, que continua colorida e por cima.
+ *
+ * Ela é SEMPRE `interactive:false`: se respondesse ao mouse, roubaria o clique
+ * do desenho (as covas ficam coladas umas nas outras). Por isso também não tem
+ * tooltip — tooltip exige camada interativa, e atrapalhar a demarcação custaria
+ * mais do que o rótulo ajuda.
+ */
+const REF_KEY = "eterniza:map-reference";
+const REF_STYLE = {
+  color: "#64748b", // cinza-ardósia — mesmo neutro das ruas
+  weight: 1.2,
+  opacity: 0.85,
+  fillColor: "#64748b",
+  fillOpacity: 0.1,
+  interactive: false,
+};
+
+function lerRefSalvo() {
+  try {
+    // LIGADA por padrão: só fica desligada se o operador tiver desligado.
+    return window.localStorage.getItem(REF_KEY) !== "0";
+  } catch (_) {
+    return true;
+  }
+}
+function gravarRef(on) {
+  try {
+    window.localStorage.setItem(REF_KEY, on ? "1" : "0");
+  } catch (_) {}
+}
+
 // distortable ordena os cantos como [0]=TL, [1]=TR, [2]=BL, [3]=BR.
 function cornersToLatLngs(L, c) {
   return [
@@ -143,6 +178,11 @@ export default function CemeteryMap({
   orthoOpacity = 1,
   positioning = false,
   graves = [],
+  // contornos das sepulturas JÁ demarcadas, como REFERÊNCIA (não interativos):
+  // [{ id, code, geoPolygon:[[lat,lng],...] }]
+  referenceGraves = [],
+  referenceControl = false, // exibe o controle "Mostrar sepulturas já demarcadas"
+  onReferenceToggle = null, // (on:boolean) => void — a tela pode parar de buscar
   layers = { blocks: [], streets: [], lots: [] }, // camadas de quadra/rua/lote
   drawing = false,
   basemapVisible = true, // mapa de ruas por baixo da ortofoto
@@ -170,6 +210,7 @@ export default function CemeteryMap({
   const overlayRef = useRef(null);
   const graveGroupRef = useRef(null);
   const graveLayersRef = useRef({});
+  const refGroupRef = useRef(null); // sepulturas já demarcadas (referência)
   const layerGroupsRef = useRef({}); // { blocks, streets, lots } → L.LayerGroup
   const highlightTimerRef = useRef(null);
   const lastOrthoKeyRef = useRef(null);
@@ -182,6 +223,11 @@ export default function CemeteryMap({
   const [snapping, setSnapping] = useState(false);
   useEffect(() => {
     setSnapping(lerSnapSalvo());
+  }, []);
+  // camada de referência (sepulturas já demarcadas) — LIGADA por padrão
+  const [showRef, setShowRef] = useState(true);
+  useEffect(() => {
+    setShowRef(lerRefSalvo());
   }, []);
   // visibilidade de cada camada (alternável pelo controle no canto)
   const [layerVis, setLayerVis] = useState({
@@ -200,6 +246,7 @@ export default function CemeteryMap({
     onEntrancePick,
     onPinsChange,
     onGraveGeometryEdit,
+    onReferenceToggle,
   };
 
   // Remove o overlay distorcível SEM deixar o mapa (nem o app) cair.
@@ -376,6 +423,9 @@ export default function CemeteryMap({
             '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
         }).addTo(map);
 
+        // Referência ANTES das sepulturas: no mesmo painel do Leaflet a ordem
+        // de inserção manda, e a cova em edição precisa ficar por cima.
+        refGroupRef.current = L.layerGroup().addTo(map);
         graveGroupRef.current = L.layerGroup().addTo(map);
         mapRef.current = map;
 
@@ -856,6 +906,54 @@ export default function CemeteryMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, graves, statusColors]);
 
+  // -------------------- sepulturas JÁ DEMARCADAS (camada de referência)
+  // Desenhadas com `interactive:false` (ver REF_STYLE): não recebem clique nem
+  // hover, então nunca roubam o desenho/edição da cova atual — que continua em
+  // destaque e é trazida para a frente pelo efeito de edição.
+  useEffect(() => {
+    const L = LRef.current;
+    const map = mapRef.current;
+    const group = refGroupRef.current;
+    if (!ready || !L || !map || !group) return;
+
+    group.clearLayers();
+    if (!showRef) {
+      if (map.hasLayer(group)) map.removeLayer(group);
+      return;
+    }
+    if (!map.hasLayer(group)) group.addTo(map);
+
+    const t0 = typeof performance !== "undefined" ? performance.now() : 0;
+    let desenhadas = 0;
+    (referenceGraves || []).forEach((g) => {
+      const pts = g && g.geoPolygon;
+      if (!Array.isArray(pts) || pts.length < 3) return;
+      L.polygon(pts, REF_STYLE).addTo(group);
+      desenhadas += 1;
+    });
+    if (desenhadas) {
+      const ms = typeof performance !== "undefined" ? performance.now() - t0 : 0;
+      console.info(
+        `[mapa] referência: ${desenhadas} sepulturas já demarcadas desenhadas em ${ms.toFixed(0)}ms`
+      );
+    }
+
+    // a cova em destaque/edição volta para cima da referência
+    try {
+      Object.values(graveLayersRef.current).forEach(
+        (lyr) => lyr.bringToFront && lyr.bringToFront()
+      );
+    } catch (_) {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, referenceGraves, showRef]);
+
+  // lembra a escolha e avisa a tela (que pode parar/voltar a buscar os dados)
+  useEffect(() => {
+    if (!ready) return;
+    gravarRef(showRef);
+    cbRef.current.onReferenceToggle && cbRef.current.onReferenceToggle(showRef);
+  }, [ready, showRef]);
+
   // ------------------------- camadas de quadra/rua/lote (abaixo das sepulturas)
   // Cada camada vira um L.LayerGroup próprio; recriamos ao trocar `layers` e
   // adicionamos/removemos do mapa conforme o toggle. NÃO interativas (só exibem)
@@ -967,6 +1065,8 @@ export default function CemeteryMap({
   const hasAnyLayer =
     layerCounts.blocks > 0 || layerCounts.streets > 0 || layerCounts.lots > 0;
 
+  const snapControlVisivel = Boolean(canEdit && (drawing || editGrave));
+
   const toggleLayer = (key) =>
     setLayerVis((v) => ({ ...v, [key]: !v[key] }));
 
@@ -974,22 +1074,48 @@ export default function CemeteryMap({
     <div className={styles.root} style={{ height }}>
       <div ref={containerRef} className={styles.canvas} />
 
-      {/* ÍMÃ (snap): desligado por padrão — o vértice vai onde for solto. */}
-      {ready && canEdit && (drawing || editGrave) && (
-        <div className={styles.snapControl}>
-          <label className={styles.snapRow}>
-            <input
-              type="checkbox"
-              checked={snapping}
-              onChange={() => setSnapping((v) => !v)}
-            />
-            <span className={styles.snapName}>Encaixar nas vizinhas</span>
-          </label>
-          <span className={styles.snapHint}>
-            {snapping
-              ? "Os pontos grudam nas sepulturas ao lado. Segure ALT para ignorar."
-              : "Cada ponto fica exatamente onde você soltar."}
-          </span>
+      {/* Sepulturas já demarcadas: visível sempre que a tela alimentar a camada
+          (mesmo fora do desenho), para o operador se situar. */}
+      {ready && (referenceControl || snapControlVisivel) && (
+        <div className={styles.snapControl} data-control="mapa">
+          {referenceControl && (
+            <>
+              <label className={styles.snapRow}>
+                <input
+                  type="checkbox"
+                  checked={showRef}
+                  onChange={() => setShowRef((v) => !v)}
+                />
+                <span className={styles.snapName}>
+                  Mostrar sepulturas já demarcadas
+                </span>
+              </label>
+              <span className={styles.snapHint}>
+                {showRef
+                  ? `${referenceGraves.length} demarcação(ões) por perto, em cinza, só como referência.`
+                  : "As vizinhas estão ocultas."}
+              </span>
+            </>
+          )}
+
+          {/* ÍMÃ (snap): desligado por padrão — o vértice vai onde for solto. */}
+          {snapControlVisivel && (
+            <>
+              <label className={styles.snapRow}>
+                <input
+                  type="checkbox"
+                  checked={snapping}
+                  onChange={() => setSnapping((v) => !v)}
+                />
+                <span className={styles.snapName}>Encaixar nas vizinhas</span>
+              </label>
+              <span className={styles.snapHint}>
+                {snapping
+                  ? "Os pontos grudam nas sepulturas ao lado. Segure ALT para ignorar."
+                  : "Cada ponto fica exatamente onde você soltar."}
+              </span>
+            </>
+          )}
         </div>
       )}
 
