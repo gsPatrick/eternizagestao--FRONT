@@ -134,6 +134,10 @@ export default function DeceasedListPage() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [certFile, setCertFile] = useState(null); // PDF da certidão de óbito
   const [formError, setFormError] = useState("");
+  // AVISO (não é erro): o cadastro foi salvo, mas a API não conseguiu criar o
+  // evento na agenda — quase sempre porque o horário já está ocupado naquela
+  // sepultura. Sem isto o operador ficava sem evento e sem saber.
+  const [agendaWarning, setAgendaWarning] = useState("");
   // sepultamento vinculado no MESMO cadastro (Leo: cadastrar sepultado já registra
   // o sepultamento). Opcional — sem jazigo/data, cria só o sepultado.
   // Cadastrar sepultado JÁ registra o sepultamento (é o que gera a AUTORIZAÇÃO
@@ -387,11 +391,13 @@ export default function DeceasedListPage() {
       .then((r) => setExhumExistentes(r?.data ?? []))
       .catch(() => {});
     setFormError("");
+    setAgendaWarning("");
     setModalOpen(true);
   }
 
   async function handleCreate() {
     setFormError("");
+    setAgendaWarning("");
     if (!form.fullName.trim()) { setFormError("Informe o nome completo do sepultado."); return; }
     // Exumar é dar baixa num sepultamento: sem sepultura escolhida não há o que exumar.
     if (exhum.done && !burialForm.graveId) {
@@ -435,7 +441,7 @@ export default function DeceasedListPage() {
         // Sepultura e data de sepultamento entram no PATCH: a API atualiza o
         // registro de sepultamento junto, para listagem e histórico não
         // divergirem.
-        await updateDeceased(editingDeceased.id, {
+        const salvo = await updateDeceased(editingDeceased.id, {
           ...body,
           // Quando vai exumar, NÃO mexemos na sepultura aqui: a exumação é que
           // define a nova localização (ossário/cremação). Mandar o jazigo junto
@@ -444,6 +450,14 @@ export default function DeceasedListPage() {
           burialDate: burialForm.date || undefined,
           burialTime: burialForm.time || undefined,
         });
+
+        // Horário conflitante na agenda: o cadastro foi salvo, mas o evento
+        // não. Mantém o modal aberto com o aviso para o operador remarcar.
+        if (salvo?.agendaWarning) {
+          setAgendaWarning(salvo.agendaWarning);
+          refetch();
+          return;
+        }
 
         // Exumação depois do update: ela dá baixa no sepultamento e move o
         // sepultado, então precisa ser a última palavra sobre a localização.
@@ -486,7 +500,7 @@ export default function DeceasedListPage() {
       // registra o SEPULTAMENTO no mesmo fluxo (dispara a auto-autorização)
       if (linkBurial && created?.id && burialForm.graveId && burialForm.date) {
         try {
-          await createBurial({
+          const sepultamento = await createBurial({
             deceasedId: created.id,
             graveId: burialForm.graveId,
             burialDate: burialForm.date,
@@ -494,6 +508,16 @@ export default function DeceasedListPage() {
             funeralHome: form.funeralHome || undefined,
             declarantPersonId: form.responsiblePersonId || undefined,
           });
+          // Sepultamento gravado, agenda NÃO (horário ocupado): mantém o modal
+          // aberto com o aviso, em vez de fechar como se tudo tivesse dado certo.
+          if (sepultamento?.agendaWarning) {
+            setAgendaWarning(sepultamento.agendaWarning);
+            setForm(EMPTY_FORM);
+            setCertFile(null);
+            setBurialForm({ graveId: "", date: todayISO(), time: "" });
+            refetch();
+            return;
+          }
         } catch (e) {
           // sepultado criado, mas o sepultamento falhou → avisa e não perde o cadastro
           setFormError(
@@ -1047,6 +1071,9 @@ export default function DeceasedListPage() {
           </>)}
 
           {formError && <Alert tone="danger">{formError}</Alert>}
+          {agendaWarning && (
+            <Alert tone="warning" title="Evento de agenda não criado">{agendaWarning}</Alert>
+          )}
         </form>
       </Modal>
       <GravePicker
