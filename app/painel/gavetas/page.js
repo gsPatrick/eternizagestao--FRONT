@@ -30,7 +30,7 @@ import {
   normalizeStatusSlug,
   frontStatusToApiSlug,
 } from "@/lib/api/resources/gavetas";
-import { createGrave, listGraves, removeGrave, getGraveDeleteImpact } from "@/lib/api/resources/graves";
+import { createDrawers, listGraves, removeGrave, getGraveDeleteImpact } from "@/lib/api/resources/graves";
 import { getUser } from "@/lib/api/session";
 import RowActions from "@/components/molecules/RowActions/RowActions";
 import ConfirmDelete from "@/components/molecules/ConfirmDelete/ConfirmDelete";
@@ -394,23 +394,28 @@ function NewDrawerModal({ open, onClose, onCreated }) {
     if (!parent) { setFeedback({ tone: "danger", message: "Escolha a sepultura (jazigo/túmulo) primeiro." }); return; }
     if (!codes.length) { setFeedback({ tone: "danger", message: "Informe o(s) número(s) da gaveta." }); return; }
     setSaving(true); setFeedback(null);
-    const ok = [];
     try {
-      for (const code of codes) {
-        // eslint-disable-next-line no-await-in-loop
-        await createGrave({ parentGraveId: parent.id, code, unitType: "gaveta" });
-        ok.push(code);
-      }
-      setAdded((prev) => [...prev, ...ok]);
+      // Cadastro EM LOTE na API: um número repetido não aborta os demais. A
+      // resposta separa o que entrou do que já existia NAQUELE bloco — o
+      // operador precisa saber exatamente o que faltou.
+      const r = await createDrawers(parent.id, codes);
+      const criadas = (r?.created ?? []).map((c) => c.number);
+      const jaExistiam = (r?.existing ?? []).map((c) => c.number);
+      const falhas = r?.failed ?? [];
+
+      if (criadas.length) { setAdded((prev) => [...prev, ...criadas]); onCreated?.(); }
       setNumero("");
-      setFeedback({ tone: "success", message: `Gaveta(s) incluída(s): ${ok.join(", ")}.` });
-      onCreated?.();
-    } catch (e) {
+
+      const partes = [];
+      if (criadas.length) partes.push(`Incluída(s): ${criadas.join(", ")}.`);
+      if (jaExistiam.length) partes.push(`Já existia(m) no bloco ${parent.code}: ${jaExistiam.join(", ")}.`);
+      falhas.forEach((f) => partes.push(`Gaveta ${f.number}: ${f.message}`));
       setFeedback({
-        tone: ok.length ? "warning" : "danger",
-        message: `${ok.length ? `Incluídas: ${ok.join(", ")}. ` : ""}${e?.message || "Não foi possível incluir a gaveta."}`,
+        tone: criadas.length ? (jaExistiam.length || falhas.length ? "warning" : "success") : "danger",
+        message: partes.join(" ") || "Nenhuma gaveta foi incluída.",
       });
-      if (ok.length) { setAdded((prev) => [...prev, ...ok]); onCreated?.(); }
+    } catch (e) {
+      setFeedback({ tone: "danger", message: e?.message || "Não foi possível incluir a gaveta." });
     } finally {
       setSaving(false);
     }

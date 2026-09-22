@@ -227,8 +227,10 @@ export function GaveteSelect({ parentGraveId, value, onChange, onLoaded }) {
       {gavetas.map((g) => {
         const ocupada = (g.activeBurials || 0) >= (g.capacity || 1);
         return (
+          // `drawerNumber` é o código SEM o prefixo do bloco pai (o código é
+          // <bloco>-G<n> para a gaveta N existir em todos os blocos sem colidir).
           <option key={g.id} value={g.id}>
-            {g.code}
+            Gaveta {g.drawerNumber || g.code}
             {ocupada ? " — ocupada" : ""}
           </option>
         );
