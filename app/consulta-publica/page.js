@@ -24,8 +24,10 @@ const PublicCemeteryMap = dynamic(
 );
 
 /**
- * Portal público de consulta (PDF 11): busca por nome, CPF ou número do jazigo
- * — sem cadastro. Os resultados vêm da API pública (/public/search) e cada um
+ * Portal público de consulta (PDF 11): busca por nome do sepultado, número do
+ * jazigo, quadra, lote ou situação — sem cadastro. Por LGPD, a tela anônima não
+ * mostra (nem recebe) dado de proprietário/responsável da concessão, nem
+ * documentos pessoais. Os resultados vêm da API pública (/public/search) e cada um
  * abre o mapa com a distância real da entrada até a sepultura (/public/graves/:id/route).
  */
 
@@ -158,9 +160,8 @@ function SearchContent() {
             <span className={styles.kicker}>Consulta pública · <CityName hasTenant={hasTenant} /></span>
             <h1 className={styles.title}>Encontre quem você procura.</h1>
             <p className={styles.subtitle}>
-              Busque pelo nome do sepultado ou do responsável, número do jazigo,
-              quadra, lote, situação ou CPF. Sem cadastro — e com a localização
-              exata no mapa.
+              Busque pelo nome do sepultado, número do jazigo, quadra, lote ou
+              situação. Sem cadastro — e com a localização exata no mapa.
             </p>
 
             <form className={styles.searchForm} onSubmit={submit} role="search">
@@ -170,10 +171,10 @@ function SearchContent() {
                   <path d="m13.5 13.5-3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
                 </svg>
                 <input
-                  placeholder="Ex.: Helena Duarte, JAZ-676026, 123.456.789-00…"
+                  placeholder="Ex.: Helena Duarte, JAZ-676026, Quadra A…"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  aria-label="Buscar por nome, responsável, jazigo, quadra, lote, situação ou CPF"
+                  aria-label="Buscar por nome do sepultado, jazigo, quadra, lote ou situação"
                 />
               </div>
               <button className={styles.searchBtn} type="submit">Buscar</button>
@@ -223,12 +224,14 @@ function SearchContent() {
                     placeholder="Ex.: JAZ-001"
                   />
                 </label>
+                {/* LGPD: só o nº da certidão de óbito — CPF/RG não são
+                    critério de busca pública (confirmariam vínculo pessoa↔jazigo). */}
                 <label className={styles.filterField}>
-                  <span>Documento</span>
+                  <span>Certidão de óbito</span>
                   <input
                     value={filters.documento}
                     onChange={(e) => setFilter("documento", e.target.value)}
-                    placeholder="CPF, RG ou nº da certidão"
+                    placeholder="Nº da certidão"
                   />
                 </label>
                 <label className={styles.filterField}>
@@ -262,7 +265,7 @@ function SearchContent() {
             {status === "idle" && (
               <div className={styles.emptyState}>
                 <p>
-                  Busque por nome, responsável, CPF, jazigo, quadra, lote ou situação —
+                  Busque pelo nome do sepultado, jazigo, quadra, lote ou situação —
                   ou use os filtros avançados. Exemplos:
                   {" "}
                   {["Maria", "Antônio", "JAZ-001"].map((s) => (
@@ -345,12 +348,8 @@ function SearchContent() {
                           <dt>Localização</dt>
                           <dd>{locationLabel(r)}</dd>
                         </div>
-                        {r.holder && (
-                          <div className={styles.resultInfoWide}>
-                            <dt>Responsável / concessão</dt>
-                            <dd>{r.holder}</dd>
-                          </div>
-                        )}
+                        {/* LGPD: a consulta pública NÃO exibe proprietário/
+                            responsável da concessão — só o falecido e a sepultura. */}
                       </dl>
                       {(r.graveId || (r.cemeteryId && r.latitude != null)) && (
                         <footer className={styles.resultFoot}>

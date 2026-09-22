@@ -115,7 +115,7 @@ export default function SearchBand({ tenantSlug = null }) {
           </svg>
           <input
             className={styles.input}
-            placeholder="Nome, CPF ou número do jazigo…"
+            placeholder="Nome do sepultado ou número do jazigo…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onFocus={() => setFocused(true)}

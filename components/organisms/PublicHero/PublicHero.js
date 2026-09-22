@@ -188,7 +188,7 @@ export default function PublicHero({
               <span className={styles.searchLabel}>
                 <input
                   className={styles.searchInput}
-                  placeholder="Nome ou CPF do sepultado…"
+                  placeholder="Nome do sepultado ou nº do jazigo…"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   onFocus={() => setFocused(true)}
