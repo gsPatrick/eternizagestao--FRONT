@@ -12,7 +12,7 @@ import Modal from "@/components/molecules/Modal/Modal";
 import Skeleton from "@/components/atoms/Skeleton/Skeleton";
 import ErrorState from "@/components/molecules/ErrorState/ErrorState";
 import EmptyState from "@/components/molecules/EmptyState/EmptyState";
-import FileViewer from "@/components/organisms/FileViewer/FileViewer";
+import PortalDocumentList from "../../_components/PortalDocumentList/PortalDocumentList";
 import dynamic from "next/dynamic";
 import { useTenantSubdomain } from "@/components/providers/TenantTheme/TenantTheme";
 
@@ -22,7 +22,7 @@ const PublicCemeteryMap = dynamic(
   { ssr: false }
 );
 import { useResource } from "@/lib/api/useResource";
-import { getGraves } from "@/lib/api/resources/portal";
+import { getGraves, listPortalDocuments } from "@/lib/api/resources/portal";
 
 const TIMELINE_META = {
   sepultamento: { tone: "navy", label: "Sepultamento" },
@@ -56,8 +56,13 @@ export default function PortalJazigoDetailPage() {
   const { data, error, refetch } = res;
   const loading = !ready || res.loading;
 
+  // Documentos oficiais do titular — filtrados abaixo para este jazigo (e gavetas).
+  const docsRes = useResource(
+    ({ signal }) => (sub ? listPortalDocuments({ signal, tenant: sub }) : Promise.resolve(null)),
+    [sub, ready]
+  );
+
   const [mapOpen, setMapOpen] = useState(false);
-  const [contractOpen, setContractOpen] = useState(false);
 
   const grave = (data ?? []).find((item) => item.id === params.id);
 
@@ -102,6 +107,19 @@ export default function PortalJazigoDetailPage() {
   }
 
   const isPending = grave.status === "pendente";
+
+  // Documentos deste jazigo: emitidos para ele, para uma de suas gavetas, ou
+  // para um sepultado que está nele (a API já resolve gaveta → jazigo pai).
+  const graveScope = new Set([grave.id, ...(grave.drawerIds || [])]);
+  const graveDocuments = (docsRes.data ?? []).filter(
+    (doc) => doc.portalGraveId === grave.id || graveScope.has(doc.graveId)
+  );
+  const docsLoading = !ready || docsRes.loading;
+
+  function scrollToDocuments() {
+    const el = document.getElementById("documentos-do-jazigo");
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
   const hasMap = Boolean(
     grave.cemeteryId &&
       (grave.geoPolygon || (grave.latitude != null && grave.longitude != null))
@@ -165,19 +183,24 @@ export default function PortalJazigoDetailPage() {
             >
               Ver no mapa
             </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => setContractOpen(true)}
-              iconLeft={
-                <svg viewBox="0 0 24 24" fill="none">
-                  <path d="M7 3h7l4 4v14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
-                  <path d="M13 3v5h5M9 13h6M9 16.5h6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                </svg>
-              }
-            >
-              Ver contrato
-            </Button>
+            {/* O antigo "Ver contrato" dependia de um arquivo de contrato que a
+                API nunca fornece. No lugar, leva aos documentos oficiais REAIS
+                do jazigo (certidão/autorização) — só aparece quando existem. */}
+            {graveDocuments.length > 0 && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={scrollToDocuments}
+                iconLeft={
+                  <svg viewBox="0 0 24 24" fill="none">
+                    <path d="M7 3h7l4 4v14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+                    <path d="M13 3v5h5M9 13h6M9 16.5h6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                  </svg>
+                }
+              >
+                Ver documentos
+              </Button>
+            )}
           </div>
         </header>
 
@@ -231,6 +254,26 @@ export default function PortalJazigoDetailPage() {
                 </article>
               ))}
             </div>
+          )}
+        </section>
+
+        {/* ---------- documentos ---------- */}
+        <section id="documentos-do-jazigo" className={styles.section}>
+          <h2 className={styles.sectionTitle}>Documentos</h2>
+          {docsLoading ? (
+            <Skeleton variant="card" count={1} height={88} />
+          ) : docsRes.error ? (
+            <ErrorState
+              title="Não foi possível carregar os documentos"
+              onRetry={docsRes.refetch}
+            />
+          ) : graveDocuments.length === 0 ? (
+            <EmptyState
+              title="Nenhum documento disponível"
+              message="Certidões e autorizações emitidas para este jazigo aparecerão aqui para download."
+            />
+          ) : (
+            <PortalDocumentList documents={graveDocuments} tenant={sub} showGrave={false} />
           )}
         </section>
 
@@ -302,15 +345,6 @@ export default function PortalJazigoDetailPage() {
           />
         )}
       </Modal>
-
-      {/* ---------- contrato (só quando houver o arquivo REAL) ---------- */}
-      {grave.contractUrl && (
-        <FileViewer
-          open={contractOpen}
-          onClose={() => setContractOpen(false)}
-          file={{ name: `Contrato ${grave.contract}.pdf`, url: grave.contractUrl }}
-        />
-      )}
     </PortalShell>
   );
 }

@@ -46,6 +46,17 @@ const TABS = [
     ),
   },
   {
+    key: "documentos",
+    label: "Documentos",
+    href: "/portal/documentos",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none">
+        <path d="M7 3h7l4 4v14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
+        <path d="M13 3v5h5M9 13h6M9 16.5h6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  {
     key: "perfil",
     label: "Perfil",
     href: "/portal/perfil",
