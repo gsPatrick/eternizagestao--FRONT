@@ -29,7 +29,7 @@ import ConfirmDelete from "@/components/molecules/ConfirmDelete/ConfirmDelete";
 import { createBurial } from "@/lib/api/resources/burials";
 import { listCartorios } from "@/lib/api/resources/cartorios";
 import { listFunerarias } from "@/lib/api/resources/funerarias";
-import { listPeople } from "@/lib/api/resources/people";
+import PersonSearchSelect from "@/components/molecules/PersonSearchSelect/PersonSearchSelect";
 import GravePicker, { graveLabel, GaveteSelect } from "@/components/organisms/GravePicker/GravePicker";
 import { registerPerformedExhumation, listExhumations } from "@/lib/api/resources/exhumations";
 import { listDocuments, fetchDocumentPdf, issueDocument } from "@/lib/api/resources/documents";
@@ -200,11 +200,6 @@ export default function DeceasedListPage() {
   );
   const freeNiches = nichesData ?? [];
 
-  const { data: peopleData } = useResource(
-    ({ signal }) => (modalOpen ? listPeople({ perPage: 1000 }, { signal }) : Promise.resolve({ data: [] })),
-    [modalOpen]
-  );
-  const people = peopleData?.data ?? [];
 
   // atalho "Novo sepultado" do Painel (/painel/sepultados?novo=1) já abre o
   // cadastro — herdado da tela de Sepultamentos, que foi removida.
@@ -335,6 +330,29 @@ export default function DeceasedListPage() {
     }
   }
 
+  // Zera TODO o estado do modal. Fechar/cancelar não limpava `editingDeceased`
+  // nem o formulário: o "Novo sepultado" seguinte abria em modo EDIÇÃO com os
+  // dados (sepultura, foto, referência) do registro anterior — inclusive de um
+  // registro já excluído — e salvar sobrescrevia o cadastro errado.
+  function resetModal() {
+    setEditingDeceased(null);
+    setForm(EMPTY_FORM);
+    setCertFile(null);
+    setPickedGrave(null);
+    setPickedGaveta(null);
+    setTemGavetas(false);
+    setExhum({ done: false, nicheId: "", number: "", date: "" });
+    setExhumExistentes([]);
+    setBurialForm({ graveId: "", date: todayISO(), time: "" });
+    setFormError("");
+    setAgendaWarning("");
+  }
+
+  function closeModal() {
+    setModalOpen(false);
+    resetModal();
+  }
+
   // O MESMO formulário do cadastro serve para editar: manter dois divergia com
   // o tempo e foi o que deixou campos livres num e travados no outro.
   function openEdit(row) {
@@ -382,7 +400,7 @@ export default function DeceasedListPage() {
       // fica VAZIA — nunca "hoje". Assim o operador corrige e o valor persiste,
       // em vez de o campo se preencher sozinho com a data de hoje.
       date: (r.lastBurialDate || "").slice(0, 10),
-      time: "",
+      time: (r.lastBurialTime || "").slice(0, 5),
     });
     setCertFile(null);
     setExhum({ done: false, nicheId: "", number: "", date: "" });
@@ -434,6 +452,12 @@ export default function DeceasedListPage() {
       // validação do sepultamento vinculado (quando marcado)
       if (linkBurial && (!burialForm.graveId || !burialForm.date)) {
         setFormError("Para registrar o sepultamento junto, informe o jazigo e a data.");
+        return;
+      }
+      // Bloco de gavetas: o corpo entra numa GAVETA. Sem escolher, o
+      // sepultamento caía no bloco (capacidade 1) e travava os seguintes.
+      if (!editingDeceased && temGavetas && pickedGrave && !pickedGaveta) {
+        setFormError("Este jazigo é um bloco de gavetas — escolha o número da gaveta.");
         return;
       }
       if (editingDeceased) {
@@ -626,7 +650,7 @@ export default function DeceasedListPage() {
   const newButton = (
     <Button
       onClick={() => {
-          setBurialForm({ graveId: "", date: todayISO(), time: "" });
+        resetModal();
         setModalOpen(true);
       }}
       iconLeft={
@@ -782,13 +806,13 @@ export default function DeceasedListPage() {
       {/* ---- novo sepultado: cadastro civil completo (PDF 3.3) ---- */}
       <Modal
         open={modalOpen}
-        onClose={() => setModalOpen(false)}
+        onClose={closeModal}
         title={editingDeceased ? "Editar sepultado" : "Novo sepultado"}
         subtitle="Cadastro do sepultado e vínculo com a sepultura"
         width={680}
         footer={
           <>
-            <Button variant="ghost" onClick={() => setModalOpen(false)}>Cancelar</Button>
+            <Button variant="ghost" onClick={closeModal}>Cancelar</Button>
             <Button loading={saving} onClick={handleCreate}>{editingDeceased ? "Salvar" : "Registrar sepultado"}</Button>
           </>
         }
@@ -859,15 +883,11 @@ export default function DeceasedListPage() {
               className={styles.spanTwo}
               hint="Quem responde pela sepultura — distinto do proprietário"
             >
-              <Select value={form.responsiblePersonId} onChange={set("responsiblePersonId")}>
-                <option value="">Sem responsável definido</option>
-                {people.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.fullName || p.name}
-                    {p.cpf ? ` — ${p.cpf}` : ""}
-                  </option>
-                ))}
-              </Select>
+              <PersonSearchSelect
+                value={form.responsiblePersonId}
+                onChange={(id) => setForm((f) => ({ ...f, responsiblePersonId: id }))}
+                emptyLabel="Sem responsável definido"
+              />
             </FormField>
           </div>
 

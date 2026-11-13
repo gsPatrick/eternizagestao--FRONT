@@ -38,7 +38,7 @@ import {
   UTILIZACAO_OPTIONS,
   isPerpetualUse,
 } from "@/lib/api/resources/graves";
-import { listPeople } from "@/lib/api/resources/people";
+import PersonSearchSelect from "@/components/molecules/PersonSearchSelect/PersonSearchSelect";
 import { getStructure } from "@/lib/api/resources/cemeteries";
 import { listDocuments, fetchDocumentPdf } from "@/lib/api/resources/documents";
 import { getUser } from "@/lib/api/session";
@@ -166,6 +166,7 @@ export default function GravesListPage() {
     utilizacao: UTILIZACAO_OPTIONS[0],
     carneiraPermission: "",
     dataPermissao: "",
+    capacidade: "",
     notes: "",
   };
   const [gForm, setGForm] = useState(emptyGrave);
@@ -266,12 +267,6 @@ export default function GravesListPage() {
     return [...set];
   }, [structBlocks, gForm.quadra]);
 
-  // pessoas cadastradas → caixa de seleção de PROPRIETÁRIO (opcional) no create
-  const { data: peopleData } = useResource(
-    ({ signal }) => listPeople({ perPage: 1000 }, { signal }),
-    []
-  );
-  const people = peopleData?.data ?? [];
 
   // ---- exclusão de sepultura (RBAC + confirmação) ----
   const currentUser = getUser();
@@ -334,6 +329,7 @@ export default function GravesListPage() {
         utilizacao: g.utilizacao || UTILIZACAO_OPTIONS[0],
         carneiraPermission: g.carneiraPermission || "",
         dataPermissao: (g.carneiraPermissionDate || "").slice(0, 10),
+        capacidade: g.capacity ? String(g.capacity) : "",
         notes: g.notes || "",
         statusSlug: row.status || "livre",
         parentGraveId: "",
@@ -363,8 +359,12 @@ export default function GravesListPage() {
         previousBlock: gForm.quadraAnterior.trim() || undefined,
         previousLot: gForm.loteAnterior.trim() || undefined,
         ownerPersonId: gForm.ownerPersonId || undefined,
-        // sem `code`: a API deriva de quadra-lote (o cliente não digita código)
-        unitType: "jazigo",
+        // sem `code`: a API deriva de quadra-lote (o cliente não digita código).
+        // Tipo só no CADASTRO: na edição mandava "jazigo" sempre e sobrescrevia
+        // cova/túmulo/gaveta já gravados.
+        unitType: editingGrave ? undefined : "jazigo",
+        // vazio = padrão da API pelo tipo (jazigo: 4 sepultamentos)
+        capacity: Number(gForm.capacidade) > 0 ? Number(gForm.capacidade) : undefined,
         tombType: tombType || undefined,
         utilizacao: gForm.utilizacao || undefined,
         carneiraPermission: gForm.carneiraPermission || undefined,
@@ -743,6 +743,21 @@ export default function GravesListPage() {
               </Select>
             </FormField>
 
+            <FormField
+              label="Capacidade"
+              hint="Quantos sepultamentos a sepultura comporta (vazio = 4 para jazigo)"
+            >
+              <Input
+                type="number"
+                min={1}
+                max={500}
+                inputMode="numeric"
+                placeholder="4"
+                value={gForm.capacidade}
+                onChange={(e) => setG("capacidade", e.target.value.replace(/\D/g, ""))}
+              />
+            </FormField>
+
             <FormField label="Permissão de carneira">
               <Input
                 value={gForm.carneiraPermission}
@@ -754,15 +769,11 @@ export default function GravesListPage() {
             </FormField>
 
             <FormField label="Proprietário(s)" hint="Opcional" className={styles.spanTwo}>
-              <Select value={gForm.ownerPersonId} onChange={(e) => setG("ownerPersonId", e.target.value)}>
-                <option value="">Sem proprietário (pode definir depois)</option>
-                {people.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.fullName || p.name}
-                    {p.cpf ? ` — ${p.cpf}` : ""}
-                  </option>
-                ))}
-              </Select>
+              <PersonSearchSelect
+                value={gForm.ownerPersonId}
+                onChange={(id) => setG("ownerPersonId", id)}
+                emptyLabel="Sem proprietário (pode definir depois)"
+              />
             </FormField>
 
             <FormField label="Observação" className={styles.spanTwo}>

@@ -22,6 +22,7 @@ import FileViewer from "@/components/organisms/FileViewer/FileViewer";
 import Skeleton from "@/components/atoms/Skeleton/Skeleton";
 import ErrorState from "@/components/molecules/ErrorState/ErrorState";
 import ConfirmDelete from "@/components/molecules/ConfirmDelete/ConfirmDelete";
+import PersonSearchSelect from "@/components/molecules/PersonSearchSelect/PersonSearchSelect";
 import { getUser } from "@/lib/api/session";
 
 import { useResource } from "@/lib/api/useResource";
@@ -38,7 +39,6 @@ import {
   getGraveSummary,
   getGraveTimeline,
   getGraveConcessions,
-  listPeople,
   listDeceased,
   changeGraveStatus,
   blockGrave,
@@ -230,7 +230,6 @@ export default function GraveDetailPage() {
     [billingsData]
   );
 
-  const { data: peopleData } = useResource(({ signal }) => listPeople({ perPage: 100 }, { signal }), []);
   const { data: deceasedData } = useResource(({ signal }) => listDeceased({ perPage: 100 }, { signal }), []);
 
   // anexos reais do jazigo (attachableType = grave) — fetch/loading/erro via API
@@ -245,10 +244,6 @@ export default function GraveDetailPage() {
     [attachmentsData]
   );
 
-  const PEOPLE = useMemo(
-    () => (peopleData?.data ?? []).map((p) => ({ id: p.id, name: p.fullName, cpf: p.cpf || "" })),
-    [peopleData]
-  );
   const AVAILABLE_DECEASED = useMemo(
     () =>
       (deceasedData?.data ?? [])
@@ -323,6 +318,9 @@ export default function GraveDetailPage() {
         createdAt: formatDate(g.createdAt),
         cemeteryId: g.cemetery?.id || null,
         statusSlug: g.status?.slug || null,
+        // gaveta: localização = a do bloco de gavetas (não se demarca gaveta)
+        isDrawer: Boolean(g.parentGraveId) || g.unitType === "gaveta",
+        geometryInherited: Boolean(g.geometryInherited),
         occupant: g.owner?.person?.fullName || g.owner?.fullName || null,
         geoPolygon: g.geoPolygon || null,
         latitude: g.latitude ?? null,
@@ -410,10 +408,13 @@ export default function GraveDetailPage() {
     [id]
   );
   useEffect(() => {
-    const docs = certDocsData?.data ?? [];
-    if (!docs.length) return;
-    // a mais recente vale (2ª via reemite com novo número)
-    const doc = docs[docs.length - 1];
+    // A API lista do mais recente para o mais antigo. Vale a certidão VIGENTE:
+    // não cancelada e de preferência a 1ª via (raiz) — a 2ª via é o mesmo
+    // documento, mesmo número. Antes pegava o último item (o MAIS ANTIGO,
+    // inclusive cancelado) e a tela mostrava/reemitia a certidão errada.
+    const docs = (certDocsData?.data ?? []).filter((d) => d.status !== "cancelado");
+    if (!docs.length) { setCertificate(null); return; }
+    const doc = docs.find((d) => !d.originalDocumentId) || docs[0];
     setCertificate({
       id: doc.id,
       number: doc.formattedNumber || doc.number || "—",
@@ -595,7 +596,17 @@ export default function GraveDetailPage() {
     setActionError(null);
     try {
       if (certificate) {
-        await reissueDocument(certificate.id);
+        // 2ª via = mesmo documento e mesmo número, gerado do cadastro atual.
+        // Abre a aba já no clique (senão o navegador bloqueia o PDF).
+        const win = window.open("", "_blank");
+        try {
+          await reissueDocument(certificate.id);
+          const url = await fetchDocumentPdf(certificate.id);
+          if (win) win.location.href = url; else window.location.href = url;
+        } catch (err) {
+          if (win) win.close();
+          throw err;
+        }
         setCertificate((c) => ({ ...c, reissues: c.reissues + 1 }));
         refetchCertDocs();
       } else {
@@ -700,7 +711,11 @@ export default function GraveDetailPage() {
             <header className={styles.cardHead}>
               <div>
                 <h2 className={styles.cardTitle}>Localização no mapa</h2>
-                <p className={styles.cardSub}>Demarcação sobre a ortofoto do cemitério</p>
+                <p className={styles.cardSub}>
+                  {GRAVE.isDrawer
+                    ? "Gaveta — usa a demarcação do bloco de gavetas"
+                    : "Demarcação sobre a ortofoto do cemitério"}
+                </p>
               </div>
             </header>
             <GraveMap
@@ -714,7 +729,7 @@ export default function GraveDetailPage() {
                 latitude: GRAVE.latitude,
                 longitude: GRAVE.longitude,
               }}
-              editable
+              editable={!GRAVE.isDrawer}
               height={320}
               onSaved={refetch}
             />
@@ -934,7 +949,15 @@ export default function GraveDetailPage() {
               <div className={styles.detailRow}><dt>Cadastrada em</dt><dd>{GRAVE.createdAt}</dd></div>
               <div className={styles.detailRow}>
                 <dt>Demarcação</dt>
-                <dd>{mapped ? <Badge tone="success">No mapa</Badge> : <Badge tone="warning">Pendente</Badge>}</dd>
+                <dd>
+                  {mapped ? (
+                    <Badge tone="success">{GRAVE.geometryInherited ? "No mapa (bloco)" : "No mapa"}</Badge>
+                  ) : GRAVE.isDrawer ? (
+                    <Badge tone="warning">Demarque o bloco</Badge>
+                  ) : (
+                    <Badge tone="warning">Pendente</Badge>
+                  )}
+                </dd>
               </div>
             </dl>
           </article>
@@ -1118,12 +1141,11 @@ export default function GraveDetailPage() {
               <Input type="time" value={burialForm.time} onChange={(e) => setBurialForm({ ...burialForm, time: e.target.value })} />
             </FormField>
             <FormField label="Declarante / responsável">
-              <Select value={burialForm.declarant} onChange={(e) => setBurialForm({ ...burialForm, declarant: e.target.value })}>
-                <option value="">Selecione…</option>
-                {PEOPLE.map((p) => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
-                ))}
-              </Select>
+              <PersonSearchSelect
+                value={burialForm.declarant}
+                onChange={(pid) => setBurialForm((f) => ({ ...f, declarant: pid }))}
+                emptyLabel="Selecione…"
+              />
             </FormField>
             <FormField label="Funerária">
               <Input value={burialForm.funeral} onChange={(e) => setBurialForm({ ...burialForm, funeral: e.target.value })} placeholder="Nome da funerária" />
@@ -1152,12 +1174,11 @@ export default function GraveDetailPage() {
       >
         <div className={styles.modalForm}>
           <FormField label="Novo titular" required>
-            <Select value={transferForm.to} onChange={(e) => setTransferForm({ ...transferForm, to: e.target.value })}>
-              <option value="" disabled>Selecione a pessoa…</option>
-              {PEOPLE.filter((p) => p.name !== concession?.owner).map((p) => (
-                <option key={p.id} value={p.id}>{p.name} · {p.cpf}</option>
-              ))}
-            </Select>
+            <PersonSearchSelect
+              value={transferForm.to}
+              onChange={(pid) => setTransferForm((f) => ({ ...f, to: pid }))}
+              excludeIds={concession?.personId ? [concession.personId] : []}
+            />
           </FormField>
           <FormField label="Motivo" required>
             <Select value={transferForm.reason} onChange={(e) => setTransferForm({ ...transferForm, reason: e.target.value })}>
@@ -1310,12 +1331,11 @@ export default function GraveDetailPage() {
             </Select>
           </FormField>
           <FormField label="Solicitante">
-            <Select value={maintForm.requester} onChange={(e) => setMaintForm({ ...maintForm, requester: e.target.value })}>
-              <option value="">Administração do cemitério</option>
-              {PEOPLE.map((p) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </Select>
+            <PersonSearchSelect
+              value={maintForm.requester}
+              onChange={(pid) => setMaintForm((f) => ({ ...f, requester: pid }))}
+              emptyLabel="Administração do cemitério"
+            />
           </FormField>
           <FormField label="Descrição" hint="Registrada na linha do tempo do jazigo">
             <Textarea rows={3} value={maintForm.description} onChange={(e) => setMaintForm({ ...maintForm, description: e.target.value })} placeholder="Ex.: troca do revestimento, recuperação da lápide…" />
@@ -1343,12 +1363,10 @@ export default function GraveDetailPage() {
             restos mortais (ossário, outro jazigo, translado ou cremação).
           </Alert>
           <FormField label="Responsável solicitante" required>
-            <Select value={exhumForm.requester} onChange={(e) => setExhumForm({ ...exhumForm, requester: e.target.value })}>
-              <option value="" disabled>Selecione…</option>
-              {PEOPLE.map((p) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </Select>
+            <PersonSearchSelect
+              value={exhumForm.requester}
+              onChange={(pid) => setExhumForm((f) => ({ ...f, requester: pid }))}
+            />
           </FormField>
           <FormField label="Motivo" required>
             <Textarea rows={3} value={exhumForm.reason} onChange={(e) => setExhumForm({ ...exhumForm, reason: e.target.value })} placeholder="Ex.: transferência para jazigo da família em outro cemitério…" />

@@ -128,13 +128,16 @@ export default function ConcessionDetailPage() {
   const officialDocs = officialData?.data ?? [];
 
   async function downloadOfficial(doc) {
+    // Gerado na hora (dados atuais, mesmo número); o arquivo salvo na emissão
+    // fica só de reserva. Abre a aba no clique para o navegador não bloquear.
     const direct = fileHref(doc.pdfUrl || doc.fileUrl);
-    if (doc.pdfUrl && direct) { window.open(direct, "_blank", "noopener"); return; }
+    const win = window.open("", "_blank");
     try {
       const url = await fetchDocumentPdf(doc.id);
-      window.open(url, "_blank", "noopener");
+      if (win) win.location.href = url; else window.location.href = url;
     } catch {
-      if (direct) window.open(direct, "_blank", "noopener");
+      if (win) { if (direct) win.location.href = direct; else win.close(); }
+      else if (direct) window.location.href = direct;
     }
   }
 

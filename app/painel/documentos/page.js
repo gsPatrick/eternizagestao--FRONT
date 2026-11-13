@@ -279,17 +279,32 @@ export default function DocumentsPage() {
     }
   }
 
-  function openDoc(d) {
-    const file = docFile(d);
-    if (file) setPreview(file);
+  // Visualização: o PDF é GERADO NA HORA pelo backend (dados atuais do
+  // cadastro, mesmo número). O pdfUrl salvo é a foto da emissão — depois de uma
+  // correção no sepultado/sepultura ele mostrava os dados antigos.
+  async function openDoc(d) {
+    try {
+      const url = await fetchDocumentPdf(d.id);
+      setPreview({
+        name: `${docLabel(d).replace(/[\s/]+/g, "-")}.pdf`,
+        category: safeType(d.type).label,
+        url,
+      });
+    } catch {
+      const file = docFile(d);
+      if (file) setPreview(file);
+    }
   }
 
   // Baixa o PDF oficial. Usa o pdfUrl assinado quando presente (same-origin via
   // proxy /files, download direto); senão gera pelo endpoint autenticado.
   async function downloadPdf(d) {
     try {
-      const objectUrl = d.pdfUrl ? null : await fetchDocumentPdf(d.id);
+      // Sempre o PDF gerado na hora (dados atuais); o arquivo salvo só se a
+      // geração falhar.
+      const objectUrl = await fetchDocumentPdf(d.id).catch(() => null);
       const href = objectUrl || sameOriginFile(d.pdfUrl);
+      if (!href) throw new Error("Não foi possível gerar o PDF.");
       const a = document.createElement("a");
       a.href = href;
       a.download = `${docLabel(d).replace(/[\s/]+/g, "-")}.pdf`;
