@@ -27,6 +27,7 @@ import {
 import Button from "@/components/atoms/Button/Button";
 import Input from "@/components/atoms/Input/Input";
 import Select from "@/components/atoms/Select/Select";
+import PersonSearchSelect from "@/components/molecules/PersonSearchSelect/PersonSearchSelect";
 import Badge from "@/components/atoms/Badge/Badge";
 import Avatar from "@/components/atoms/Avatar/Avatar";
 import Skeleton from "@/components/atoms/Skeleton/Skeleton";
@@ -155,15 +156,10 @@ export default function BillingsPage() {
   );
 
   // pickers da nova cobrança (endpoints reais de people/graves)
-  const { data: peopleRes } = useResource(
-    ({ signal }) => api.get("/people", { params: { perPage: 100 }, meta: true, signal }),
-    []
-  );
   const { data: gravesRes } = useResource(
     ({ signal }) => api.get("/graves", { params: { perPage: 100 }, meta: true, signal }),
     []
   );
-  const people = peopleRes?.data ?? [];
   const graves = gravesRes?.data ?? [];
 
   const rows = useMemo(() => (listData?.data ?? []).map(normalizeBilling), [listData]);
@@ -675,12 +671,10 @@ export default function BillingsPage() {
           {actionError && <Alert tone="danger">{actionError}</Alert>}
           <div className={styles.formGrid}>
             <FormField label="Pagador" required>
-              <Select value={newForm.payerPersonId} onChange={(e) => setNewForm({ ...newForm, payerPersonId: e.target.value })}>
-                <option value="" disabled>Selecione…</option>
-                {people.map((p) => (
-                  <option key={p.id} value={p.id}>{p.fullName}</option>
-                ))}
-              </Select>
+              <PersonSearchSelect
+                value={newForm.payerPersonId}
+                onChange={(pid) => setNewForm((f) => ({ ...f, payerPersonId: pid }))}
+              />
             </FormField>
             <FormField label="Jazigo (opcional)">
               <Select value={newForm.graveId} onChange={(e) => setNewForm({ ...newForm, graveId: e.target.value })}>

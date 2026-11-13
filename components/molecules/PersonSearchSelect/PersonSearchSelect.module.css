@@ -1,0 +1,155 @@
+.root {
+  position: relative;
+  width: 100%;
+}
+
+.trigger,
+.search {
+  width: 100%;
+  height: 42px;
+  padding: 0 var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-mist);
+  border-radius: var(--radius-md);
+  font-family: inherit;
+  font-size: var(--text-body);
+  color: var(--color-ink);
+  box-shadow: var(--shadow-xs);
+}
+
+.trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.trigger svg {
+  flex-shrink: 0;
+  color: var(--color-slate);
+}
+
+.trigger:hover:not(:disabled) {
+  border-color: #c3cdd9;
+}
+
+.trigger:focus-visible,
+.search:focus {
+  outline: none;
+  border-color: var(--color-navy);
+  box-shadow: var(--ring-focus);
+}
+
+.trigger:disabled {
+  background: var(--color-mist-soft);
+  color: var(--color-slate);
+  cursor: not-allowed;
+}
+
+.invalid {
+  border-color: var(--color-danger);
+}
+
+.value,
+.placeholder {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.placeholder {
+  color: #9aa8b8;
+}
+
+.panel {
+  position: absolute;
+  z-index: 60;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-mist);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.option {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.active {
+  background: var(--color-navy-ghost);
+}
+
+.selected {
+  font-weight: 600;
+  color: var(--color-navy);
+}
+
+.muted {
+  color: var(--color-slate);
+}
+
+.name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cpf {
+  flex-shrink: 0;
+  font-size: 12.5px;
+  color: var(--color-slate);
+  font-variant-numeric: tabular-nums;
+}
+
+.empty {
+  padding: 12px 10px;
+  font-size: 13.5px;
+  color: var(--color-slate);
+}
+
+.foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px;
+  border-top: 1px solid var(--color-mist-soft);
+  font-size: 12.5px;
+  color: var(--color-slate);
+}
+
+.more {
+  border: none;
+  background: none;
+  padding: 2px 0;
+  font: inherit;
+  font-weight: 600;
+  color: var(--color-navy);
+  cursor: pointer;
+}
+
+.more:hover {
+  text-decoration: underline;
+}

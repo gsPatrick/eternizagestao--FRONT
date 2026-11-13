@@ -23,7 +23,7 @@ import EmptyState from "@/components/molecules/EmptyState/EmptyState";
 import { useResource } from "@/lib/api/useResource";
 import { listConcessions, getConcessionsSummary, issueConcession } from "@/lib/api/resources/concessions";
 import { listGraves } from "@/lib/api/resources/graves";
-import { listPeople } from "@/lib/api/resources/people";
+import PersonSearchSelect from "@/components/molecules/PersonSearchSelect/PersonSearchSelect";
 import { todayISO } from "@/lib/date-local";
 
 // "Hoje" REAL — antes era fixo em 16/07/2026, congelando "vence em X meses".
@@ -117,9 +117,7 @@ export default function ConcessionsListPage() {
 
   // fontes dos pickers (jazigos e pessoas do tenant)
   const gravesRes = useResource(({ signal }) => listGraves({ perPage: 500 }, { signal }), []);
-  const peopleRes = useResource(({ signal }) => listPeople({ perPage: 500 }, { signal }), []);
   const graveOptions = useMemo(() => gravesRes.data?.data ?? [], [gravesRes.data]);
-  const peopleOptions = useMemo(() => peopleRes.data?.data ?? [], [peopleRes.data]);
 
   async function submitConcession() {
     if (!form.graveId || !form.personId) {
@@ -432,36 +430,18 @@ export default function ConcessionsListPage() {
               </Select>
             </FormField>
             <FormField label="Concessionário (proprietário)" required hint="Titular legal da concessão">
-              <Select
+              <PersonSearchSelect
                 value={form.personId}
-                onChange={(e) => setF("personId", e.target.value)}
-                disabled={peopleRes.loading}
-              >
-                <option value="" disabled>
-                  {peopleRes.loading ? "Carregando pessoas…" : "Selecione a pessoa…"}
-                </option>
-                {peopleOptions.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.fullName}{p.cpf ? ` · ${p.cpf}` : ""}
-                  </option>
-                ))}
-              </Select>
+                onChange={(pid) => setF("personId", pid)}
+              />
             </FormField>
             <FormField label="Responsável legal" hint="Opcional — quem responde pelo jazigo (pode diferir do proprietário)">
-              <Select
+              <PersonSearchSelect
                 value={form.responsiblePersonId}
-                onChange={(e) => setF("responsiblePersonId", e.target.value)}
-                disabled={peopleRes.loading}
-              >
-                <option value="">Sem responsável distinto</option>
-                {peopleOptions
-                  .filter((p) => p.id !== form.personId)
-                  .map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.fullName}{p.cpf ? ` · ${p.cpf}` : ""}
-                    </option>
-                  ))}
-              </Select>
+                onChange={(pid) => setF("responsiblePersonId", pid)}
+                emptyLabel="Sem responsável distinto"
+                excludeIds={form.personId ? [form.personId] : []}
+              />
             </FormField>
             <FormField label="Tipo de concessão" required>
               <Select value={newType} onChange={(e) => setNewType(e.target.value)}>
