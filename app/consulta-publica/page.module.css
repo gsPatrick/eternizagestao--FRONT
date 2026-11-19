@@ -326,14 +326,67 @@
   gap: 14px;
 }
 
-.resultPhoto {
-  flex: 0 0 auto;
-  width: 52px;
-  height: 52px;
-  border-radius: 12px;
-  object-fit: cover;
-  background: var(--color-mist-soft);
+/* Foto da sepultura em destaque no topo do card: grande o bastante para
+   reconhecer o túmulo no local. Clique abre a foto inteira (lightbox). */
+.resultPhotoBtn {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: 0;
   border: 1px solid var(--color-mist);
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--color-mist-soft);
+  cursor: zoom-in;
+  aspect-ratio: 4 / 3;
+  max-height: 340px;
+}
+
+.resultPhotoBtn:focus-visible {
+  outline: 2px solid var(--color-navy);
+  outline-offset: 2px;
+}
+
+.resultPhoto {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.resultPhotoBtn:hover .resultPhoto {
+  transform: scale(1.03);
+}
+
+.resultPhotoHint {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  background: rgba(15, 23, 42, 0.62);
+  backdrop-filter: blur(4px);
+}
+
+.resultPhotoHint svg {
+  width: 13px;
+  height: 13px;
+}
+
+.photoFull {
+  display: block;
+  width: 100%;
+  max-height: 72vh;
+  object-fit: contain;
+  border-radius: 12px;
+  background: var(--color-mist-soft);
 }
 
 .resultHeadMain {

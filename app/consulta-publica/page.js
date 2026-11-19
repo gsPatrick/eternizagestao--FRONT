@@ -11,6 +11,7 @@ import TenantTheme, { useTenant } from "@/components/providers/TenantTheme/Tenan
 import Skeleton from "@/components/atoms/Skeleton/Skeleton";
 import ErrorState from "@/components/molecules/ErrorState/ErrorState";
 import EmptyState from "@/components/molecules/EmptyState/EmptyState";
+import Modal from "@/components/molecules/Modal/Modal";
 import { getClientSubdomain } from "@/lib/tenant-subdomain";
 import { usePublicSearch, formatDate, yearOf } from "@/src/features/public-search";
 import { usePublicGraveRoute } from "@/src/features/public-map";
@@ -77,6 +78,8 @@ function SearchContent() {
   const hasAdvanced = Object.values(initialFilters).some(Boolean);
   const [showFilters, setShowFilters] = useState(hasAdvanced);
   const [selected, setSelected] = useState(null);
+  // Foto ampliada (lightbox) — o card já mostra grande, o clique abre inteira.
+  const [photoView, setPhotoView] = useState(null);
 
   // Resolução de tenant robusta nos DOIS modos:
   //   - subdomínio (guarulhos.dominio): cookie eterniza_tenant → getClientSubdomain()
@@ -315,11 +318,31 @@ function SearchContent() {
                 <div className={styles.resultGrid}>
                   {results.map((r) => (
                     <article key={r.id} className={styles.resultCard}>
+                      {r.photoUrl && (
+                        // Foto grande o bastante para RECONHECER a sepultura no
+                        // local (pedido do cliente: a miniatura de 52px não servia).
+                        <button
+                          type="button"
+                          className={styles.resultPhotoBtn}
+                          onClick={() => setPhotoView({ url: r.photoUrl, name: r.name, code: r.code })}
+                          aria-label={`Ampliar foto da sepultura de ${r.name}`}
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            className={styles.resultPhoto}
+                            src={r.photoUrl}
+                            alt={`Foto da sepultura de ${r.name}`}
+                            loading="lazy"
+                          />
+                          <span className={styles.resultPhotoHint} aria-hidden="true">
+                            <svg viewBox="0 0 16 16" fill="none">
+                              <path d="M9.5 2.5h4v4M6.5 13.5h-4v-4M13.5 2.5 9 7M2.5 13.5 7 9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                            Ampliar
+                          </span>
+                        </button>
+                      )}
                       <header className={styles.resultHead}>
-                        {r.photoUrl && (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img className={styles.resultPhoto} src={r.photoUrl} alt="" loading="lazy" />
-                        )}
                         <div className={styles.resultHeadMain}>
                           <h2 className={styles.resultName}>{r.name}</h2>
                           {(r.birthDate || r.deathDate) && (
@@ -365,6 +388,22 @@ function SearchContent() {
                     </article>
                   ))}
                 </div>
+                <Modal
+                  open={!!photoView}
+                  onClose={() => setPhotoView(null)}
+                  title={photoView?.name || "Foto da sepultura"}
+                  subtitle={photoView?.code ? `Sepultura ${photoView.code}` : undefined}
+                  width={880}
+                >
+                  {photoView && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      className={styles.photoFull}
+                      src={photoView.url}
+                      alt={`Foto da sepultura de ${photoView.name}`}
+                    />
+                  )}
+                </Modal>
               </>
             )}
 
