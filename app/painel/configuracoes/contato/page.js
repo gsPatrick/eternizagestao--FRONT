@@ -11,12 +11,25 @@ import Skeleton from "@/components/atoms/Skeleton/Skeleton";
 import Alert from "@/components/molecules/Alert/Alert";
 import ErrorState from "@/components/molecules/ErrorState/ErrorState";
 import FormField from "@/components/molecules/FormField/FormField";
+import SocialIcon, { SOCIAL_LABELS } from "@/components/atoms/SocialIcon/SocialIcon";
 import { maskCep } from "@/lib/masks";
+import { SOCIAL_KEYS } from "@/lib/api/resources/tenant";
 
 import { useOnboardingForm } from "../_lib/useOnboardingForm";
 import { maskPhoneBr } from "../_lib/helpers";
 import { TopicHeader, SectionCard, SaveBar, Button } from "../_lib/ui";
 import ui from "../_lib/ui.module.css";
+
+// Exemplo em cada campo de rede — aceita @usuário OU o link completo.
+const SOCIAL_PLACEHOLDERS = {
+  instagram: "@prefeitura ou link do perfil",
+  facebook: "facebook.com/prefeitura",
+  youtube: "@canal ou link do canal",
+  tiktok: "@prefeitura",
+  x: "@prefeitura",
+  linkedin: "link da página",
+  site: "www.cidade.gov.br",
+};
 
 export default function ContatoPage() {
   const { form, set, patch, loading, error, refetch, canEdit, saving, feedback, handleSave } =
@@ -98,7 +111,7 @@ export default function ContatoPage() {
               disabled={!canEdit}
             />
           </FormField>
-          <FormField label="WhatsApp" htmlFor="whatsapp">
+          <FormField label="WhatsApp" htmlFor="whatsapp" hint="Vira o botão de WhatsApp no rodapé do site.">
             <Input
               id="whatsapp"
               inputMode="tel"
@@ -108,6 +121,36 @@ export default function ContatoPage() {
               disabled={!canEdit}
             />
           </FormField>
+        </div>
+      </SectionCard>
+
+      <SectionCard
+        title="Redes sociais"
+        desc="Aparecem como ícones no rodapé do site da cidade. Pode digitar o @usuário ou colar o link — deixe em branco a rede que a cidade não usa."
+      >
+        <div className={ui.grid3}>
+          {SOCIAL_KEYS.map((key) => (
+            <FormField
+              key={key}
+              label={
+                <span className={ui.socialLabel}>
+                  <SocialIcon name={key} size={14} />
+                  {SOCIAL_LABELS[key]}
+                </span>
+              }
+              htmlFor={`social-${key}`}
+            >
+              <Input
+                id={`social-${key}`}
+                inputMode="url"
+                autoComplete="off"
+                placeholder={SOCIAL_PLACEHOLDERS[key]}
+                value={form.social?.[key] || ""}
+                onChange={(e) => patch({ social: { ...form.social, [key]: e.target.value } })}
+                disabled={!canEdit}
+              />
+            </FormField>
+          ))}
         </div>
       </SectionCard>
 
@@ -191,7 +234,7 @@ export default function ContatoPage() {
       </SectionCard>
 
       {canEdit && (
-        <SaveBar hint="O endereço e os canais aparecem no portal da família ao salvar.">
+        <SaveBar hint="Os canais, as redes sociais e o endereço aparecem no site e no portal da família ao salvar.">
           <Button loading={saving} onClick={() => handleSave()}>
             Salvar contato
           </Button>

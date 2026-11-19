@@ -60,6 +60,7 @@ export default function TenantLanding({ tenant }) {
         variant="public"
         nav={footerNav}
         cityName={tenant.brandLead}
+        contact={tenant.contact}
         imageUrl={tenant.footerImageUrl || tenant.heroImageUrl || null}
         defaultImage="city"
       />

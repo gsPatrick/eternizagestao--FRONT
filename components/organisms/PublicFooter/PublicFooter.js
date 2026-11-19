@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import BrandMark from "@/components/atoms/BrandMark/BrandMark";
+import SocialIcon, { SOCIAL_LABELS } from "@/components/atoms/SocialIcon/SocialIcon";
 import styles from "./PublicFooter.module.css";
 
 /**
@@ -26,6 +27,30 @@ function ArrowIcon() {
   );
 }
 
+// Ordem dos ícones no rodapé da cidade.
+const SOCIAL_ORDER = ["instagram", "facebook", "youtube", "tiktok", "x", "linkedin", "site"];
+
+// WhatsApp da cidade → link do wa.me. Número BR sem DDI ganha o 55.
+function whatsappHref(raw) {
+  let digits = String(raw || "").replace(/\D/g, "");
+  if (!digits) return null;
+  if (digits.length <= 11) digits = `55${digits}`;
+  return `https://wa.me/${digits}`;
+}
+
+// Canais da CIDADE (Configurações → Contato) → lista de ícones do rodapé.
+// Só entra o que foi preenchido: nada de link genérico "instagram.com".
+function cityChannels(contact) {
+  const out = [];
+  const wa = whatsappHref(contact?.whatsapp);
+  if (wa) out.push({ key: "whatsapp", href: wa });
+  for (const key of SOCIAL_ORDER) {
+    const href = contact?.social?.[key];
+    if (href) out.push({ key, href });
+  }
+  return out;
+}
+
 // Artes PADRÃO do rodapé — plataforma × cidades (mesma lógica do hero).
 const DEFAULT_ART = {
   platform: { jpg: "/media/hero.jpg", webp: "/media/hero.webp", blur: "/media/hero-blur.jpg" },
@@ -44,10 +69,16 @@ export default function PublicFooter({
   // Crédito do desenvolvedor: só na landing PRINCIPAL da plataforma. Nas
   // landings das cidades ele não aparece — cada prefeitura vê só a própria marca.
   showCredit = false,
+  // Canais públicos da cidade ({ whatsapp, email, phone, social }). Presente
+  // nas landings de cidade; ausente na landing da plataforma.
+  contact = null,
 }) {
   const art = DEFAULT_ART[defaultImage] || DEFAULT_ART.platform;
   const isPublic = variant === "public";
   const navItems = nav || SALES_NAV;
+  const channels = contact ? cityChannels(contact) : null;
+  // "fale com a administração" vai para o e-mail DA CIDADE quando cadastrado.
+  const adminMail = contact?.email || "contato@eternizagestao.com.br";
   // fade-in da foto revelada no rodapé (mesmo esquema do hero: LQIP + fade)
   const [bgLoaded, setBgLoaded] = useState(false);
   const bgImgRef = useRef(null);
@@ -70,7 +101,7 @@ export default function PublicFooter({
             {isPublic ? (
               <p className={styles.ctaText}>
                 Dúvidas sobre um jazigo ou uma cobrança?{" "}
-                <a className={styles.ctaLink} href="mailto:contato@eternizagestao.com.br">
+                <a className={styles.ctaLink} href={`mailto:${adminMail}`}>
                   <span>fale com a administração</span>
                   <span className={styles.ctaArrow} aria-hidden="true">
                     <ArrowIcon />
@@ -107,6 +138,25 @@ export default function PublicFooter({
             </nav>
 
             <div className={styles.actions}>
+              {channels ? (
+                channels.length > 0 && (
+                  <div className={styles.social}>
+                    {channels.map((c) => (
+                      <a
+                        key={c.key}
+                        className={styles.socialBtn}
+                        href={c.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={SOCIAL_LABELS[c.key]}
+                        title={SOCIAL_LABELS[c.key]}
+                      >
+                        <SocialIcon name={c.key} size={15} />
+                      </a>
+                    ))}
+                  </div>
+                )
+              ) : (
               <div className={styles.social}>
                 <a className={styles.socialBtn} href="https://instagram.com" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
@@ -121,6 +171,7 @@ export default function PublicFooter({
                   </svg>
                 </a>
               </div>
+              )}
             </div>
           </div>
         </div>
